@@ -25,7 +25,7 @@ Ratings are only updated when **both** players report the same score. See [docs/
 | `backend/` | ASP.NET Core 8 API, EF Core migrations, xUnit tests, `Dockerfile` |
 | `docker-compose.yml` | PostgreSQL + API (+ optional Caddy for automatic HTTPS) |
 | `game/` | Unity 2022.3 project: Pong simulation (`QuantumUser/Simulation/Pong`), client (`QuantumUser/View/Pong`), CI build script (`Editor/`) |
-| `.github/workflows/` | `backend.yml` (build, test, docker build), `game-simulation.yml` (DSL + simulation check against the SDK, no Unity needed), `unity-android.yml` (APK build), `release.yml` (GitHub Release with APK, container, sample .env) |
+| `.github/workflows/` | `backend.yml` (build, test, docker build), `game-simulation.yml` (DSL + simulation check against the SDK, no Unity needed), `unity-android.yml` (APK build on a GitHub runner), `unity-android-selfhosted.yml` (APK build on your own machine), `release.yml` (GitHub Release with APK, container, sample .env) |
 
 ## 1. Server preparation (Linux + Docker + PostgreSQL)
 
@@ -138,20 +138,25 @@ git (for example to make the repository public), zip it with the path `Assets/Ph
 
 | Secret | Purpose |
 |---|---|
-| `UNITY_LICENSE` | Contents of the `Unity_lic.ulf` file created by Unity Hub (see below). |
-| `UNITY_EMAIL`, `UNITY_PASSWORD` | Unity account used for activation (Personal licenses). |
+| `UNITY_LICENSE` | Contents of a `.ulf` license file, if you have one (see below). |
+| `UNITY_EMAIL`, `UNITY_PASSWORD` | Unity account used for (re)activation. |
 | `UNITY_SERIAL` | Alternative to `UNITY_LICENSE` for Pro/Plus serial activation. |
 | `QUANTUM_SDK_URL`, `QUANTUM_SDK_TOKEN` | *(optional)* only needed if `game/Assets/Photon` is not committed, see above. |
 
-**Getting the license file (Unity Personal / free).** `game-ci/unity-request-activation-file` is discontinued; the current method is
-([game-ci docs](https://game.ci/docs/github/activation)):
+**Unity Personal (free) licenses.** Accounts activated through Unity Hub in recent years use an account-based entitlement, so there may be **no
+`Unity_lic.ulf` file to copy** (the Hub shows the license as active and offers no "Add" button), and Unity has removed offline/manual activation for
+Personal seats; `game-ci/unity-request-activation-file` is discontinued ([game-ci docs](https://game.ci/docs/github/activation)). Options, in the order I suggest:
 
-1. Install Unity Hub on any computer and sign in with the Unity account CI should use (a dedicated CI account is safest).
-2. *Preferences → Licenses → Add → free personal license*, and wait until activation finishes.
-3. Copy the file `Unity_lic.ulf`: Windows `C:\ProgramData\Unity\Unity_lic.ulf`, macOS `/Library/Application Support/Unity/Unity_lic.ulf`, Linux `~/.local/share/unity3d/Unity/Unity_lic.ulf` (folders may be hidden; a license can show in the Hub without the file existing, then re-activate).
-4. Paste the whole file content into the `UNITY_LICENSE` secret, and set `UNITY_EMAIL` / `UNITY_PASSWORD` (2FA is not supported by headless activation).
+1. **Self-hosted runner (recommended for free licenses).** Use `unity-android-selfhosted.yml`: it builds on a computer where Unity Hub is already signed in, so no license secret is needed.
+   - Install Unity **2022.3.62f1** with *Android Build Support* and open it once so the license is active for your user.
+   - GitHub: *Settings → Actions → Runners → New self-hosted runner*, follow the steps and add the label `unity` (`./config.sh ... --labels unity`). Run it as the same OS user that is signed in to Unity.
+   - Set the environment variable `UNITY_PATH` for the runner to the Unity editor executable (examples are in the workflow header) and restart the runner.
+   - *Actions → Unity Android (self-hosted) → Run workflow*. The APK appears as an artifact.
+2. **Hosted runner with email + password (experimental).** Set only `UNITY_EMAIL` and `UNITY_PASSWORD` (no 2FA, simple alphanumeric password) and let `unity-android.yml` try. game-ci documents `UNITY_LICENSE` for Personal accounts, so this may fail; the job log shows why.
+3. **A `.ulf` file** if you can get one (Unity Hub → Preferences → Licenses on a machine whose license list shows an "Add" button), pasted whole into `UNITY_LICENSE`.
+4. **Pro/Plus serial** in `UNITY_SERIAL`, or build the APK locally in the Unity Editor and attach it to the release by hand.
 
-Unity has been removing offline activation for Personal seats, so this can stop working; fallbacks are a Pro/Plus `UNITY_SERIAL`, a self-hosted runner with Unity Hub logged in, or building the APK locally.
+Do not use the same Unity account on a CI machine and a second machine at the same time if you hit seat-limit errors.
 
 Optional repository **variable** `PONG_ALLOW_HTTP=1` lets the APK talk to a plain-`http://` backend (development only).
 The APK is signed with Unity's debug key, which is fine for sideloading; add a keystore before publishing to Google Play.

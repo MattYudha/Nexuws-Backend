@@ -1,0 +1,46 @@
+name: Unity Android (self-hosted)
+
+# Builds the APK on your own computer/server where Unity Hub is already signed in with your (free) license,
+# so no license secret is needed. Manual trigger only. Runner setup: see README, "Self-hosted runner".
+#
+# Runner requirements: label `unity`, Unity 2022.3.62f1 with the Android Build Support module (SDK/NDK/OpenJDK),
+# bash on PATH, and the environment variable UNITY_PATH pointing at the Unity editor executable, e.g.
+#   Windows  C:\Program Files\Unity\Hub\Editor\2022.3.62f1\Editor\Unity.exe
+#   macOS    /Applications/Unity/Hub/Editor/2022.3.62f1/Unity.app/Contents/MacOS/Unity
+#   Linux    ~/Unity/Hub/Editor/2022.3.62f1/Editor/Unity
+
+on:
+  workflow_dispatch:
+    inputs:
+      allow_http:
+        description: "Allow plain-http backend URLs in the APK (development only)"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: [self-hosted, unity]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build APK
+        shell: bash
+        run: |
+          : "${UNITY_PATH:?set UNITY_PATH on the runner to the Unity editor executable}"
+          extra=()
+          [ "${{ inputs.allow_http }}" = "true" ] && extra+=(-pongAllowHttp)
+          "$UNITY_PATH" -batchmode -nographics -quit \
+            -projectPath game \
+            -buildTarget Android \
+            -executeMethod PongEditor.BuildScript.BuildAndroid \
+            -customBuildPath "$GITHUB_WORKSPACE/build/Android" \
+            -androidVersionCode "${{ github.run_number }}" \
+            "${extra[@]}" \
+            -logFile -
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PhotonPong-Android-selfhosted-${{ github.run_number }}
+          path: build/Android/*.apk
+          if-no-files-found: error

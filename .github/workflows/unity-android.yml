@@ -33,10 +33,15 @@ jobs:
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           QUANTUM_SDK_URL: ${{ secrets.QUANTUM_SDK_URL }}
         run: |
           missing=""
-          [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ] && missing="$missing UNITY_LICENSE-or-UNITY_SERIAL"
+          # Personal accounts without a .ulf can still try email + password (experimental, see README).
+          if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ] && { [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ]; }; then
+            missing="$missing UNITY_LICENSE-or-UNITY_SERIAL-or-UNITY_EMAIL+UNITY_PASSWORD"
+          fi
           [ -z "$QUANTUM_SDK_URL" ] && missing="$missing QUANTUM_SDK_URL"
           if ls game/Assets/Photon >/dev/null 2>&1; then missing="${missing/ QUANTUM_SDK_URL/}"; fi
           if [ -n "$missing" ]; then
