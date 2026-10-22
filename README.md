@@ -138,10 +138,20 @@ git (for example to make the repository public), zip it with the path `Assets/Ph
 
 | Secret | Purpose |
 |---|---|
-| `UNITY_LICENSE` | Contents of the Unity `.ulf` license file. Personal (free): run **Actions → Acquire Unity activation file**, download the `.alf` artifact, upload it at <https://license.unity3d.com/manual> (Personal) to get the `.ulf`. Unity has been removing manual activation for Personal seats, so this may be refused; then use a Pro/Plus `UNITY_SERIAL` or a self-hosted runner. See [game-ci activation docs](https://game.ci/docs/github/activation). |
+| `UNITY_LICENSE` | Contents of the `Unity_lic.ulf` file created by Unity Hub (see below). |
 | `UNITY_EMAIL`, `UNITY_PASSWORD` | Unity account used for activation (Personal licenses). |
 | `UNITY_SERIAL` | Alternative to `UNITY_LICENSE` for Pro/Plus serial activation. |
 | `QUANTUM_SDK_URL`, `QUANTUM_SDK_TOKEN` | *(optional)* only needed if `game/Assets/Photon` is not committed, see above. |
+
+**Getting the license file (Unity Personal / free).** `game-ci/unity-request-activation-file` is discontinued; the current method is
+([game-ci docs](https://game.ci/docs/github/activation)):
+
+1. Install Unity Hub on any computer and sign in with the Unity account CI should use (a dedicated CI account is safest).
+2. *Preferences → Licenses → Add → free personal license*, and wait until activation finishes.
+3. Copy the file `Unity_lic.ulf`: Windows `C:\ProgramData\Unity\Unity_lic.ulf`, macOS `/Library/Application Support/Unity/Unity_lic.ulf`, Linux `~/.local/share/unity3d/Unity/Unity_lic.ulf` (folders may be hidden; a license can show in the Hub without the file existing, then re-activate).
+4. Paste the whole file content into the `UNITY_LICENSE` secret, and set `UNITY_EMAIL` / `UNITY_PASSWORD` (2FA is not supported by headless activation).
+
+Unity has been removing offline activation for Personal seats, so this can stop working; fallbacks are a Pro/Plus `UNITY_SERIAL`, a self-hosted runner with Unity Hub logged in, or building the APK locally.
 
 Optional repository **variable** `PONG_ALLOW_HTTP=1` lets the APK talk to a plain-`http://` backend (development only).
 The APK is signed with Unity's debug key, which is fine for sideloading; add a keystore before publishing to Google Play.
