@@ -20,9 +20,7 @@ game/*.sln
 game/*.apk
 game/*.aab
 game/*.keystore
-# Photon Quantum SDK is proprietary: injected by CI / imported locally, never committed.
-game/Assets/Photon/
-game/Assets/Photon.meta
+# NOTE: game/Assets/Photon (Quantum SDK 3.0.14) is committed on purpose. Keep this repository PRIVATE.
 
 .DS_Store
 .idea/

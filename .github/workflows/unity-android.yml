@@ -2,7 +2,7 @@ name: Unity Android
 
 # Builds an installable APK of the Pong client. Needs repository secrets (see README):
 #   UNITY_LICENSE (+ UNITY_EMAIL, UNITY_PASSWORD) or UNITY_SERIAL  -> Unity activation
-#   QUANTUM_SDK_URL                                                -> private zip with Assets/Photon
+#   (QUANTUM_SDK_URL only when game/Assets/Photon is not committed)
 # Without them the job reports what is missing and exits successfully instead of failing the repo.
 
 on:

@@ -110,10 +110,10 @@ In the dashboard open your **Quantum 3** application → **Manage**.
 
 ## 3. Unity client
 
-The Quantum SDK is proprietary and **is not in this repository** (`game/Assets/Photon/` is git-ignored). One-time local setup:
+The Quantum SDK (**3.0.14 stable, build 2241**) is committed in `game/Assets/Photon/` so CI needs no extra download. It is proprietary software under [Photon's terms](https://www.photonengine.com/terms): **keep this repository private**. One-time local setup:
 
 1. Install **Unity 2022.3 LTS** (project is pinned to `2022.3.62f1`) with the *Android Build Support* module.
-2. Download the **Quantum 3 SDK** (`.unitypackage`, developed against **3.0.14 stable build 2241**) from the Photon dashboard, open `game/` in Unity and import it. Let the **Quantum Hub** finish its setup (creates `Assets/QuantumUser/...` configs; keep them in version control) and enter your Quantum 3 **App ID**.
+2. Open `game/` in Unity (the SDK is already in `Assets/Photon`; to upgrade it, import a newer `.unitypackage` over it). Let the **Quantum Hub** finish its setup (creates `Assets/QuantumUser/...` configs; keep them in version control) and enter your Quantum 3 **App ID**.
 3. The DSL file `Simulation/Pong/Pong.qtn` is compiled by Quantum's code generation on import. Run it from the Quantum menu if it does not run by itself.
 4. Open the **SystemsConfig** asset (Quantum Hub / `Assets/QuantumUser/Resources`) and add `PongSystem` to the system list.
 5. Create a default **Map** asset (the Quantum Hub does this; Pong does not use the map's contents).
@@ -123,16 +123,11 @@ The Quantum SDK is proprietary and **is not in this repository** (`game/Assets/P
 Test two clients locally: one editor + one standalone build (or two builds), tap **Quick match** on both.
 Controls: `W/S` or arrow keys; on touch/mouse the paddle follows your finger/pointer height.
 
-### Rebuilding the Quantum SDK for CI
+### Quantum SDK in CI
 
-CI cannot download the SDK from Photon (login required). Zip the SDK folder, keeping the path `Assets/Photon/...` inside the zip,
-and host it somewhere private (a pre-signed S3/R2 URL works):
-
-```bash
-cd game && zip -r quantum-sdk.zip Assets/Photon Assets/Photon.meta
-```
-
-> Check Photon's license terms before storing the SDK anywhere; do not publish it in a public repository.
+`game/Assets/Photon` is part of the repository, so the Unity and simulation workflows work out of the box. If you ever move the SDK out of
+git (for example to make the repository public), zip it with the path `Assets/Photon/...` inside, host it privately and set the
+`QUANTUM_SDK_URL` secret (optionally `QUANTUM_SDK_TOKEN`); the workflows download it when `Assets/Photon` is missing.
 
 ## 4. GitHub Actions
 
@@ -146,8 +141,7 @@ cd game && zip -r quantum-sdk.zip Assets/Photon Assets/Photon.meta
 | `UNITY_LICENSE` | Contents of the Unity `.ulf` license file (Personal/Plus/Pro). See [game-ci activation docs](https://game.ci/docs/github/activation). |
 | `UNITY_EMAIL`, `UNITY_PASSWORD` | Unity account used for activation (Personal licenses). |
 | `UNITY_SERIAL` | Alternative to `UNITY_LICENSE` for Pro/Plus serial activation. |
-| `QUANTUM_SDK_URL` | Direct URL of the private SDK zip from the previous section. |
-| `QUANTUM_SDK_TOKEN` | *(optional)* sent as `Authorization: Bearer ...` when downloading the SDK. |
+| `QUANTUM_SDK_URL`, `QUANTUM_SDK_TOKEN` | *(optional)* only needed if `game/Assets/Photon` is not committed, see above. |
 
 Optional repository **variable** `PONG_ALLOW_HTTP=1` lets the APK talk to a plain-`http://` backend (development only).
 The APK is signed with Unity's debug key, which is fine for sideloading; add a keystore before publishing to Google Play.
@@ -199,7 +193,7 @@ Add a migration after changing entities: `dotnet ef migrations add <Name> -p src
 Read this before trusting the Unity side.
 
 - **Backend: verified.** The 16 tests pass, and the API was run against a real PostgreSQL 16 (migration, login, Photon auth response, webhook, leaderboard). The Docker image could not be built in the authoring environment (no Docker daemon); the same Dockerfile is built by `backend.yml` in CI.
-- **Simulation: verified against the real SDK (3.0.14).** `Pong.qtn` compiles with the SDK's own DSL compiler, `PongSystem.cs` compiles against the SDK's simulation sources and the generated code, and the paddle-bounce behaviour is checked with Quantum's `FP` math (`game/tools/SimulationCheck/run.sh`, also run by `game-simulation.yml` when `QUANTUM_SDK_URL` is set). Not covered: the full system update loop and `OnPlayerAdded` wiring, which need a running session.
+- **Simulation: verified against the real SDK (3.0.14).** `Pong.qtn` compiles with the SDK's own DSL compiler, `PongSystem.cs` compiles against the SDK's simulation sources and the generated code, and the paddle-bounce behaviour is checked with Quantum's `FP` math (`game/tools/SimulationCheck/run.sh`, also run by `game-simulation.yml` on every simulation change). Not covered: the full system update loop and `OnPlayerAdded` wiring, which need a running session.
 - **Unity client code: checked by reading the SDK sources, not compiled.** Every Quantum/Photon API used in `PongGame`/`PongInput`/`PongView` (`MatchmakingExtensions.ConnectToRoomAsync`, `MatchmakingArguments.AuthValues`, `SessionRunner.StartAsync`, `QuantumGame.AddPlayer`/`PlayerIsLocal`, `CallbackPollInput.SetInput`, `CallbackPluginDisconnect`, `RealtimeClient.DisconnectAsync`) was matched against the SDK's source or assemblies, but there was no Unity license to compile it. Expect at most small fixes on the first import.
 - **Unity project setup is manual once**: Quantum Hub creates the config assets (`SystemsConfig`, Map, App ID in `PhotonServerSettings`); CI cannot create them.
 - Quick match uses Photon's built-in random matchmaking (`RoomName = null`); private rooms use a 4-digit code.
