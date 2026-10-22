@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Compiles the game's simulation code against the real Quantum simulation sources and the code generated from the
+    game's .qtn files, then runs behaviour checks. The simulation is Unity-free, so this needs no Unity license.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>10</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <QuantumSdkDir Condition="'$(QuantumSdkDir)' == ''">$(MSBuildThisFileDirectory)../../../Assets/Photon</QuantumSdkDir>
+    <GeneratedDir Condition="'$(GeneratedDir)' == ''">$(MSBuildThisFileDirectory)../obj/generated</GeneratedDir>
+    <NoWarn>CS0108;CS0109;CS0618;CS0649;CS0169;CS0414;CS8981;CS1591;CS0659;CS0660;CS0661;CS0067</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(QuantumSdkDir)/Quantum/Simulation/*.cs" />
+    <Compile Include="$(GeneratedDir)/Quantum.CodeGen.Core.cs;$(GeneratedDir)/Quantum.CodeGen.Events.cs;$(GeneratedDir)/Quantum.CodeGen.Prototypes.cs" />
+    <Compile Include="../../../Assets/QuantumUser/Simulation/**/*.cs" Exclude="../../../Assets/QuantumUser/Simulation/**/Generated/**" />
+    <Compile Include="Check.cs;GlobalUsings.cs" />
+    <ProjectReference Include="../UnityEngineStub/UnityEngineStub.csproj" />
+    <Reference Include="Quantum.Deterministic"><HintPath>$(QuantumSdkDir)/Quantum/Assemblies/Quantum.Deterministic.dll</HintPath></Reference>
+    <Reference Include="Quantum.Engine"><HintPath>$(QuantumSdkDir)/Quantum/Assemblies/Quantum.Engine.dll</HintPath></Reference>
+    <Reference Include="Quantum.Log"><HintPath>$(QuantumSdkDir)/Quantum/Assemblies/Quantum.Log.dll</HintPath></Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Photon.Deterministic needs its lookup tables before FP.Sqrt / Magnitude work. -->
+    <AssemblyMetadata Include="LutDir" Value="$(QuantumSdkDir)/Quantum/Runtime/RuntimeAssets/LUT" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Runs the Quantum DSL compiler shipped in the SDK on the game's .qtn files (no Unity needed). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <QuantumSdkDir Condition="'$(QuantumSdkDir)' == ''">$(MSBuildThisFileDirectory)../../../Assets/Photon</QuantumSdkDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Quantum.CodeGen.Qtn is built against this FSharp.Core major version. -->
+    <PackageReference Include="FSharp.Core" Version="10.1.201" />
+    <Reference Include="Quantum.CodeGen.Qtn"><HintPath>$(QuantumSdkDir)/Quantum/Editor/Assemblies/Quantum.CodeGen.Qtn.dll</HintPath></Reference>
+    <!-- The generator loads these at run time to inspect built-in types. -->
+    <Reference Include="Quantum.Engine"><HintPath>$(QuantumSdkDir)/Quantum/Assemblies/Quantum.Engine.dll</HintPath></Reference>
+    <Reference Include="Quantum.Deterministic"><HintPath>$(QuantumSdkDir)/Quantum/Assemblies/Quantum.Deterministic.dll</HintPath></Reference>
+    <Reference Include="Quantum.Log"><HintPath>$(QuantumSdkDir)/Quantum/Assemblies/Quantum.Log.dll</HintPath></Reference>
+    <Reference Include="System.CodeDom"><HintPath>$(QuantumSdkDir)/Quantum/Editor/Assemblies/System.CodeDom.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

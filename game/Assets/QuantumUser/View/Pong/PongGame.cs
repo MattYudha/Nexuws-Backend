@@ -18,7 +18,6 @@ namespace Pong
 
         private const string BackendUrlKey = "pong.backendUrl";
         private const string NameKey = "pong.name";
-        private const int QuickMatchRooms = 5;
 
         [Tooltip("Base URL of the Pong backend. 10.0.2.2 is the host machine from the Android emulator.")]
         public string BackendUrl = "http://10.0.2.2:8080";
@@ -30,6 +29,7 @@ namespace Pong
 
         private BackendClient _backend;
         private RealtimeClient _client;
+        private IDisposable _pluginDisconnectSubscription;
         private Page _screen = Page.Login;
         private string _status = "";
         private string _name = "";
@@ -84,27 +84,8 @@ namespace Pong
             catch (Exception e) { Debug.LogWarning(e.Message); }
         }
 
-        private async void QuickMatch()
-        {
-            _screen = Page.Connecting;
-            for (int i = 1; i <= QuickMatchRooms; i++)
-            {
-                _status = $"Looking for an opponent (room {i}/{QuickMatchRooms})...";
-                try
-                {
-                    await StartSessionAsync("quick-" + i, canOnlyJoin: false);
-                    return;
-                }
-                catch (Exception e)
-                {
-                    // Room full or in a bad state: try the next one.
-                    Debug.LogWarning($"quick-{i}: {e.Message}");
-                    await LeaveAsync(toMenu: false);
-                }
-            }
-            _status = "No free room found. Try again.";
-            _screen = Page.Menu;
-        }
+        // RoomName == null makes Photon pick a random open room, or create one (RandomMatchingType FillRoom).
+        private async void QuickMatch() => await ConnectWithErrorHandling(null, canOnlyJoin: false);
 
         private async void CreateRoom()
         {
@@ -117,7 +98,7 @@ namespace Pong
         private async Task ConnectWithErrorHandling(string roomName, bool canOnlyJoin)
         {
             _screen = Page.Connecting;
-            _status = "Connecting...";
+            _status = roomName == null ? "Looking for an opponent..." : "Connecting...";
             try
             {
                 await StartSessionAsync(roomName, canOnlyJoin);
@@ -161,10 +142,14 @@ namespace Pong
                 StartGameTimeoutInSeconds = 10,
                 Communicator = new QuantumNetworkCommunicator(_client),
             };
+            // CallbackPluginDisconnect can fire during StartAsync, so subscribe first (same order as the SDK sample).
+            _pluginDisconnectSubscription = QuantumCallback.SubscribeManual<CallbackPluginDisconnect>(
+                callback => { _ = LeaveAsync(toMenu: true); });
+
             var runner = (QuantumRunner)await SessionRunner.StartAsync(sessionRunnerArguments);
             runner.Game.AddPlayer(new RuntimePlayer { PlayerNickname = _backend.Session.displayName });
 
-            _gameId = _client.CurrentRoom.Name;
+            _gameId = _client.CurrentRoom?.Name ?? "";
             _reported = false;
             LocalSlot = -1;
             _status = "";
@@ -173,9 +158,12 @@ namespace Pong
 
         private async Task LeaveAsync(bool toMenu)
         {
+            _pluginDisconnectSubscription?.Dispose();
+            _pluginDisconnectSubscription = null;
+
             try { await QuantumRunner.ShutdownAllAsync(); }
             catch (Exception e) { Debug.LogWarning(e.Message); }
-            try { _client?.Disconnect(); }
+            try { if (_client != null) await _client.DisconnectAsync(); }
             catch (Exception e) { Debug.LogWarning(e.Message); }
             _client = null;
             LocalSlot = -1;

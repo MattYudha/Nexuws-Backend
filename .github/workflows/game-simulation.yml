@@ -1,0 +1,47 @@
+name: Game simulation
+
+# Compiles the Pong DSL and simulation against the real Quantum SDK and runs deterministic checks.
+# Needs only the SDK (QUANTUM_SDK_URL secret, or Assets/Photon committed) - no Unity license.
+
+on:
+  push:
+    branches: [main]
+    paths: ["game/Assets/QuantumUser/Simulation/**", "game/tools/**", ".github/workflows/game-simulation.yml"]
+  pull_request:
+    paths: ["game/Assets/QuantumUser/Simulation/**", "game/tools/**", ".github/workflows/game-simulation.yml"]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Quantum SDK
+        id: sdk
+        env:
+          QUANTUM_SDK_URL: ${{ secrets.QUANTUM_SDK_URL }}
+          QUANTUM_SDK_TOKEN: ${{ secrets.QUANTUM_SDK_TOKEN }}
+        run: |
+          if [ -d game/Assets/Photon ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ -z "$QUANTUM_SDK_URL" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Simulation check skipped: QUANTUM_SDK_URL secret is not set (see README)"
+            echo "### Simulation check SKIPPED - add the QUANTUM_SDK_URL secret" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          auth=()
+          [ -n "$QUANTUM_SDK_TOKEN" ] && auth=(-H "Authorization: Bearer $QUANTUM_SDK_TOKEN")
+          curl -fsSL "${auth[@]}" "$QUANTUM_SDK_URL" -o "$RUNNER_TEMP/quantum-sdk.zip"
+          unzip -q "$RUNNER_TEMP/quantum-sdk.zip" -d game
+          test -d game/Assets/Photon || { echo "::error::zip must contain Assets/Photon"; exit 1; }
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.sdk.outputs.ready == 'true'
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Compile DSL, build simulation, run checks
+        if: steps.sdk.outputs.ready == 'true'
+        run: bash game/tools/SimulationCheck/run.sh

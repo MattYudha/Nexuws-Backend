@@ -25,7 +25,7 @@ Ratings are only updated when **both** players report the same score. See [docs/
 | `backend/` | ASP.NET Core 8 API, EF Core migrations, xUnit tests, `Dockerfile` |
 | `docker-compose.yml` | PostgreSQL + API (+ optional Caddy for automatic HTTPS) |
 | `game/` | Unity 2022.3 project: Pong simulation (`QuantumUser/Simulation/Pong`), client (`QuantumUser/View/Pong`), CI build script (`Editor/`) |
-| `.github/workflows/` | `backend.yml` (build, test, docker build), `unity-android.yml` (APK build), `release.yml` (GitHub Release with APK, container, sample .env) |
+| `.github/workflows/` | `backend.yml` (build, test, docker build), `game-simulation.yml` (DSL + simulation check against the SDK, no Unity needed), `unity-android.yml` (APK build), `release.yml` (GitHub Release with APK, container, sample .env) |
 
 ## 1. Server preparation (Linux + Docker + PostgreSQL)
 
@@ -113,7 +113,7 @@ In the dashboard open your **Quantum 3** application → **Manage**.
 The Quantum SDK is proprietary and **is not in this repository** (`game/Assets/Photon/` is git-ignored). One-time local setup:
 
 1. Install **Unity 2022.3 LTS** (project is pinned to `2022.3.62f1`) with the *Android Build Support* module.
-2. Download the **Quantum 3 SDK** (`.unitypackage`) from the Photon dashboard, open `game/` in Unity and import it. Let the **Quantum Hub** finish its setup (creates `Assets/QuantumUser/...` configs; keep them in version control) and enter your Quantum 3 **App ID**.
+2. Download the **Quantum 3 SDK** (`.unitypackage`, developed against **3.0.14 stable build 2241**) from the Photon dashboard, open `game/` in Unity and import it. Let the **Quantum Hub** finish its setup (creates `Assets/QuantumUser/...` configs; keep them in version control) and enter your Quantum 3 **App ID**.
 3. The DSL file `Simulation/Pong/Pong.qtn` is compiled by Quantum's code generation on import. Run it from the Quantum menu if it does not run by itself.
 4. Open the **SystemsConfig** asset (Quantum Hub / `Assets/QuantumUser/Resources`) and add `PongSystem` to the system list.
 5. Create a default **Map** asset (the Quantum Hub does this; Pong does not use the map's contents).
@@ -199,8 +199,10 @@ Add a migration after changing entities: `dotnet ef migrations add <Name> -p src
 Read this before trusting the Unity side.
 
 - **Backend: verified.** The 16 tests pass, and the API was run against a real PostgreSQL 16 (migration, login, Photon auth response, webhook, leaderboard). The Docker image could not be built in the authoring environment (no Docker daemon); the same Dockerfile is built by `backend.yml` in CI.
-- **Unity/Quantum code: not compiled.** It was written against the Quantum 3 documentation (`MatchmakingExtensions.ConnectToRoomAsync`, `SessionRunner.StartAsync`, `AddPlayer`, `ISignalOnPlayerAdded`, `CallbackPollInput`) but there was no Unity license or SDK to compile or run it. Expect small fixes on the first import — likely candidates: the `AuthValues` field on `MatchmakingArguments`, `PlayerRef` → `int` cast in `PongSystem.OnPlayerAdded`, `QuantumGame.PlayerIsLocal`, `RealtimeClient.CurrentRoom`. The first CI run will tell you.
-- Quick match uses fixed room names (`quick-1` … `quick-5`); replace with Photon's random matchmaking for production.
+- **Simulation: verified against the real SDK (3.0.14).** `Pong.qtn` compiles with the SDK's own DSL compiler, `PongSystem.cs` compiles against the SDK's simulation sources and the generated code, and the paddle-bounce behaviour is checked with Quantum's `FP` math (`game/tools/SimulationCheck/run.sh`, also run by `game-simulation.yml` when `QUANTUM_SDK_URL` is set). Not covered: the full system update loop and `OnPlayerAdded` wiring, which need a running session.
+- **Unity client code: checked by reading the SDK sources, not compiled.** Every Quantum/Photon API used in `PongGame`/`PongInput`/`PongView` (`MatchmakingExtensions.ConnectToRoomAsync`, `MatchmakingArguments.AuthValues`, `SessionRunner.StartAsync`, `QuantumGame.AddPlayer`/`PlayerIsLocal`, `CallbackPollInput.SetInput`, `CallbackPluginDisconnect`, `RealtimeClient.DisconnectAsync`) was matched against the SDK's source or assemblies, but there was no Unity license to compile it. Expect at most small fixes on the first import.
+- **Unity project setup is manual once**: Quantum Hub creates the config assets (`SystemsConfig`, Map, App ID in `PhotonServerSettings`); CI cannot create them.
+- Quick match uses Photon's built-in random matchmaking (`RoomName = null`); private rooms use a 4-digit code.
 - No reconnect/forfeit handling: if a player quits mid-match the other must tap **Leave**; no rating is changed.
 - `MatchService` serializes result reports with in-process locks, so run **one** API instance (or add a database advisory lock before scaling out).
 - Guest accounts are keyed by a device id stored in `PlayerPrefs`; add a real identity provider before public launch.
