@@ -25,7 +25,7 @@ Ratings are only updated when **both** players report the same score. See [docs/
 | `backend/` | ASP.NET Core 8 API, EF Core migrations, xUnit tests, `Dockerfile` |
 | `docker-compose.yml` | PostgreSQL + API (+ optional Caddy for automatic HTTPS) |
 | `game/` | Unity 2022.3 project: Pong simulation (`QuantumUser/Simulation/Pong`), client (`QuantumUser/View/Pong`), CI build script (`Editor/`) |
-| `.github/workflows/` | `backend.yml` (build, test, docker build) and `unity-android.yml` (APK build) |
+| `.github/workflows/` | `backend.yml` (build, test, docker build), `unity-android.yml` (APK build), `release.yml` (GitHub Release with APK, container, sample .env) |
 
 ## 1. Server preparation (Linux + Docker + PostgreSQL)
 
@@ -151,6 +151,24 @@ cd game && zip -r quantum-sdk.zip Assets/Photon Assets/Photon.meta
 
 Optional repository **variable** `PONG_ALLOW_HTTP=1` lets the APK talk to a plain-`http://` backend (development only).
 The APK is signed with Unity's debug key, which is fine for sideloading; add a keystore before publishing to Google Play.
+
+### Releases (APK + container + sample .env)
+
+Pushing a tag publishes a GitHub Release (*Releases* page) through `release.yml`:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0      # or: Actions > Release > Run workflow
+```
+
+| Release asset | What |
+|---|---|
+| `pong-api-<tag>.tar.gz` | the API container image (`gunzip -c ... \| docker load`); also pushed to `ghcr.io/<owner>/<repo>-api:<tag>` and `:latest` |
+| `pong-backend-deploy-<tag>.zip` | production `docker-compose.yml` (uses the prebuilt image, no source needed), `Caddyfile`, `.env.example` |
+| `env.example` | the sample `.env` as a standalone file (GitHub drops leading dots from asset names) |
+| `PhotonPong.apk` | Android build, **only when the Unity secrets above are set**; otherwise the release notes say it is missing |
+
+New GHCR packages are private by default: make the package public in the repository's *Packages* settings, or `docker login ghcr.io` with a token that has `read:packages`.
+On the server: unzip the bundle, `cp .env.example .env`, fill in the secrets, `docker compose --profile tls up -d`.
 
 ## 5. Backend development without Docker
 

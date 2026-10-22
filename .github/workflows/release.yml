@@ -1,0 +1,129 @@
+name: Release
+
+# Push a tag like v0.1.0 (or run manually) to publish a GitHub Release containing:
+#   - the API container image, pushed to ghcr.io and also attached as a .tar.gz
+#   - the Android APK (only when the Unity secrets are configured, see README)
+#   - env.example (sample .env) and a deploy bundle zip (compose file + Caddyfile + .env.example)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag to release, e.g. v0.1.0 (created from the selected branch if it does not exist)"
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-api" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ env.VERSION }}
+            ${{ steps.meta.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Export image tarball
+        run: |
+          mkdir -p dist
+          docker pull "${{ steps.meta.outputs.image }}:${VERSION}"
+          docker save "${{ steps.meta.outputs.image }}:${VERSION}" | gzip > "dist/pong-api-${VERSION}.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: container-tarball
+          path: dist/*.tar.gz
+
+  apk:
+    uses: ./.github/workflows/unity-android.yml
+    secrets: inherit
+
+  release:
+    needs: [container, apk]
+    # Publish even when the APK was skipped or failed; the notes say so.
+    if: ${{ !cancelled() && needs.container.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: container-tarball
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: PhotonPong-Android-*
+          merge-multiple: true
+          path: dist
+
+      - name: Assemble release files
+        env:
+          IMAGE: ${{ needs.container.outputs.image }}
+        run: |
+          mkdir bundle
+          cp deploy/docker-compose.release.yml bundle/docker-compose.yml
+          cp deploy/Caddyfile bundle/Caddyfile
+          sed "s|^# API_IMAGE=.*|API_IMAGE=${IMAGE}:${VERSION}|" .env.example > bundle/.env.example
+          # GitHub renames release assets that start with a dot, so publish the sample without one.
+          cp bundle/.env.example dist/env.example
+          (cd bundle && zip -qr "../dist/pong-backend-deploy-${VERSION}.zip" .)
+
+          if ls dist/*.apk >/dev/null 2>&1; then
+            apk_note="Android APK attached (\`$(basename dist/*.apk)\`). Debug-signed: enable *install unknown apps* to sideload."
+          else
+            apk_note="**No APK in this release.** The Unity build was skipped or failed; add the secrets listed in the README (section 4) and re-run the *Release* workflow."
+          fi
+          cat > notes.md <<NOTES
+          ## Backend container
+          \`\`\`bash
+          docker pull ${IMAGE}:${VERSION}
+          # or, without a registry login:
+          gunzip -c pong-api-${VERSION}.tar.gz | docker load
+          \`\`\`
+          New GHCR packages are private by default: make the package public in the repository's *Packages* settings, or \`docker login ghcr.io\` with a token that has \`read:packages\`.
+
+          ## Deploy
+          Unzip \`pong-backend-deploy-${VERSION}.zip\` on the server, then:
+          \`\`\`bash
+          cp .env.example .env   # fill in the secrets; API_IMAGE already points at this release
+          docker compose --profile tls up -d
+          \`\`\`
+          \`env.example\` is the same sample .env as a standalone file.
+
+          ## Android
+          ${apk_note}
+          NOTES
+          ls -la dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: ${{ env.VERSION }}
+          body_path: notes.md
+          generate_release_notes: true
+          prerelease: ${{ contains(env.VERSION, '-') }}
+          fail_on_unmatched_files: true
+          files: dist/*

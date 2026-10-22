@@ -12,6 +12,7 @@ on:
   pull_request:
     paths: ["game/**", ".github/workflows/unity-android.yml"]
   workflow_dispatch:
+  workflow_call: # used by release.yml
 
 concurrency:
   group: unity-android-${{ github.ref }}
@@ -41,6 +42,11 @@ jobs:
           if [ -n "$missing" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Unity build skipped, missing secrets:$missing (see README)"
+            {
+              echo "### Unity Android build SKIPPED (no APK produced)"
+              echo "Missing repository secrets:$missing"
+              echo "Add them under Settings > Secrets and variables > Actions, then re-run. See README section 4."
+            } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi

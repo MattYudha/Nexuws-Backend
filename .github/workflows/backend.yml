@@ -36,4 +36,7 @@ jobs:
           PHOTON_WEBHOOK_SECRET: ci
           PHOTON_AUTH_SECRET: ci
           API_DOMAIN: api.example.com
-        run: docker compose --profile tls config -q
+          API_IMAGE: ghcr.io/example/img:1
+        run: |
+          docker compose --profile tls config -q
+          docker compose -f deploy/docker-compose.release.yml --profile tls config -q
