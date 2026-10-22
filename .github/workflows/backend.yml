@@ -1,0 +1,39 @@
+name: Backend
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+  pull_request:
+    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet test --no-build -c Release
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -t pong-api:ci backend
+      - name: Validate compose file
+        env:
+          POSTGRES_PASSWORD: ci
+          JWT_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
+          PHOTON_WEBHOOK_SECRET: ci
+          PHOTON_AUTH_SECRET: ci
+          API_DOMAIN: api.example.com
+        run: docker compose --profile tls config -q

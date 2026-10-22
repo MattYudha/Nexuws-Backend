@@ -1,0 +1,27 @@
+// Pong simulation state. The whole game fits in globals: two paddles and one ball do not
+// need entities, which keeps the sample small and the rollback state tiny.
+
+#pragma max_players 2
+
+input
+{
+    // -1 = move down, 0 = stay, 1 = move up
+    int Move;
+}
+
+global
+{
+    // 0 = waiting for both players, 1 = playing, 2 = match over
+    int State;
+    int CountdownTicks;
+    int ScoreLeft;
+    int ScoreRight;
+    // Bit n is set once player slot n joined.
+    int JoinedMask;
+    // -1 serves towards the left player, 1 towards the right player.
+    int ServeDirection;
+    FP LeftY;
+    FP RightY;
+    FPVector2 BallPosition;
+    FPVector2 BallVelocity;
+}

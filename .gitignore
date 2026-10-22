@@ -1,0 +1,29 @@
+# Secrets
+.env
+
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+
+# Unity
+game/[Ll]ibrary/
+game/[Tt]emp/
+game/[Oo]bj/
+game/[Bb]uild/
+game/[Bb]uilds/
+game/[Ll]ogs/
+game/[Uu]ser[Ss]ettings/
+game/*.csproj
+game/*.sln
+game/*.apk
+game/*.aab
+game/*.keystore
+# Photon Quantum SDK is proprietary: injected by CI / imported locally, never committed.
+game/Assets/Photon/
+game/Assets/Photon.meta
+
+.DS_Store
+.idea/
+.vscode/
