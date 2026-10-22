@@ -138,7 +138,7 @@ git (for example to make the repository public), zip it with the path `Assets/Ph
 
 | Secret | Purpose |
 |---|---|
-| `UNITY_LICENSE` | Contents of the Unity `.ulf` license file (Personal/Plus/Pro). See [game-ci activation docs](https://game.ci/docs/github/activation). |
+| `UNITY_LICENSE` | Contents of the Unity `.ulf` license file. Personal (free): run **Actions → Acquire Unity activation file**, download the `.alf` artifact, upload it at <https://license.unity3d.com/manual> (Personal) to get the `.ulf`. Unity has been removing manual activation for Personal seats, so this may be refused; then use a Pro/Plus `UNITY_SERIAL` or a self-hosted runner. See [game-ci activation docs](https://game.ci/docs/github/activation). |
 | `UNITY_EMAIL`, `UNITY_PASSWORD` | Unity account used for activation (Personal licenses). |
 | `UNITY_SERIAL` | Alternative to `UNITY_LICENSE` for Pro/Plus serial activation. |
 | `QUANTUM_SDK_URL`, `QUANTUM_SDK_TOKEN` | *(optional)* only needed if `game/Assets/Photon` is not committed, see above. |

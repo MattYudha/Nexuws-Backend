@@ -1,0 +1,25 @@
+name: Acquire Unity activation file
+
+# One-time helper for Unity Personal (free) licenses:
+#   1. Actions > "Acquire Unity activation file" > Run workflow
+#   2. Download the artifact (a zip containing Unity_v2022.x.alf)
+#   3. Upload the .alf at https://license.unity3d.com/manual, choose Personal, download the .ulf
+#   4. Save the whole .ulf text as the repository secret UNITY_LICENSE
+# Unity has been removing manual activation for Personal seats; if step 3 is refused, see the README.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  activation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: game-ci/unity-request-activation-file@v2
+        id: request
+        with:
+          unityVersion: 2022.3.62f1 # must match game/ProjectSettings/ProjectVersion.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.request.outputs.filePath }}
+          path: ${{ steps.request.outputs.filePath }}
