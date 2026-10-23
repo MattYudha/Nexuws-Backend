@@ -113,12 +113,16 @@ In the dashboard open your **Quantum 3** application → **Manage**.
 The Quantum SDK (**3.0.14 stable, build 2241**) is committed in `game/Assets/Photon/` so CI needs no extra download. It is proprietary software under [Photon's terms](https://www.photonengine.com/terms): **keep this repository private**. One-time local setup:
 
 1. Install **Unity 2022.3 LTS** (project is pinned to `2022.3.62f1`) with the *Android Build Support* module.
-2. Open `game/` in Unity (the SDK is already in `Assets/Photon`; to upgrade it, import a newer `.unitypackage` over it). Let the **Quantum Hub** finish its setup (creates `Assets/QuantumUser/...` configs; keep them in version control) and enter your Quantum 3 **App ID**.
-3. The DSL file `Simulation/Pong/Pong.qtn` is compiled by Quantum's code generation on import. Run it from the Quantum menu if it does not run by itself.
-4. Open the **SystemsConfig** asset (Quantum Hub / `Assets/QuantumUser/Resources`) and add `PongSystem` to the system list.
-5. Create a default **Map** asset (the Quantum Hub does this; Pong does not use the map's contents).
-6. Menu **Pong → Create Main Scene**, select the `Pong` object and assign the **Map** under `PongGame → Runtime Config`. Set the **Backend URL** (default `http://10.0.2.2:8080` is the host machine from the Android emulator).
-7. Commit `Assets/Scenes/`, the Quantum config assets **and every `.meta` file** (scene references use the `.meta` GUIDs).
+2. Open `game/` in Unity. The game code lives in the Quantum assemblies through the `*.asmref` files next to `Simulation/` and `View/`.
+   The Quantum code generator output (`Assets/QuantumUser/*/Generated`), the Quantum config assets, the Map and the scene are **not committed**;
+   they are created by the setup below (CI does the same on every build).
+3. Menu **Pong → Create Quantum Scene (with Map)** (or `-executeMethod PongEditor.PongSetup.CreateQuantumScene` in batchmode). It creates the
+   Quantum global assets, a baked Map, a `SystemsConfig` that includes `PongSystem`, and `Assets/Scenes/Main.unity` with the `Pong` object wired up.
+   The Quantum code generator must have run first (*Tools → Quantum → CodeGen → Run Qtn CodeGen*); on a fresh checkout the game code does not
+   compile without it, see `unity-android-selfhosted.yml` for the order CI uses.
+4. Environment variables read by the setup: `PHOTON_APP_ID` (your Quantum 3 App ID, otherwise enter it in `PhotonServerSettings`) and
+   `PONG_BACKEND_URL` (base URL of the backend, e.g. `https://photon.ciptadusa.com`, no `/api`). Players can still edit the Backend URL on the login screen.
+   The default `http://10.0.2.2:8080` is the host machine as seen from the Android emulator.
 
 Test two clients locally: one editor + one standalone build (or two builds), tap **Quick match** on both.
 Controls: `W/S` or arrow keys; on touch/mouse the paddle follows your finger/pointer height.
@@ -148,10 +152,12 @@ git (for example to make the repository public), zip it with the path `Assets/Ph
 Personal seats; `game-ci/unity-request-activation-file` is discontinued ([game-ci docs](https://game.ci/docs/github/activation)). Options, in the order I suggest:
 
 1. **Self-hosted runner (recommended for free licenses).** Use `unity-android-selfhosted.yml`: it builds on a computer where Unity Hub is already signed in, so no license secret is needed.
-   - Install Unity **2022.3.62f1** with *Android Build Support* and open it once so the license is active for your user.
+   - Install Unity **2022.3.62f1** with *Android Build Support* (SDK, NDK, OpenJDK) and sign in to Unity Hub so the license is active for your user. On a headless Linux server the Hub can be driven with `unityhub --no-sandbox --headless install -v 2022.3.62f1 -c 4af31df58517 -m android -m android-sdk-ndk-tools -m android-open-jdk` under `xvfb`.
    - GitHub: *Settings → Actions → Runners → New self-hosted runner*, follow the steps and add the label `unity` (`./config.sh ... --labels unity`). Run it as the same OS user that is signed in to Unity.
    - Set the environment variable `UNITY_PATH` for the runner to the Unity editor executable (examples are in the workflow header) and restart the runner.
-   - *Actions → Unity Android (self-hosted) → Run workflow*. The APK appears as an artifact.
+   - Set the repository **variables** (*Settings → Secrets and variables → Actions → Variables*): `PHOTON_APP_ID` (Quantum 3 App ID) and `PONG_BACKEND_URL` (e.g. `https://photon.ciptadusa.com`). Without them the build still works but the APK cannot reach Photon or your backend.
+   - *Actions → Unity Android (self-hosted) → Run workflow*. The workflow runs the Quantum code generator and `PongSetup.CreateQuantumScene` before the build, so no manual Unity steps are needed. The APK appears as an artifact.
+   - `unity-android.yml` (hosted runner) does **not** have these generation steps yet; use the self-hosted workflow.
 2. **Hosted runner with email + password (experimental).** Set only `UNITY_EMAIL` and `UNITY_PASSWORD` (no 2FA, simple alphanumeric password) and let `unity-android.yml` try. game-ci documents `UNITY_LICENSE` for Personal accounts, so this may fail; the job log shows why.
 3. **A `.ulf` file** if you can get one (Unity Hub → Preferences → Licenses on a machine whose license list shows an "Add" button), pasted whole into `UNITY_LICENSE`.
 4. **Pro/Plus serial** in `UNITY_SERIAL`, or build the APK locally in the Unity Editor and attach it to the release by hand.
@@ -209,8 +215,8 @@ Read this before trusting the Unity side.
 
 - **Backend: verified.** The 16 tests pass, and the API was run against a real PostgreSQL 16 (migration, login, Photon auth response, webhook, leaderboard). The Docker image could not be built in the authoring environment (no Docker daemon); the same Dockerfile is built by `backend.yml` in CI.
 - **Simulation: verified against the real SDK (3.0.14).** `Pong.qtn` compiles with the SDK's own DSL compiler, `PongSystem.cs` compiles against the SDK's simulation sources and the generated code, and the paddle-bounce behaviour is checked with Quantum's `FP` math (`game/tools/SimulationCheck/run.sh`, also run by `game-simulation.yml` on every simulation change). Not covered: the full system update loop and `OnPlayerAdded` wiring, which need a running session.
-- **Unity client code: checked by reading the SDK sources, not compiled.** Every Quantum/Photon API used in `PongGame`/`PongInput`/`PongView` (`MatchmakingExtensions.ConnectToRoomAsync`, `MatchmakingArguments.AuthValues`, `SessionRunner.StartAsync`, `QuantumGame.AddPlayer`/`PlayerIsLocal`, `CallbackPollInput.SetInput`, `CallbackPluginDisconnect`, `RealtimeClient.DisconnectAsync`) was matched against the SDK's source or assemblies, but there was no Unity license to compile it. Expect at most small fixes on the first import.
-- **Unity project setup is manual once**: Quantum Hub creates the config assets (`SystemsConfig`, Map, App ID in `PhotonServerSettings`); CI cannot create them.
+- **Unity client: compiles and builds an APK in CI** (Unity 2022.3.62f1 on the self-hosted runner), including the generated Quantum code, Map and scene. **Not verified: a running match on a device** (matchmaking, input, result reporting end to end). Test on two devices before relying on it.
+- **Unity project setup is automated** by `PongSetup.CreateQuantumScene` (see section 3); only the Photon dashboard configuration (section 2) stays manual.
 - Quick match uses Photon's built-in random matchmaking (`RoomName = null`); private rooms use a 4-digit code.
 - No reconnect/forfeit handling: if a player quits mid-match the other must tap **Leave**; no rating is changed.
 - `MatchService` serializes result reports with in-process locks, so run **one** API instance (or add a database advisory lock before scaling out).

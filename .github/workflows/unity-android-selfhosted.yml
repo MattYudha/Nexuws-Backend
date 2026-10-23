@@ -32,6 +32,8 @@ jobs:
         env:
           # Repository variable (Settings -> Secrets and variables -> Actions -> Variables): the Photon Quantum 3 App ID.
           PHOTON_APP_ID: ${{ vars.PHOTON_APP_ID }}
+          # Repository variable: public base URL of the backend, e.g. https://photon.ciptadusa.com (no /api suffix).
+          PONG_BACKEND_URL: ${{ vars.PONG_BACKEND_URL }}
         run: |
           : "${UNITY_PATH:?set UNITY_PATH on the runner to the Unity editor executable}"
           rm -rf game/Assets/Scenes game/Assets/QuantumUser/Resources game/Assets/QuantumUser/*/Generated

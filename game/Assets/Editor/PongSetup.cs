@@ -71,6 +71,13 @@ namespace PongEditor
             go.AddComponent<Pong.PongInput>();
             game.RuntimeConfig = runtimeConfig;
 
+            // Default backend the APK talks to (GitHub variable PONG_BACKEND_URL); players can still edit it on the login screen.
+            var backendUrl = Environment.GetEnvironmentVariable("PONG_BACKEND_URL");
+            if (!string.IsNullOrWhiteSpace(backendUrl))
+                game.BackendUrl = backendUrl.Trim().TrimEnd('/');
+            else
+                Debug.LogWarning("PONG_BACKEND_URL not set: the APK defaults to " + game.BackendUrl + " (emulator host).");
+
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
