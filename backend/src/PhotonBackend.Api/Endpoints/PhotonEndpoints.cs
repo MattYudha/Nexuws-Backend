@@ -43,8 +43,13 @@ public static class PhotonEndpoints
     {
         var expected = ctx.HttpContext.RequestServices.GetRequiredService<IOptions<PhotonOptions>>().Value.WebhookSecret;
         var given = ctx.HttpContext.Request.Headers["X-SecretKey"].ToString();
+        var log = ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("PhotonWebhook");
         if (!SecretsEqual(expected, given))
+        {
+            log.LogWarning("Photon webhook {Path} refused: bad X-SecretKey", ctx.HttpContext.Request.Path);
             return Results.Json(new { Status = 401, Error = "Unauthorized", Message = "Bad secret." }, PhotonJson, statusCode: 400);
+        }
+        log.LogInformation("Photon webhook {Path}", ctx.HttpContext.Request.Path);
         return await next(ctx);
     }
 
@@ -56,19 +61,32 @@ public static class PhotonEndpoints
         return CryptographicOperations.FixedTimeEquals(a, b);
     }
 
-    private static IResult PhotonAuth(HttpRequest req, TokenService tokens, IOptions<PhotonOptions> photon)
+    private static IResult PhotonAuth(HttpRequest req, TokenService tokens, IOptions<PhotonOptions> photon, ILoggerFactory loggers)
     {
+        // Logged so the host's log shows whether Photon Cloud reaches this endpoint and why it is refused.
+        var log = loggers.CreateLogger("PhotonAuth");
+
         if (!SecretsEqual(photon.Value.AuthSecret, req.Query["secret"].ToString()))
+        {
+            log.LogWarning("Photon auth refused: wrong or missing secret (from {Remote})", req.HttpContext.Connection.RemoteIpAddress);
             return Results.Json(new { ResultCode = 2, Message = "Unauthorized caller." }, PhotonJson);
+        }
 
         var token = req.Query["token"].ToString();
         if (token.Length == 0)
+        {
+            log.LogWarning("Photon auth refused: no token parameter");
             return Results.Json(new { ResultCode = 3, Message = "Invalid parameters." }, PhotonJson);
+        }
 
         var identity = tokens.TryValidate(token);
         if (identity is null)
+        {
+            log.LogWarning("Photon auth refused: invalid or expired token");
             return Results.Json(new { ResultCode = 2, Message = "Invalid or expired token." }, PhotonJson);
+        }
 
+        log.LogInformation("Photon auth accepted for player {PlayerId}", identity.Value.PlayerId);
         return Results.Json(new
         {
             ResultCode = 1,

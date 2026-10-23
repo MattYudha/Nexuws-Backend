@@ -49,6 +49,16 @@ namespace PongEditor
             var debugInput = UnityEngine.Object.FindAnyObjectByType<Quantum.QuantumDebugInput>();
             if (debugInput != null) UnityEngine.Object.DestroyImmediate(debugInput.gameObject);
 
+            // The Quantum Hub normally creates the default SimulationConfig; without one the session shuts down at start.
+            if (!runtimeConfig.SimulationConfig.IsValid)
+            {
+                var simulationConfig = ScriptableObject.CreateInstance<Quantum.SimulationConfig>();
+                AssetDatabase.CreateAsset(simulationConfig, "Assets/QuantumUser/Resources/PongSimulationConfig.asset");
+                AssetDatabase.SaveAssets();
+                Quantum.Editor.QuantumUnityDBUtilities.RefreshGlobalDB();
+                runtimeConfig.SimulationConfig = simulationConfig;
+            }
+
             // PongSystem must be registered, otherwise the simulation never runs the game rules.
             var defaultSystems = Quantum.QuantumUnityDB.GetGlobalAsset(runtimeConfig.SystemsConfig) as Quantum.SystemsConfig;
             var systems = ScriptableObject.CreateInstance<Quantum.SystemsConfig>();
