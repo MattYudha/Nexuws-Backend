@@ -12,7 +12,7 @@ namespace Pong
     /// -> result report back to the backend. UI is immediate-mode (OnGUI) so the sample needs no
     /// prefabs or UI packages.
     /// </summary>
-    public unsafe class PongGame : MonoBehaviour
+    public class PongGame : MonoBehaviour
     {
         private enum Page { Login, Menu, Connecting, InMatch, Result, Leaderboard }
 
@@ -196,7 +196,7 @@ namespace Pong
 
         // -------------------------------------------------------------- update
 
-        private void Update()
+        private unsafe void Update()
         {
             if (_screen != Page.InMatch) return;
             var runner = QuantumRunner.Default;
@@ -241,7 +241,7 @@ namespace Pong
             }
         }
 
-        private void DrawHud(float width)
+        private unsafe void DrawHud(float width)
         {
             var frame = PredictedFrame();
             if (frame == null) return;
