@@ -1,0 +1,45 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Top bar 88px: kartu profil (kiri) · tengah kosong · currency + Mail/Settings (kanan). Tanpa logo. -->
+    <ui:VisualElement class="nxl-topbar" name="top-bar">
+
+        <!-- Profil (klik -> Profile Page) -->
+        <ui:VisualElement class="nxl-profile" name="profile-card">
+            <ui:VisualElement class="nxl-ic nxl-avatar" name="avatar" style="width: 52px; height: 52px;">
+                <ui:Label text="N" />
+            </ui:VisualElement>
+            <ui:VisualElement style="margin-left: 10px; justify-content: center;">
+                <ui:Label text="Runner" name="player-name" class="nxl-h2" style="font-size: 18px;" />
+                <ui:VisualElement class="nxl-row" style="margin-top: 3px;">
+                    <ui:Label text="Lv 1" name="player-level" class="nxl-dim" />
+                    <ui:VisualElement class="nxl-xp-track" style="width: 140px; margin-left: 8px;">
+                        <ui:VisualElement class="nxl-xp-fill" name="xp-fill" style="width: 0%;" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="nxl-spacer" />
+
+        <!-- Currency (0, tanpa dummy) + Mail/Settings -->
+        <ui:VisualElement class="nxl-row">
+            <ui:VisualElement class="nxl-cur" name="gold">
+                <ui:Label text="G" class="nxl-cur-ic" />
+                <ui:Label text="0" name="gold-val" class="nxl-cur-val" />
+                <ui:Button text="+" class="nxl-cur-plus" name="gold-plus" />
+            </ui:VisualElement>
+            <ui:VisualElement class="nxl-cur" name="ticket">
+                <ui:Label text="T" class="nxl-cur-ic" />
+                <ui:Label text="0" name="ticket-val" class="nxl-cur-val" />
+                <ui:Button text="+" class="nxl-cur-plus" name="ticket-plus" />
+            </ui:VisualElement>
+            <ui:VisualElement class="nxl-cur" name="diamond">
+                <ui:Label text="D" class="nxl-cur-ic" />
+                <ui:Label text="0" name="diamond-val" class="nxl-cur-val" />
+                <ui:Button text="+" class="nxl-cur-plus" name="diamond-plus" />
+            </ui:VisualElement>
+            <ui:Button text="" name="mail" class="nxl-icon-btn nxl-ic-mail" tooltip="Mail" />
+            <ui:Button text="" name="settings" class="nxl-icon-btn nxl-ic-gear" tooltip="Settings" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

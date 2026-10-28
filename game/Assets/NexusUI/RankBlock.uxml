@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Blok rank kiri. Empty state (belum ada data akun/placement) — tanpa angka palsu. -->
+    <ui:VisualElement class="nxl-rankblock" name="rank-block">
+        <ui:VisualElement class="nxl-rank-emblem" name="rank-emblem">
+            <ui:Label text="?" />
+        </ui:VisualElement>
+        <ui:Label text="UNRANKED" name="rank-tier" class="nxl-h2" style="margin-top: 10px;" />
+        <ui:Label text="Selesaikan 5 placement" name="rank-sub" class="nxl-dim" style="margin-top: 2px;" />
+        <ui:VisualElement class="nxl-rp-track" name="rp-track" style="margin-top: 10px;">
+            <ui:VisualElement class="nxl-rp-fill" name="rp-fill" style="width: 0%;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

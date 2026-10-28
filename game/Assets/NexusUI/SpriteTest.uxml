@@ -1,0 +1,65 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="NexusTokens.uss" />
+    <Style src="NexusLobby.uss" />
+    <!-- Halaman uji sementara Tahap 1: semua sprite 9-slice di ukuran nyata PC, di atas navy. -->
+    <ui:VisualElement class="nxl-root" style="flex-grow: 1; padding-left: 40px; padding-right: 40px; padding-top: 28px; padding-bottom: 28px;">
+        <ui:Label text="NEXUS SAGA — SPRITE TEST" class="nxl-h1" />
+        <ui:Label text="Judul &amp; tombol: Chakra Petch Bold  ·  teks kecil / deskripsi: Exo 2  ·  acuan 1920x1080" class="nxl-dim" style="margin-top: 2px;" />
+
+        <!-- PRIMARY 320x64 -->
+        <ui:Label text="TOMBOL UTAMA · 320 x 64" class="nxl-label" style="margin-top: 14px;" />
+        <ui:VisualElement class="nxl-row">
+            <ui:Button text="RANKED" class="nxl-btn nxl-btn--orange nxl-btn--hero" style="width: 320px; height: 64px; margin-right: 14px;" />
+            <ui:Button text="QUICK JOIN" class="nxl-btn nxl-btn--green nxl-btn--hero" style="width: 320px; height: 64px;" />
+        </ui:VisualElement>
+
+        <!-- SECONDARY 200x48 -->
+        <ui:Label text="TOMBOL SEKUNDER · 200 x 48 (termasuk disabled)" class="nxl-label" style="margin-top: 16px;" />
+        <ui:VisualElement class="nxl-row">
+            <ui:Button text="CREATE ROOM" class="nxl-btn nxl-btn--green" style="width: 200px; height: 48px; margin-right: 12px;" />
+            <ui:Button text="LEADERBOARD" class="nxl-btn nxl-btn--blue" style="width: 200px; height: 48px; margin-right: 12px;" />
+            <ui:Button text="LOGOUT" class="nxl-btn nxl-btn--red" style="width: 200px; height: 48px; margin-right: 12px;" />
+            <ui:Button text="SEGERA HADIR" class="nxl-btn nxl-btn--gray" enabled="false" style="width: 200px; height: 48px;" />
+        </ui:VisualElement>
+
+        <!-- MODE 280x72 -->
+        <ui:Label text="TOMBOL MODE · 280 x 72 (active border cyan + normal)" class="nxl-label" style="margin-top: 16px;" />
+        <ui:VisualElement class="nxl-row">
+            <ui:VisualElement class="nxl-mode nxl-mode--active" style="width: 280px; height: 72px; margin-right: 14px;">
+                <ui:Label text="HQ" class="nxl-ic" style="background-color: rgb(79, 209, 255); color: rgb(10, 20, 44);" />
+                <ui:VisualElement style="margin-left: 10px;">
+                    <ui:Label text="SQUAD HQ" class="nxl-mode-title" />
+                    <ui:Label text="Markas faksi · aktif" class="nxl-mode-sub" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="nxl-mode" style="width: 280px; height: 72px;">
+                <ui:Label text="FW" class="nxl-ic" style="background-color: rgb(214, 72, 68);" />
+                <ui:VisualElement style="margin-left: 10px;">
+                    <ui:Label text="FACTION WAR" class="nxl-mode-title" />
+                    <ui:Label text="Segera hadir" class="nxl-mode-sub" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- TABS 120x40 -->
+        <ui:Label text="TAB · 120 x 40 (active = navy terang + garis cyan)" class="nxl-label" style="margin-top: 16px;" />
+        <ui:VisualElement class="nxl-row">
+            <ui:Label text="LOBBY" class="nxl-tab nxl-tab--active" style="width: 120px; height: 40px;" />
+            <ui:Label text="BUDDY" class="nxl-tab" style="width: 120px; height: 40px;" />
+            <ui:Label text="GUILD" class="nxl-tab" style="width: 120px; height: 40px;" />
+        </ui:VisualElement>
+
+        <!-- PANEL 400x300 -->
+        <ui:Label text="PANEL · 400 x 300 (semi-transparan 0.85)" class="nxl-label" style="margin-top: 16px;" />
+        <ui:VisualElement class="nxl-panel" style="width: 400px; height: 300px;">
+            <ui:Label text="LOBBY CHAT" class="nxl-h2" />
+            <ui:Label text="Panel 9-slice direntangkan ke 400x300 — sudut tetap tajam, isi melar." class="nxl-dim" style="margin-top: 8px; white-space: normal;" />
+            <ui:VisualElement class="nxl-row" style="margin-top: 12px;">
+                <ui:Label text="Sistem" class="nxl-accent" />
+                <ui:Label text="  Selamat datang di Nexus Saga." class="nxl-dim" />
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 1;" />
+            <ui:Button text="KIRIM" class="nxl-btn nxl-btn--blue nxl-btn--sm" style="width: 120px; height: 34px; align-self: flex-end;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

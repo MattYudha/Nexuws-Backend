@@ -1,0 +1,249 @@
+/* ============================================================
+   NEXUS SAGA — Design System (UI Toolkit)
+   Gaya: casual arcade lobby (inspirasi LostSaga) — cerah, chunky, glossy.
+   Catatan: gradient (backdrop & tombol) di-generate di kode (NexusMetaUI),
+   karena USS 2022.3 tak punya gradient/box-shadow bawaan.
+   ============================================================ */
+
+.nx-root {
+    --nx-navy:     rgb(34, 46, 78);     /* teks & border gelap */
+    --nx-navy-2:   rgb(58, 74, 116);
+    --nx-ink:      rgb(28, 36, 60);
+    --nx-dim:      rgb(120, 132, 158);
+    --nx-panel:    rgb(250, 247, 240);  /* krem terang */
+    --nx-panel-2:  rgb(236, 241, 250);
+    --nx-line:     rgb(210, 216, 230);
+    --nx-blue:     rgb(56, 132, 224);
+    --nx-green:    rgb(84, 188, 92);
+    --nx-orange:   rgb(246, 162, 46);
+    --nx-gold:     rgb(255, 205, 76);
+    --nx-red:      rgb(232, 82, 76);
+    --nx-white:    rgb(255, 255, 255);
+
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    color: var(--nx-navy);
+    font-size: 14px;
+}
+
+/* ---- Brand ---- */
+.nx-brand {
+    font-size: 42px;
+    -unity-font-style: bold;
+    color: var(--nx-white);
+    letter-spacing: 3px;
+    -unity-text-align: middle-center;
+    text-shadow: 0 4px 0 rgba(20, 30, 60, 0.55);
+}
+.nx-brand-accent { color: var(--nx-gold); }
+.nx-brand-sub {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 3px;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+    margin-top: 2px; margin-bottom: 16px;
+    text-shadow: 0 2px 0 rgba(20, 30, 60, 0.45);
+}
+
+/* ---- Card (panel chunky) ---- */
+.nx-card {
+    background-color: var(--nx-panel);
+    border-left-width: 4px; border-right-width: 4px; border-top-width: 4px; border-bottom-width: 4px;
+    border-left-color: var(--nx-navy); border-right-color: var(--nx-navy);
+    border-top-color: var(--nx-navy); border-bottom-color: var(--nx-navy);
+    border-top-left-radius: 20px; border-top-right-radius: 20px;
+    border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
+    padding-left: 22px; padding-right: 22px; padding-top: 18px; padding-bottom: 20px;
+    min-width: 360px; max-width: 440px;
+}
+/* header band berwarna di atas card */
+.nx-card-head {
+    background-color: var(--nx-blue);
+    margin-left: -22px; margin-right: -22px; margin-top: -18px; margin-bottom: 16px;
+    padding-top: 12px; padding-bottom: 12px;
+    border-top-left-radius: 15px; border-top-right-radius: 15px;
+    border-bottom-width: 4px; border-bottom-color: var(--nx-navy);
+    align-items: center;
+}
+.nx-card-head-title { font-size: 18px; -unity-font-style: bold; color: var(--nx-white); letter-spacing: 2px; text-shadow: 0 2px 0 rgba(20,30,60,0.5); }
+
+/* ---- Typography ---- */
+.nx-h1 { font-size: 20px; -unity-font-style: bold; color: var(--nx-navy); letter-spacing: 1px; }
+.nx-h2 { font-size: 13px; -unity-font-style: bold; color: var(--nx-blue); letter-spacing: 2px; margin-bottom: 4px; }
+.nx-label { font-size: 11px; -unity-font-style: bold; color: var(--nx-dim); letter-spacing: 1px; margin-bottom: 4px; margin-top: 10px; }
+.nx-hint { font-size: 11px; color: var(--nx-dim); margin-top: 8px; -unity-text-align: middle-center; }
+.nx-error { font-size: 12px; -unity-font-style: bold; color: var(--nx-red); margin-top: 8px; -unity-text-align: middle-center; }
+.nx-value { color: var(--nx-navy); -unity-font-style: bold; }
+
+/* ---- Inputs ---- */
+.nx-input { margin-bottom: 2px; }
+.nx-input .unity-base-text-field__input {
+    background-color: var(--nx-white);
+    border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px;
+    border-left-color: var(--nx-line); border-right-color: var(--nx-line);
+    border-top-color: var(--nx-line); border-bottom-color: var(--nx-line);
+    border-top-left-radius: 10px; border-top-right-radius: 10px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+    color: var(--nx-ink);
+    padding-left: 12px; padding-right: 12px; padding-top: 9px; padding-bottom: 9px;
+    font-size: 15px;
+}
+.nx-input .unity-base-text-field__input:focus {
+    border-left-color: var(--nx-blue); border-right-color: var(--nx-blue);
+    border-top-color: var(--nx-blue); border-bottom-color: var(--nx-blue);
+}
+
+/* ---- Buttons (gradient di-set di kode via background-image) ---- */
+.nx-btn {
+    height: 50px;
+    -unity-text-align: middle-center;
+    font-size: 15px; -unity-font-style: bold; letter-spacing: 1px;
+    color: var(--nx-white);
+    text-shadow: 0 2px 0 rgba(20, 30, 60, 0.5);
+    border-left-width: 3px; border-right-width: 3px; border-top-width: 3px; border-bottom-width: 3px;
+    border-left-color: var(--nx-navy); border-right-color: var(--nx-navy);
+    border-top-color: var(--nx-navy); border-bottom-color: var(--nx-navy);
+    border-top-left-radius: 14px; border-top-right-radius: 14px; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px;
+    margin-top: 10px;
+    transition-property: scale; transition-duration: 0.08s;
+    -unity-background-image-tint-color: rgb(255,255,255);
+}
+.nx-btn:hover { scale: 1.035 1.035; }
+.nx-btn:active { scale: 0.97 0.97; }
+.nx-btn--link {
+    background-color: rgba(0,0,0,0);
+    background-image: none;
+    color: var(--nx-blue); text-shadow: none;
+    border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0;
+    height: 30px; font-size: 12px;
+}
+.nx-btn--link:hover { color: var(--nx-navy); scale: 1 1; }
+
+/* ---- Top bar (lobby) ---- */
+.nx-topbar {
+    flex-direction: row; align-items: center;
+    background-color: var(--nx-panel);
+    border-bottom-width: 4px; border-bottom-color: var(--nx-navy);
+    padding-left: 16px; padding-right: 16px; padding-top: 8px; padding-bottom: 8px;
+}
+.nx-avatar {
+    width: 44px; height: 44px; border-radius: 22px;
+    background-color: var(--nx-blue);
+    border-left-width: 3px; border-right-width: 3px; border-top-width: 3px; border-bottom-width: 3px;
+    border-left-color: var(--nx-navy); border-right-color: var(--nx-navy); border-top-color: var(--nx-navy); border-bottom-color: var(--nx-navy);
+    margin-right: 10px; align-items: center; justify-content: center;
+    -unity-font-style: bold; color: var(--nx-white); font-size: 18px;
+}
+.nx-pill {
+    flex-direction: row; align-items: center;
+    background-color: var(--nx-panel-2);
+    border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px;
+    border-left-color: var(--nx-line); border-right-color: var(--nx-line); border-top-color: var(--nx-line); border-bottom-color: var(--nx-line);
+    border-top-left-radius: 14px; border-top-right-radius: 14px; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px;
+    padding-left: 12px; padding-right: 12px; padding-top: 5px; padding-bottom: 5px; margin-left: 8px;
+}
+.nx-pill-k { font-size: 9px; -unity-font-style: bold; color: var(--nx-dim); letter-spacing: 1px; }
+.nx-pill-v { font-size: 15px; -unity-font-style: bold; color: var(--nx-navy); }
+.nx-gold-v { color: var(--nx-orange); }
+
+/* ---- Stat chips ---- */
+.nx-stat {
+    background-color: var(--nx-panel-2);
+    border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px;
+    border-left-color: var(--nx-line); border-right-color: var(--nx-line); border-top-color: var(--nx-line); border-bottom-color: var(--nx-line);
+    border-top-left-radius: 10px; border-top-right-radius: 10px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+    padding-left: 10px; padding-right: 10px; padding-top: 8px; padding-bottom: 8px;
+    margin-right: 6px; margin-bottom: 6px; flex-grow: 1; align-items: center;
+}
+.nx-stat-k { font-size: 9px; -unity-font-style: bold; color: var(--nx-dim); letter-spacing: 1px; }
+.nx-stat-v { font-size: 18px; -unity-font-style: bold; color: var(--nx-navy); }
+.nx-tier { color: var(--nx-blue); -unity-font-style: bold; letter-spacing: 1px; font-size: 16px; }
+
+/* ---- Chat slot (placeholder) ---- */
+.nx-chat {
+    position: absolute; left: 16px; bottom: 16px; width: 280px; height: 150px;
+    background-color: rgba(250, 247, 240, 0.92);
+    border-left-width: 3px; border-right-width: 3px; border-top-width: 3px; border-bottom-width: 3px;
+    border-left-color: var(--nx-navy); border-right-color: var(--nx-navy); border-top-color: var(--nx-navy); border-bottom-color: var(--nx-navy);
+    border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+    padding-left: 10px; padding-right: 10px; padding-top: 8px; padding-bottom: 8px;
+}
+
+.nx-row { flex-direction: row; align-items: center; }
+.nx-spacer { flex-grow: 1; }
+.nx-mt8 { margin-top: 8px; }
+.nx-mt16 { margin-top: 16px; }
+.nx-center { align-items: center; justify-content: center; }
+
+/* ============ LOBBY (3 kolom) ============ */
+.nx-lobby { flex-direction: row; flex-grow: 1; padding-left: 16px; padding-right: 16px; padding-top: 14px; padding-bottom: 14px; }
+
+/* panel putih semi-transparan (konten) */
+.nx-panel-lt {
+    background-color: rgba(252, 250, 245, 0.92);
+    border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px;
+    border-left-color: rgba(60,76,116,0.55); border-right-color: rgba(60,76,116,0.55);
+    border-top-color: rgba(60,76,116,0.55); border-bottom-color: rgba(60,76,116,0.55);
+    border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+    padding-left: 10px; padding-right: 10px; padding-top: 10px; padding-bottom: 10px;
+}
+
+/* sidebar */
+.nx-sidebar { width: 212px; margin-right: 14px; }
+.nx-tab {
+    flex-direction: row; align-items: center;
+    background-color: rgba(230, 234, 244, 0.85);
+    border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px;
+    border-left-color: rgba(60,76,116,0.4); border-right-color: rgba(60,76,116,0.4); border-top-color: rgba(60,76,116,0.4); border-bottom-color: rgba(60,76,116,0.4);
+    border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+    padding-left: 8px; padding-right: 8px; padding-top: 8px; padding-bottom: 8px; margin-bottom: 8px;
+}
+.nx-tab:hover { background-color: rgba(255,255,255,0.95); }
+.nx-tab--active { background-color: rgb(255,255,255); border-left-color: var(--nx-blue); border-right-color: var(--nx-blue); border-top-color: var(--nx-blue); border-bottom-color: var(--nx-blue); }
+.nx-tab-ic { width: 40px; height: 40px; border-radius: 10px; align-items: center; justify-content: center; -unity-font-style: bold; color: var(--nx-white); font-size: 18px; margin-right: 9px; }
+.nx-tab-title { font-size: 15px; -unity-font-style: bold; color: var(--nx-navy); }
+.nx-tab-sub { font-size: 10px; color: var(--nx-dim); }
+.nx-badge { font-size: 9px; -unity-font-style: bold; color: var(--nx-white); padding-left: 6px; padding-right: 6px; padding-top: 1px; padding-bottom: 1px; border-top-left-radius: 8px; border-top-right-radius: 8px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+
+.nx-xp-track { height: 12px; background-color: rgba(40,52,86,0.3); border-top-left-radius: 6px; border-top-right-radius: 6px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; margin-top: 4px; }
+.nx-xp-fill { height: 12px; background-color: var(--nx-gold); border-top-left-radius: 6px; border-top-right-radius: 6px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+
+/* center: action buttons besar */
+.nx-action { height: 62px; font-size: 16px; }
+.nx-action .nx-ic { width: 34px; height: 34px; border-radius: 8px; margin-right: 8px; }
+
+/* room grid */
+.nx-roomgrid { flex-direction: row; flex-wrap: wrap; margin-top: 10px; }
+.nx-room {
+    width: 48%; height: 84px; margin-right: 2%; margin-bottom: 8px;
+    background-color: rgba(210,216,230,0.45);
+    border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px;
+    border-left-color: rgba(60,76,116,0.35); border-right-color: rgba(60,76,116,0.35); border-top-color: rgba(60,76,116,0.35); border-bottom-color: rgba(60,76,116,0.35);
+    border-top-left-radius: 10px; border-top-right-radius: 10px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+    align-items: center; justify-content: center;
+}
+.nx-room-x { width: 30px; height: 30px; border-radius: 15px; background-color: rgba(60,76,116,0.3); align-items: center; justify-content: center; color: var(--nx-white); -unity-font-style: bold; }
+.nx-room-t { font-size: 11px; color: var(--nx-dim); margin-top: 4px; -unity-font-style: bold; }
+
+/* chat */
+.nx-chatbox { height: 120px; margin-top: 8px; }
+.nx-chat-line { font-size: 11px; color: var(--nx-navy); }
+.nx-chat-info { color: var(--nx-blue); }
+
+/* mission */
+.nx-mcard {
+    flex-direction: row; align-items: center;
+    background-color: rgba(236,240,250,0.9);
+    border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px;
+    border-left-color: rgba(60,76,116,0.3); border-right-color: rgba(60,76,116,0.3); border-top-color: rgba(60,76,116,0.3); border-bottom-color: rgba(60,76,116,0.3);
+    border-top-left-radius: 10px; border-top-right-radius: 10px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+    padding-left: 8px; padding-right: 8px; padding-top: 7px; padding-bottom: 7px; margin-bottom: 7px;
+}
+.nx-mcard--hl { background-color: rgb(255, 248, 214); }
+.nx-mc-ic { width: 34px; height: 34px; border-radius: 17px; margin-right: 8px; align-items: center; justify-content: center; color: var(--nx-white); -unity-font-style: bold; }
+.nx-mc-t { font-size: 12px; -unity-font-style: bold; color: var(--nx-navy); }
+.nx-mc-r { font-size: 10px; -unity-font-style: bold; color: var(--nx-red); }
+.nx-subtab { flex-direction: row; margin-top: 6px; margin-bottom: 8px; }
+.nx-chip { font-size: 11px; -unity-font-style: bold; color: var(--nx-dim); padding-left: 10px; padding-right: 10px; padding-top: 4px; padding-bottom: 4px; margin-right: 6px; border-top-left-radius: 10px; border-top-right-radius: 10px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; background-color: rgba(210,216,230,0.6); }
+.nx-chip--on { background-color: var(--nx-blue); color: var(--nx-white); }

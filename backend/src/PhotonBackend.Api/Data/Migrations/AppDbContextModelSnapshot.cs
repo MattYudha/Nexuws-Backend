@@ -80,6 +80,15 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<int>("RatingDelta")
                         .HasColumnType("integer");
 
+                    b.Property<int>("ReportedAssists")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ReportedDeaths")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ReportedKills")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("ReportedScoreLeft")
                         .HasColumnType("integer");
 
@@ -105,11 +114,19 @@ namespace PhotonBackend.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("AccountXp")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Assists")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Deaths")
+                        .HasColumnType("integer");
+
                     b.Property<string>("DeviceId")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
@@ -118,11 +135,30 @@ namespace PhotonBackend.Api.Data.Migrations
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)");
 
+                    b.Property<int>("Faction")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Kills")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Losses")
                         .HasColumnType("integer");
 
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
                     b.Property<int>("Rating")
                         .HasColumnType("integer");
+
+                    b.Property<double>("Rd")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Username")
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<double>("Volatility")
+                        .HasColumnType("double precision");
 
                     b.Property<int>("Wins")
                         .HasColumnType("integer");
@@ -133,6 +169,9 @@ namespace PhotonBackend.Api.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("Rating");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
 
                     b.ToTable("Players");
                 });

@@ -17,11 +17,21 @@ var jwt = builder.Configuration.GetSection(JwtOptions.Section).Get<JwtOptions>()
 if (jwt.Secret.Length < 32)
     throw new InvalidOperationException("Jwt:Secret must be set and at least 32 characters (env var Jwt__Secret).");
 
+// Dev tanpa Postgres: Database:UseInMemory=true → DB in-memory (data hilang saat restart).
+// Produksi/real: Npgsql. (Tes integrasi memakai InMemory lewat ApiFactory.)
+var useInMemory = builder.Configuration.GetValue("Database:UseInMemory", false);
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration.GetConnectionString("Default")
-                ?? throw new InvalidOperationException("ConnectionStrings:Default is not set.")));
+{
+    if (useInMemory)
+        o.UseInMemoryDatabase("nexus-dev");
+    else
+        o.UseNpgsql(builder.Configuration.GetConnectionString("Default")
+                    ?? throw new InvalidOperationException("ConnectionStrings:Default is not set."));
+});
 
 builder.Services.AddSingleton<TokenService>();
+builder.Services.AddSingleton<MatchmakingService>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.PasswordHasher<PhotonBackend.Api.Data.Player>>();
 builder.Services.AddScoped<MatchService>();
 
 builder.Services

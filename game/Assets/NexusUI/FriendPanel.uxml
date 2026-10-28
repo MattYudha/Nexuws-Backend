@@ -1,0 +1,29 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Panel kanan: online count + Friend List (tab) + empty state. Quest notif disembunyikan (tanpa dummy).
+         Lebar tetap 340, teks wrap (white-space normal) supaya tidak keluar layar. -->
+    <ui:VisualElement class="nxl-rightpanel nxl-card" name="right-panel" style="flex-grow: 1;">
+
+        <ui:VisualElement class="nxl-row" style="justify-content: space-between;">
+            <ui:Label text="FRIENDS" class="nxl-h2" style="font-size: 18px;" />
+            <ui:Label text="Online 0" name="online-count" class="nxl-dim" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="nxl-row" style="margin-top: 10px;">
+            <ui:Label text="LOBBY" class="nxl-tab nxl-tab--active" style="width: 100px; height: 38px;" />
+            <ui:Label text="BUDDY" class="nxl-tab" style="width: 100px; height: 38px;" />
+            <ui:Label text="GUILD" class="nxl-tab" style="width: 100px; height: 38px;" />
+        </ui:VisualElement>
+
+        <!-- Empty state (belum ada data teman) -->
+        <ui:VisualElement class="nxl-center nxl-spacer" name="friend-empty" style="margin-top: 16px;">
+            <ui:Label text="Belum ada teman online." class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center;" />
+            <ui:Label text="Tambahkan teman untuk main bersama." class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center; margin-top: 2px;" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="nxl-row" style="margin-top: 12px;">
+            <ui:Button text="ADD FRIEND" name="add-friend" class="nxl-btn nxl-btn--blue nxl-btn--sm" style="flex-grow: 1; height: 38px;" />
+            <ui:Button text="" name="friend-settings" class="nxl-icon-btn nxl-ic-gear" tooltip="Pengaturan teman" style="margin-left: 10px;" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

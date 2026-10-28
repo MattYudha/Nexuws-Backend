@@ -1,0 +1,30 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Bottom nav: 6 item (ikon + teks) di strip tipis. GM/Dev Lounge TIDAK di sini
+         (ditambah controller hanya saat #if UNITY_EDITOR || DEVELOPMENT_BUILD). -->
+    <ui:VisualElement class="nxl-bottomnav" name="bottom-nav">
+        <ui:Button class="nxl-navitem" name="nav-shop">
+            <ui:VisualElement class="nxl-nav-ic"><ui:Label text="S" /></ui:VisualElement>
+            <ui:Label text="Shop" class="nxl-nav-lbl" />
+        </ui:Button>
+        <ui:Button class="nxl-navitem" name="nav-inventory">
+            <ui:VisualElement class="nxl-nav-ic"><ui:Label text="I" /></ui:VisualElement>
+            <ui:Label text="Inventory" class="nxl-nav-lbl" />
+        </ui:Button>
+        <ui:Button class="nxl-navitem" name="nav-herodeck">
+            <ui:VisualElement class="nxl-nav-ic"><ui:Label text="H" /></ui:VisualElement>
+            <ui:Label text="Hero Deck" class="nxl-nav-lbl" />
+        </ui:Button>
+        <ui:Button class="nxl-navitem" name="nav-quest">
+            <ui:VisualElement class="nxl-nav-ic"><ui:Label text="Q" /></ui:VisualElement>
+            <ui:Label text="Quest" class="nxl-nav-lbl" />
+        </ui:Button>
+        <ui:Button class="nxl-navitem" name="nav-event">
+            <ui:VisualElement class="nxl-nav-ic"><ui:Label text="E" /></ui:VisualElement>
+            <ui:Label text="Event" class="nxl-nav-lbl" />
+        </ui:Button>
+        <ui:Button class="nxl-navitem" name="nav-guild">
+            <ui:VisualElement class="nxl-nav-ic"><ui:Label text="G" /></ui:VisualElement>
+            <ui:Label text="Guild" class="nxl-nav-lbl" />
+        </ui:Button>
+    </ui:VisualElement>
+</ui:UXML>

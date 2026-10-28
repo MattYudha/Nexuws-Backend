@@ -1,0 +1,70 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="tab-main" class="nxl-prof-tab">
+        <ui:Label text="PROFIL" class="nxl-prof-title" />
+
+        <!-- Header -->
+        <ui:VisualElement class="nxl-card nxl-row" style="margin-top: 14px; align-items: center;">
+            <ui:VisualElement class="nxl-ic nxl-avatar" name="prof-avatar" style="width: 128px; height: 128px; font-size: 48px;">
+                <ui:Label text="N" />
+            </ui:VisualElement>
+            <ui:VisualElement style="margin-left: 18px; flex-grow: 1;">
+                <ui:Label text="Runner" name="prof-name" class="nxl-h1" />
+                <ui:VisualElement class="nxl-row" style="margin-top: 6px; align-items: center;">
+                    <ui:Label text="ID: -" name="prof-id" class="nxl-dim" />
+                    <ui:Button text="Salin" name="prof-copy" class="nxl-btn nxl-btn--blue nxl-btn--sm" style="width: 80px; height: 30px; margin-left: 10px;" />
+                    <ui:Label text="" name="prof-faction" class="nxl-badge-faction nxl-hidden" />
+                </ui:VisualElement>
+                <ui:VisualElement class="nxl-row" style="margin-top: 12px; align-items: center;">
+                    <ui:Label text="Lv 1" name="prof-level" class="nxl-accent" />
+                    <ui:VisualElement class="nxl-xp-track" style="width: 240px; margin-left: 10px;">
+                        <ui:VisualElement class="nxl-xp-fill" name="prof-xp-fill" style="width: 0%;" />
+                    </ui:VisualElement>
+                    <ui:Label text="XP 0" name="prof-xp" class="nxl-dim" style="margin-left: 10px;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Rank saat ini + tertinggi -->
+        <ui:VisualElement class="nxl-row" style="margin-top: 12px; align-items: stretch;">
+            <ui:VisualElement class="nxl-card" style="flex-grow: 1; margin-right: 12px;">
+                <ui:Label text="RANK SAAT INI" class="nxl-h2" style="font-size: 16px;" />
+                <ui:VisualElement class="nxl-row" style="margin-top: 10px; align-items: center;">
+                    <ui:VisualElement class="nxl-rank-emblem-sm" style="width: 64px; height: 64px;"><ui:Label text="?" /></ui:VisualElement>
+                    <ui:VisualElement style="margin-left: 12px; flex-grow: 1;">
+                        <ui:Label text="UNRANKED" name="prof-rank-tier" class="nxl-h2" style="font-size: 20px;" />
+                        <ui:Label text="Selesaikan 5 placement" name="prof-rank-sub" class="nxl-dim" style="margin-top: 2px;" />
+                        <ui:VisualElement class="nxl-rp-track nxl-hidden" name="prof-rank-track" style="width: 100%; margin-top: 8px;">
+                            <ui:VisualElement class="nxl-rp-fill" name="prof-rank-progress" style="width: 0%;" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="nxl-card nxl-center" style="width: 280px;">
+                <ui:Label text="RANK TERTINGGI" class="nxl-h2" style="font-size: 16px;" />
+                <ui:Label text="Segera Hadir" class="nxl-dim" style="margin-top: 16px; -unity-text-align: middle-center; white-space: normal;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Ringkasan -->
+        <ui:VisualElement class="nxl-row" style="margin-top: 12px; align-items: stretch;">
+            <ui:VisualElement class="nxl-card nxl-center" style="flex-grow: 1; margin-right: 12px;">
+                <ui:Label text="Total Pertandingan" class="nxl-dim" />
+                <ui:Label text="0" name="prof-matches" class="nxl-h1" style="margin-top: 4px;" />
+            </ui:VisualElement>
+            <ui:VisualElement class="nxl-card nxl-center" style="flex-grow: 1;">
+                <ui:Label text="Win Rate" class="nxl-dim" />
+                <ui:Label text="0%" name="prof-winrate" class="nxl-h1" style="margin-top: 4px;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Empty states -->
+        <ui:VisualElement class="nxl-card" style="margin-top: 12px;">
+            <ui:Label text="HERO FAVORIT" class="nxl-h2" style="font-size: 16px;" />
+            <ui:Label text="Hero favorit akan muncul setelah kamu bermain." class="nxl-dim" style="margin-top: 10px; white-space: normal;" />
+        </ui:VisualElement>
+        <ui:VisualElement class="nxl-card" style="margin-top: 12px; margin-bottom: 12px;">
+            <ui:Label text="PENCAPAIAN" class="nxl-h2" style="font-size: 16px;" />
+            <ui:Label text="Belum ada pencapaian." class="nxl-dim" style="margin-top: 10px; white-space: normal;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

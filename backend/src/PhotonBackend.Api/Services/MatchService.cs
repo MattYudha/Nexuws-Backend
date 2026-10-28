@@ -60,7 +60,8 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options)
     }
 
     public async Task<ReportOutcome> ReportAsync(
-        string gameId, Guid playerId, int slot, int scoreLeft, int scoreRight, CancellationToken ct)
+        string gameId, Guid playerId, int slot, int scoreLeft, int scoreRight,
+        int kills, int deaths, int assists, CancellationToken ct)
     {
         if (!IsLegalResult(slot, scoreLeft, scoreRight))
             return new ReportOutcome(ReportStatus.Invalid, "Not a legal Pong result.");
@@ -87,6 +88,9 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options)
             mine.Slot = slot;
             mine.ReportedScoreLeft = scoreLeft;
             mine.ReportedScoreRight = scoreRight;
+            mine.ReportedKills = Math.Max(0, kills);
+            mine.ReportedDeaths = Math.Max(0, deaths);
+            mine.ReportedAssists = Math.Max(0, assists);
 
             var reported = match.Players.Where(p => p.ReportedScoreLeft.HasValue).ToList();
             if (reported.Count < 2)
@@ -133,17 +137,28 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options)
         var w = players[winner.PlayerId];
         var l = players[loser.PlayerId];
 
-        var expectedWinner = 1.0 / (1.0 + Math.Pow(10, (l.Rating - w.Rating) / 400.0));
-        var delta = (int)Math.Round(_game.EloK * (1.0 - expectedWinner));
+        // Glicko-2: hitung kedua pemain dari rating lawan PRA-match (tangkap dulu sebelum menulis balik).
+        var wR = new Glicko2Rating(w.Rating, w.Rd, w.Volatility);
+        var lR = new Glicko2Rating(l.Rating, l.Rd, l.Volatility);
+        var wNew = Glicko2.Update(wR, new[] { new Glicko2Game(lR.Rating, lR.Rd, 1.0) }, _game.Tau);
+        var lNew = Glicko2.Update(lR, new[] { new Glicko2Game(wR.Rating, wR.Rd, 0.0) }, _game.Tau);
 
-        w.Rating += delta;
-        l.Rating = Math.Max(0, l.Rating - delta);
+        var wBefore = w.Rating;
+        var lBefore = l.Rating;
+        w.Rating = (int)Math.Round(wNew.Rating); w.Rd = wNew.Rd; w.Volatility = wNew.Volatility;
+        l.Rating = Math.Max(0, (int)Math.Round(lNew.Rating)); l.Rd = lNew.Rd; l.Volatility = lNew.Volatility;
         w.Wins++;
         l.Losses++;
 
+        // Akumulasi statistik tempur (tiap pemain lapor miliknya sendiri) + XP akun.
+        w.Kills += winner.ReportedKills; w.Deaths += winner.ReportedDeaths; w.Assists += winner.ReportedAssists;
+        l.Kills += loser.ReportedKills; l.Deaths += loser.ReportedDeaths; l.Assists += loser.ReportedAssists;
+        w.AccountXp += 100; // menang
+        l.AccountXp += 60;  // kalah (partisipasi, biar Account Rank tetap naik)
+
         winner.IsWinner = true;
-        winner.RatingDelta = delta;
-        loser.RatingDelta = -delta;
+        winner.RatingDelta = w.Rating - wBefore;
+        loser.RatingDelta = l.Rating - lBefore;
 
         match.ScoreLeft = left;
         match.ScoreRight = right;

@@ -1,0 +1,27 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Halaman Profil (UIDocument sendiri, di atas lobby). Tahap B: kerangka + sidebar + Back/Esc + Tab Profil. -->
+    <ui:Template name="ProfileSidebar" src="ProfileSidebar.uxml" />
+    <ui:Template name="ProfileTabMain" src="ProfileTabMain.uxml" />
+    <ui:Template name="ProfileTabStats" src="ProfileTabStats.uxml" />
+    <ui:Template name="ProfileTabHeroes" src="ProfileTabHeroes.uxml" />
+    <ui:Template name="ProfileTabHistory" src="ProfileTabHistory.uxml" />
+    <Style src="NexusTokens.uss" />
+    <Style src="NexusLobby.uss" />
+
+    <ui:VisualElement class="nxl-root nxl-hidden" name="profile-root">
+        <ui:Button name="profile-back" class="nxl-back-btn">
+            <ui:Label text="&lt;" class="nxl-back-ic" />
+            <ui:Label text="Kembali" class="nxl-back-lbl" />
+        </ui:Button>
+
+        <ui:VisualElement class="nxl-row" style="flex-grow: 1; align-items: stretch; padding-left: 20px; padding-right: 20px; padding-bottom: 20px;">
+            <ui:Instance template="ProfileSidebar" />
+            <ui:ScrollView name="profile-content" class="nxl-prof-content" style="flex-grow: 1; margin-left: 16px;">
+                <ui:Instance template="ProfileTabMain" />
+                <ui:Instance template="ProfileTabStats" />
+                <ui:Instance template="ProfileTabHeroes" />
+                <ui:Instance template="ProfileTabHistory" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

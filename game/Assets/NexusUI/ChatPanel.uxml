@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Lobby chat: float kiri-bawah (di atas bottom nav), 420x200, panel lembut. -->
+    <ui:VisualElement class="nxl-chatbox nxl-chat-float" name="lobby-chat">
+        <ui:Label text="LOBBY CHAT" class="nxl-h2" style="font-size: 16px;" />
+        <ui:ScrollView name="chat-log" class="nxl-chat-log" />
+        <ui:VisualElement class="nxl-row" style="margin-top: 6px;">
+            <ui:TextField name="chat-input" class="nxl-input" style="flex-grow: 1;" />
+            <ui:Button text="KIRIM" name="chat-send" class="nxl-btn nxl-btn--blue nxl-btn--sm" style="width: 100px; height: 34px; margin-left: 8px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,25 @@
+/* ============================================================
+   NEXUS SAGA — Design tokens (warna, font). Didefinisikan di :root
+   supaya SEMUA elemen (lobby, profil, party) bisa resolve var(--...).
+   Muat file ini SEBELUM NexusLobby.uss di tiap UXML dokumen.
+   Jangan pakai var() nested atau var() di inline style (bug UITK 2022).
+   ============================================================ */
+:root {
+    --nxl-navy:       rgb(15, 30, 60);
+    --nxl-navy-2:     rgb(10, 20, 44);
+    --nxl-border:     rgb(58, 123, 213);
+    --nxl-border-dim: rgb(42, 74, 122);
+    --nxl-cyan:       rgb(79, 209, 255);
+    --nxl-text:       rgb(255, 255, 255);
+    --nxl-text-2:     rgb(168, 196, 232);
+    --nxl-dim:        rgb(120, 146, 186);
+    --nxl-gold:       rgb(245, 197, 66);
+    --nxl-orange:     rgb(242, 140, 30);
+    --nxl-green:      rgb(60, 176, 67);
+    --nxl-red:        rgb(214, 72, 68);
+
+    /* Font (Google Fonts OFL) — judul/tombol = Chakra Petch, teks kecil = Exo 2 */
+    --nxl-font-title: url("Fonts/ChakraPetch-Bold.ttf");
+    --nxl-font-head:  url("Fonts/ChakraPetch-Bold.ttf");
+    --nxl-font-body:  url("Fonts/Exo2-Variable.ttf");
+}

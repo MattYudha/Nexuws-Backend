@@ -1,0 +1,428 @@
+/* ============================================================
+   NEXUS SAGA — Lobby (UI Toolkit, PC-first) — Tahap 1 design system
+   Panel & tombol pakai sprite 9-slice (Assets/NexusUI/Sprites, generate via menu Nexus).
+   Palet sesuai referensi target (ML x LostSaga).
+   ============================================================ */
+
+/* Variabel/token di NexusTokens.uss (:root). Muat tokens SEBELUM file ini di tiap UXML. */
+.nxl-root {
+    flex-grow: 1;
+    color: var(--nxl-text);
+    font-size: 16px;
+    -unity-font-definition: var(--nxl-font-body);
+    background-color: var(--nxl-navy-2);
+    background-image: url("Sprites/lobby_vignette.png");
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+/* backdrop (vignette gelap di tepi — gambar scene menyusul) */
+.nxl-vignette { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+
+/* ---- Panel (9-slice) ---- */
+.nxl-panel {
+    background-image: url("Sprites/panel_frame.png");
+    -unity-slice-left: 12; -unity-slice-right: 12; -unity-slice-top: 12; -unity-slice-bottom: 12;
+    padding-left: 12px; padding-right: 12px; padding-top: 10px; padding-bottom: 10px;
+}
+
+/* ---- Typography ---- */
+.nxl-h1 { font-size: 28px; -unity-font-style: bold; color: var(--nxl-text); letter-spacing: 1px; -unity-font-definition: var(--nxl-font-title); }
+.nxl-h2 { font-size: 24px; -unity-font-style: bold; color: var(--nxl-cyan); letter-spacing: 1px; -unity-font-definition: var(--nxl-font-title); }
+.nxl-label { font-size: 16px; -unity-font-style: bold; color: var(--nxl-text-2); letter-spacing: 1px; -unity-font-definition: var(--nxl-font-head); }
+.nxl-dim { font-size: 16px; color: var(--nxl-dim); }
+.nxl-gold { color: var(--nxl-gold); -unity-font-style: bold; }
+.nxl-accent { color: var(--nxl-cyan); -unity-font-style: bold; }
+
+/* ---- Buttons (9-slice) ---- */
+.nxl-btn {
+    height: 46px;
+    -unity-text-align: middle-center;
+    font-size: 18px; -unity-font-style: bold; letter-spacing: 1px;
+    -unity-font-definition: var(--nxl-font-title);
+    color: var(--nxl-text);
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.7);
+    -unity-text-outline-width: 0.8px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.55);
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0;
+    -unity-slice-left: 12; -unity-slice-right: 12; -unity-slice-top: 12; -unity-slice-bottom: 12;
+    transition-property: scale; transition-duration: 0.08s;
+    margin-top: 6px;
+}
+.nxl-btn:hover { scale: 1.03 1.03; }
+.nxl-btn:active { scale: 0.96 0.96; }
+.nxl-btn:disabled { opacity: 0.45; }
+.nxl-btn--orange { background-image: url("Sprites/btn_orange.png"); }
+.nxl-btn--green  { background-image: url("Sprites/btn_green.png"); }
+.nxl-btn--blue   { background-image: url("Sprites/btn_blue.png"); }
+.nxl-btn--gray   { background-image: url("Sprites/btn_gray.png"); }
+.nxl-btn--red    { background-image: url("Sprites/btn_red.png"); }
+
+/* tombol utama besar (CTA) */
+.nxl-btn--hero { height: 58px; font-size: 22px; letter-spacing: 2px; }
+.nxl-btn--sm { height: 34px; font-size: 16px; }
+
+/* ---- Mode buttons (kolom kiri / sidebar) ---- */
+.nxl-mode {
+    flex-direction: row; align-items: center;
+    min-height: 56px;
+    background-image: url("Sprites/btn_mode.png");
+    -unity-slice-left: 12; -unity-slice-right: 12; -unity-slice-top: 12; -unity-slice-bottom: 12;
+    padding-left: 10px; padding-right: 10px; padding-top: 6px; padding-bottom: 6px; margin-bottom: 8px;
+    transition-property: scale; transition-duration: 0.08s;
+}
+.nxl-mode:hover { scale: 1.02 1.02; }
+.nxl-mode--active { background-image: url("Sprites/btn_mode_active.png"); }
+.nxl-mode--locked { opacity: 0.6; }
+.nxl-mode-title { font-size: 18px; -unity-font-style: bold; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-title); }
+.nxl-mode-sub { font-size: 16px; color: var(--nxl-text-2); }
+
+/* ---- Tabs ---- */
+.nxl-tab {
+    background-image: url("Sprites/tab_inactive.png");
+    -unity-slice-left: 12; -unity-slice-right: 12; -unity-slice-top: 12; -unity-slice-bottom: 12;
+    padding-left: 12px; padding-right: 12px; padding-top: 6px; padding-bottom: 6px; margin-right: 4px;
+    font-size: 16px; -unity-font-style: bold; color: var(--nxl-text-2);
+    -unity-font-definition: var(--nxl-font-head);
+    -unity-text-align: middle-center;
+}
+.nxl-tab--active { background-image: url("Sprites/tab_active.png"); color: var(--nxl-text); }
+
+/* ---- badge status ---- */
+.nxl-badge {
+    position: absolute; top: -4px; right: -4px;
+    font-size: 9px; -unity-font-style: bold; color: var(--nxl-text);
+    padding-left: 6px; padding-right: 6px; padding-top: 1px; padding-bottom: 1px;
+    border-top-left-radius: 8px; border-top-right-radius: 8px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+}
+.nxl-badge--off { background-color: var(--nxl-red); }
+.nxl-badge--new { background-color: var(--nxl-orange); }
+
+/* ---- placeholder ikon (kotak warna + huruf) ---- */
+.nxl-ic {
+    width: 40px; height: 40px;
+    border-top-left-radius: 10px; border-top-right-radius: 10px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+    align-items: center; justify-content: center;
+    -unity-font-style: bold; color: var(--nxl-text); font-size: 20px;
+    -unity-font-definition: var(--nxl-font-title);
+    -unity-text-align: middle-center;
+}
+
+/* ---- utils ---- */
+.nxl-row { flex-direction: row; align-items: center; }
+.nxl-col { flex-direction: column; }
+.nxl-spacer { flex-grow: 1; }
+.nxl-center { align-items: center; justify-content: center; }
+.nxl-pill {
+    flex-direction: row; align-items: center;
+    background-image: url("Sprites/panel_frame.png");
+    -unity-slice-left: 12; -unity-slice-right: 12; -unity-slice-top: 12; -unity-slice-bottom: 12;
+    padding-left: 10px; padding-right: 10px; padding-top: 3px; padding-bottom: 3px; margin-left: 6px;
+}
+
+/* ============================================================
+   TAHAP 2 — TopBar / RankBlock / BottomNav
+   Prinsip restraint: hanya elemen klik yang ber-bevel/border;
+   panel info & nav = latar lembut semi-transparan, nyaris tanpa bingkai.
+   ============================================================ */
+
+/* ---- Top bar ---- */
+.nxl-topbar {
+    flex-direction: row; align-items: center;
+    height: 88px; padding-left: 24px; padding-right: 24px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("Sprites/strip_top.png");
+    -unity-background-scale-mode: stretch-to-fill;
+}
+.nxl-logo {
+    font-size: 32px; -unity-font-style: bold; color: var(--nxl-gold);
+    -unity-font-definition: var(--nxl-font-title); letter-spacing: 4px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+.nxl-chronicles {
+    font-size: 12px; color: var(--nxl-cyan); letter-spacing: 8px;
+    -unity-font-definition: var(--nxl-font-head); -unity-text-align: middle-center;
+}
+
+/* profil (borderless) */
+.nxl-profile { flex-direction: row; align-items: center; }
+.nxl-avatar { width: 64px; height: 64px; background-color: var(--nxl-border); font-size: 26px; }
+.nxl-xp-track { height: 8px; background-color: rgba(0, 0, 0, 0.45); border-radius: 4px; }
+.nxl-xp-fill { height: 8px; background-color: var(--nxl-cyan); border-radius: 4px; }
+
+/* currency pill (lembut, tanpa bingkai tegas) */
+.nxl-cur {
+    flex-direction: row; align-items: center; margin-left: 10px;
+    background-color: rgba(10, 20, 44, 0.6); border-radius: 9px;
+    padding-left: 10px; padding-right: 6px; padding-top: 6px; padding-bottom: 6px;
+}
+.nxl-cur-ic { font-size: 20px; -unity-font-style: bold; color: var(--nxl-gold); -unity-font-definition: var(--nxl-font-title); }
+.nxl-cur-val { font-size: 20px; -unity-font-style: bold; color: var(--nxl-text); margin-left: 8px; -unity-font-definition: var(--nxl-font-head); }
+.nxl-cur-plus {
+    width: 28px; height: 28px; margin-left: 8px; border-width: 0; border-radius: 7px;
+    background-color: rgba(60, 176, 67, 0.25); color: var(--nxl-green); font-size: 20px; -unity-font-style: bold;
+    -unity-text-align: middle-center; transition-property: background-color; transition-duration: 0.1s;
+}
+.nxl-cur-plus:hover { background-color: rgba(60, 176, 67, 0.45); }
+
+/* ikon tombol (mail/settings/panah) borderless */
+.nxl-icon-btn {
+    width: 44px; height: 44px; margin-left: 10px;
+    background-color: rgba(10, 20, 44, 0.6); border-width: 0; border-radius: 10px;
+    color: var(--nxl-text); font-size: 18px; -unity-font-style: bold;
+    -unity-font-definition: var(--nxl-font-title); -unity-text-align: middle-center;
+    transition-property: background-color; transition-duration: 0.1s;
+}
+.nxl-icon-btn:hover { background-color: rgba(79, 209, 255, 0.18); }
+.nxl-ic-mail { background-image: url("Sprites/ic_mail.png"); -unity-background-scale-mode: scale-to-fit; }
+.nxl-ic-gear { background-image: url("Sprites/ic_settings.png"); -unity-background-scale-mode: scale-to-fit; }
+
+/* ---- Rank block (panel lembut, nyaris tanpa bingkai) ---- */
+.nxl-rankblock {
+    align-items: center; padding-left: 14px; padding-right: 14px; padding-top: 14px; padding-bottom: 14px;
+    background-color: rgba(15, 30, 60, 0.45); border-radius: 10px;
+}
+.nxl-rank-emblem {
+    width: 72px; height: 72px; align-items: center; justify-content: center;
+    background-color: rgba(245, 197, 66, 0.14);
+    border-width: 2px; border-color: var(--nxl-gold); border-radius: 12px;
+    color: var(--nxl-gold); font-size: 30px; -unity-font-style: bold;
+    -unity-font-definition: var(--nxl-font-title); -unity-text-align: middle-center;
+}
+.nxl-rp-track { width: 170px; height: 6px; background-color: rgba(0, 0, 0, 0.45); border-radius: 3px; }
+.nxl-rp-fill { height: 6px; background-color: var(--nxl-gold); border-radius: 3px; }
+
+/* ---- Bottom nav (strip tipis; ikon+teks, bukan tombol berbingkai) ---- */
+.nxl-bottomnav {
+    flex-direction: row; justify-content: space-around; align-items: center;
+    height: 96px; padding-left: 48px; padding-right: 48px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: url("Sprites/strip_bottom.png");
+    -unity-background-scale-mode: stretch-to-fill;
+}
+.nxl-navitem {
+    width: 100px; height: 80px;
+    align-items: center; justify-content: center;
+    background-color: rgba(0, 0, 0, 0); border-width: 0; border-radius: 10px;
+    transition-property: background-color; transition-duration: 0.1s;
+}
+.nxl-navitem:hover { background-color: rgba(79, 209, 255, 0.12); }
+.nxl-nav-ic {
+    width: 40px; height: 40px; align-items: center; justify-content: center;
+    background-color: rgba(58, 123, 213, 0.22); border-radius: 11px;
+    color: var(--nxl-text); font-size: 18px; -unity-font-style: bold;
+    -unity-font-definition: var(--nxl-font-title); -unity-text-align: middle-center;
+}
+.nxl-nav-lbl { font-size: 16px; color: var(--nxl-text-2); margin-top: 6px; -unity-font-definition: var(--nxl-font-head); }
+
+/* ---- Komposisi: kolom kiri menyatu, panel kanan, float bawah ---- */
+.nxl-leftcol { width: 300px; }
+.nxl-rightpanel { width: 340px; }
+.nxl-card { background-color: rgba(15, 30, 60, 0.5); border-radius: 12px; padding-left: 14px; padding-right: 14px; padding-top: 14px; padding-bottom: 14px; }
+.nxl-profilecard { flex-direction: row; align-items: center; }
+
+/* chat & tombol utama mengambang tepat di atas bottom nav */
+.nxl-chat-float { position: absolute; left: 24px; bottom: 112px; width: 420px; height: 200px; }
+.nxl-cta-float  { position: absolute; left: 0; right: 0; bottom: 112px; align-items: center; }
+
+/* ---- Pemilih mode + tombol utama ---- */
+.nxl-mode-arrow { width: 48px; height: 48px; font-size: 22px; }
+.nxl-hidden { display: none; }
+
+/* tombol akses HQ / Plaza (72x72, di samping panel mode) */
+.nxl-access-btn {
+    width: 72px; height: 72px; align-items: center; justify-content: center;
+    background-image: url("Sprites/btn_mode.png");
+    -unity-slice-left: 12; -unity-slice-right: 12; -unity-slice-top: 12; -unity-slice-bottom: 12;
+    border-width: 0; transition-property: scale; transition-duration: 0.08s;
+}
+.nxl-access-btn:hover { scale: 1.04 1.04; }
+.nxl-access-ic { font-size: 22px; -unity-font-style: bold; color: var(--nxl-cyan); -unity-font-definition: var(--nxl-font-title); -unity-text-align: middle-center; }
+.nxl-access-lbl { font-size: 14px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); margin-top: 2px; -unity-text-align: middle-center; }
+
+/* dots indikator mode */
+.nxl-dot { width: 8px; height: 8px; border-radius: 4px; background-color: rgba(168, 196, 232, 0.35); margin-left: 4px; margin-right: 4px; }
+.nxl-dot--active { width: 20px; background-color: var(--nxl-cyan); }
+
+/* emblem rank mini (kontekstual mode Ranked) */
+.nxl-rank-emblem-sm {
+    width: 48px; height: 48px; align-items: center; justify-content: center;
+    background-color: rgba(245, 197, 66, 0.14); border-width: 2px; border-color: var(--nxl-gold); border-radius: 10px;
+    color: var(--nxl-gold); font-size: 22px; -unity-font-style: bold;
+    -unity-font-definition: var(--nxl-font-title); -unity-text-align: middle-center;
+}
+
+/* ---- Lobby chat (panel lembut) ---- */
+.nxl-chatbox {
+    background-color: rgba(15, 30, 60, 0.45); border-radius: 10px;
+    padding-left: 12px; padding-right: 12px; padding-top: 10px; padding-bottom: 10px;
+}
+.nxl-chat-log { flex-grow: 1; margin-top: 6px; }
+.nxl-input { -unity-font-definition: var(--nxl-font-body); font-size: 16px; color: var(--nxl-text); }
+.nxl-input .unity-base-text-field__input {
+    min-height: 44px; font-size: 16px;
+    background-color: rgba(0, 0, 0, 0.35); border-width: 1px; border-color: var(--nxl-border-dim);
+    border-radius: 6px; padding-left: 10px; padding-right: 10px; color: var(--nxl-text);
+    -unity-text-align: middle-left;
+}
+
+/* ---- Overlay (searching / settings) + banner (disconnect) ---- */
+.nxl-overlay {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background-color: rgba(4, 8, 16, 0.78);
+    align-items: center; justify-content: center;
+}
+.nxl-dialog {
+    width: 420px; background-color: rgba(15, 30, 60, 0.96);
+    border-width: 1px; border-color: var(--nxl-border-dim); border-radius: 14px;
+    padding-left: 24px; padding-right: 24px; padding-top: 22px; padding-bottom: 22px;
+    align-items: center;
+}
+.nxl-banner {
+    position: absolute; left: 0; right: 0; top: 0;
+    flex-direction: row; align-items: center; justify-content: center;
+    height: 54px; background-color: rgba(214, 72, 68, 0.95);
+}
+.nxl-banner-txt { font-size: 16px; -unity-font-style: bold; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-head); margin-right: 14px; }
+
+/* ---- Layar login (sendiri) + lobby fade ---- */
+.nxl-lobbybody { flex-grow: 1; transition-property: opacity; transition-duration: 0.3s; }
+
+/* ---- Ruang Tim (Party Lobby) ---- */
+.nxl-overlay-screen { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.nxl-party-glow {
+    position: absolute; left: 0; right: 0; top: 150px; height: 430px;
+    background-image: url("Sprites/glow.png"); -unity-background-scale-mode: scale-and-crop; opacity: 0.5;
+}
+.nxl-party-stage { flex-grow: 1; }
+.nxl-back-btn--lg { padding-top: 10px; padding-bottom: 10px; }
+
+.nxl-pbanner-wrap { align-items: center; margin-left: 14px; margin-right: 14px; }
+.nxl-pbanner {
+    width: 280px; height: 440px; align-items: center;
+    background-image: url("Sprites/banner_player.png"); -unity-background-scale-mode: stretch-to-fill;
+    padding-top: 18px; padding-left: 16px; padding-right: 16px; padding-bottom: 70px;
+    transition-property: scale; transition-duration: 0.1s;
+}
+.nxl-pbanner--empty { background-image: url("Sprites/banner_dim.png"); justify-content: center; }
+.nxl-platform { width: 200px; height: 30px; background-image: url("Sprites/glow.png"); -unity-background-scale-mode: scale-to-fit; margin-top: -8px; }
+
+.nxl-pb-crown {
+    font-size: 12px; -unity-font-style: bold; color: var(--nxl-navy-2); background-color: var(--nxl-gold);
+    padding-left: 10px; padding-right: 10px; padding-top: 1px; padding-bottom: 1px; border-radius: 7px;
+    -unity-font-definition: var(--nxl-font-head);
+}
+.nxl-pb-avatar { width: 128px; height: 128px; font-size: 44px; background-color: var(--nxl-border); margin-top: 8px; }
+.nxl-pb-name { font-size: 22px; -unity-font-style: bold; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-title); margin-top: 10px; }
+.nxl-pb-sub { font-size: 16px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); margin-top: 2px; }
+.nxl-pb-rank {
+    flex-direction: row; align-items: center; margin-top: 10px;
+    background-color: rgba(10, 20, 44, 0.5); border-radius: 8px;
+    padding-left: 10px; padding-right: 12px; padding-top: 5px; padding-bottom: 5px;
+}
+.nxl-pb-ping { font-size: 13px; -unity-font-style: bold; color: var(--nxl-green); -unity-font-definition: var(--nxl-font-head); margin-top: 8px; }
+.nxl-pb-q { font-size: 80px; -unity-font-style: bold; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-title); }
+.nxl-pb-wait { font-size: 16px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); margin-top: 8px; }
+.nxl-vs {
+    font-size: 72px; -unity-font-style: bold; color: var(--nxl-gold); -unity-font-definition: var(--nxl-font-title);
+    margin-left: 18px; margin-right: 18px; text-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* ---- Ruang Ladder (Ranked Solo) ---- */
+.nxl-lwindow { flex-direction: column; padding-left: 6px; padding-right: 6px; padding-top: 6px; padding-bottom: 6px; }
+.nxl-lwinhead {
+    flex-direction: row; align-items: center; height: 56px;
+    padding-left: 20px; padding-right: 12px; margin-bottom: 4px;
+    background-color: rgba(10, 20, 44, 0.55); border-radius: 10px;
+}
+.nxl-lcard { flex-grow: 1; margin-left: 6px; margin-right: 6px; align-items: center; padding-top: 18px; }
+.nxl-lcard-visual { height: 140px; align-items: center; justify-content: center; }
+.nxl-lcard-big { font-size: 44px; -unity-font-style: bold; color: var(--nxl-gold); -unity-font-definition: var(--nxl-font-title); margin-top: 6px; }
+.nxl-lcard-label { font-size: 16px; -unity-font-style: bold; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); letter-spacing: 1px; }
+.nxl-lcard-detail { font-size: 18px; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-head); margin-top: 2px; }
+.nxl-ic-crest { width: 128px; height: 128px; background-image: url("Sprites/ic_crest.png"); -unity-background-scale-mode: scale-to-fit; }
+.nxl-ic-trophy { width: 120px; height: 120px; background-image: url("Sprites/ic_trophy.png"); -unity-background-scale-mode: scale-to-fit; }
+.nxl-ic-swords { width: 120px; height: 120px; background-image: url("Sprites/ic_swords.png"); -unity-background-scale-mode: scale-to-fit; }
+.nxl-ladder-divider { height: 1px; width: 82%; background-color: var(--nxl-border-dim); margin-top: 14px; margin-bottom: 10px; }
+.nxl-ladder-list { flex-grow: 1; margin-top: 10px; }
+.nxl-ladder-row {
+    flex-direction: row; align-items: center; margin-bottom: 5px;
+    padding-left: 10px; padding-right: 10px; padding-top: 7px; padding-bottom: 7px;
+    background-color: rgba(10, 20, 44, 0.45); border-radius: 7px;
+    border-left-width: 4px; border-left-color: var(--nxl-border-dim);
+}
+.nxl-ladder-row--win { border-left-color: var(--nxl-gold); }
+.nxl-ladder-row--loss { border-left-color: var(--nxl-red); }
+.nxl-ladder-row--me {
+    background-color: rgba(79, 209, 255, 0.2); border-left-color: var(--nxl-cyan);
+    border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px;
+    border-top-color: var(--nxl-cyan); border-right-color: var(--nxl-cyan); border-bottom-color: var(--nxl-cyan);
+}
+.nxl-ladder-rowtxt { font-size: 16px; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-head); }
+.nxl-ladder-rowdim { font-size: 15px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); }
+.nxl-graph-tier { font-size: 13px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); }
+.nxl-graph-now { font-size: 13px; -unity-font-style: bold; color: var(--nxl-cyan); -unity-font-definition: var(--nxl-font-head); }
+.nxl-authscreen {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    align-items: center; justify-content: center;
+}
+.nxl-field-label {
+    font-size: 14px; -unity-font-style: bold; color: var(--nxl-text-2);
+    -unity-font-definition: var(--nxl-font-head);
+    align-self: flex-start; margin-top: 12px; margin-bottom: 4px; letter-spacing: 1px;
+}
+.nxl-link {
+    font-size: 14px; color: var(--nxl-cyan); -unity-font-definition: var(--nxl-font-head);
+    -unity-text-align: middle-center; margin-top: 12px;
+}
+.nxl-link:hover { color: var(--nxl-text); }
+
+/* ---- Halaman Profil ---- */
+.nxl-back-btn {
+    flex-direction: row; align-items: center; align-self: flex-start;
+    margin-left: 20px; margin-top: 18px; margin-bottom: 6px;
+    padding-left: 12px; padding-right: 16px; padding-top: 8px; padding-bottom: 8px;
+    background-color: rgba(10, 20, 44, 0.6); border-width: 0; border-radius: 10px;
+    transition-property: background-color; transition-duration: 0.1s;
+}
+.nxl-back-btn:hover { background-color: rgba(79, 209, 255, 0.18); }
+.nxl-back-ic { font-size: 22px; -unity-font-style: bold; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-title); margin-right: 6px; }
+.nxl-back-lbl { font-size: 16px; -unity-font-style: bold; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-head); }
+
+.nxl-prof-sidebar { width: 260px; }
+.nxl-prof-navitem {
+    height: 54px; margin-bottom: 8px;
+    background-image: url("Sprites/tab_inactive.png");
+    -unity-slice-left: 12; -unity-slice-right: 12; -unity-slice-top: 12; -unity-slice-bottom: 12;
+    border-width: 0; padding-left: 18px;
+    font-size: 18px; -unity-font-style: bold; color: var(--nxl-text-2);
+    -unity-font-definition: var(--nxl-font-title); -unity-text-align: middle-left;
+    transition-property: color; transition-duration: 0.1s;
+}
+.nxl-prof-navitem:hover { color: var(--nxl-text); }
+.nxl-prof-navitem--active { background-image: url("Sprites/tab_active.png"); color: var(--nxl-text); }
+
+.nxl-prof-title { font-size: 32px; -unity-font-style: bold; color: var(--nxl-text); letter-spacing: 1px; -unity-font-definition: var(--nxl-font-title); }
+.nxl-prof-content { }
+.nxl-prof-tab { }
+.nxl-badge-faction {
+    font-size: 14px; -unity-font-style: bold; color: var(--nxl-navy-2); background-color: var(--nxl-cyan);
+    padding-left: 10px; padding-right: 10px; padding-top: 2px; padding-bottom: 2px; border-radius: 6px;
+    -unity-font-definition: var(--nxl-font-head);
+}
+.nxl-ic-eye { background-image: url("Sprites/ic_eye.png"); }
+.nxl-ic-eye-off { background-image: url("Sprites/ic_eye_off.png"); }
+
+/* kolom password: field selebar username, ikon mata absolut di sisi kanan */
+.nxl-pass-wrap { width: 100%; }
+.nxl-input--pass .unity-base-text-field__input { padding-right: 40px; }
+.nxl-eye {
+    position: absolute; right: 10px; top: 50%; translate: 0 -50%;
+    width: 32px; height: 32px;
+    padding-left: 6px; padding-right: 6px; padding-top: 6px; padding-bottom: 6px;
+    background-color: rgba(0, 0, 0, 0); border-width: 0;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(120, 146, 186);
+    transition-property: -unity-background-image-tint-color; transition-duration: 0.1s;
+}
+.nxl-eye:hover { -unity-background-image-tint-color: rgb(210, 228, 250); }

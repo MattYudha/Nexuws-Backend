@@ -3,11 +3,20 @@ namespace PhotonBackend.Api.Data;
 public sealed class Player
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string DeviceId { get; set; } = "";
+    public string? DeviceId { get; set; }          // guest (anon device); null untuk akun username
+    public string? Username { get; set; }           // akun terdaftar; null untuk guest
+    public string? PasswordHash { get; set; }       // hash (ASP.NET PasswordHasher)
     public string DisplayName { get; set; } = "";
+    public int Faction { get; set; }                // 0 none, 1 ORDE, 2 LEGION
     public int Rating { get; set; }
+    public double Rd { get; set; } = 350.0;        // Glicko-2 rating deviation (keyakinan)
+    public double Volatility { get; set; } = 0.06; // Glicko-2 volatility
     public int Wins { get; set; }
     public int Losses { get; set; }
+    public int Kills { get; set; }                  // total KO yang dilakukan
+    public int Deaths { get; set; }                 // total ter-KO
+    public int Assists { get; set; }
+    public int AccountXp { get; set; }              // dari semua main → Account Rank (nol efek kompetitif)
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -49,6 +58,9 @@ public sealed class MatchPlayer
     public int Slot { get; set; }
     public int? ReportedScoreLeft { get; set; }
     public int? ReportedScoreRight { get; set; }
+    public int ReportedKills { get; set; }
+    public int ReportedDeaths { get; set; }
+    public int ReportedAssists { get; set; }
     public bool IsWinner { get; set; }
     public int RatingDelta { get; set; }
 }

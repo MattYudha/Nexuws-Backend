@@ -1,0 +1,223 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Dua layar dalam satu dokumen:
+         - auth-screen: layar login SENDIRI (logo besar + form) dgn background vignette (dari nxl-root).
+         - lobby-body : seluruh lobby; DISEMBUNYIKAN sebelum login, fade-in setelah login.
+         Controller toggle salah satu saja. -->
+    <ui:Template name="TopBar" src="TopBar.uxml" />
+    <ui:Template name="FriendPanel" src="FriendPanel.uxml" />
+    <ui:Template name="CenterCTA" src="CenterCTA.uxml" />
+    <ui:Template name="ChatPanel" src="ChatPanel.uxml" />
+    <ui:Template name="BottomNav" src="BottomNav.uxml" />
+    <Style src="NexusTokens.uss" />
+    <Style src="NexusLobby.uss" />
+
+    <ui:VisualElement class="nxl-root" style="flex-grow: 1;">
+
+        <!-- ===================== LOBBY ===================== -->
+        <ui:VisualElement name="lobby-body" class="nxl-lobbybody">
+
+            <ui:Instance template="TopBar" />
+
+            <ui:VisualElement class="nxl-row" style="flex-grow: 1; align-items: stretch; padding-top: 16px; padding-bottom: 16px;">
+                <!-- Kiri dikosongkan untuk scene (chat mengambang di kiri-bawah). -->
+                <ui:VisualElement class="nxl-spacer" />
+                <ui:Instance template="FriendPanel" style="margin-right: 24px;" />
+            </ui:VisualElement>
+
+            <ui:Instance template="BottomNav" />
+
+            <ui:Instance template="ChatPanel" />
+            <ui:Instance template="CenterCTA" />
+
+            <!-- State: mencari lawan -->
+            <ui:VisualElement class="nxl-overlay nxl-hidden" name="searching-overlay">
+                <ui:VisualElement class="nxl-dialog">
+                    <ui:Label text="MENCARI LAWAN" class="nxl-h2" />
+                    <ui:Label text="Mencari lawan..." name="search-status" class="nxl-dim" style="margin-top: 8px; white-space: normal; -unity-text-align: middle-center;" />
+                    <ui:Label text="0s" name="search-timer" class="nxl-h1" style="margin-top: 6px;" />
+                    <ui:Button text="BATAL" name="btn-search-cancel" class="nxl-btn nxl-btn--red" style="width: 200px; height: 48px; margin-top: 14px;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- State: koneksi gagal/terputus -->
+            <ui:VisualElement class="nxl-banner nxl-hidden" name="disconnect-banner">
+                <ui:Label text="Koneksi terputus." name="disc-msg" class="nxl-banner-txt" />
+                <ui:Button text="COBA LAGI" name="btn-reconnect" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 130px; height: 34px; margin-right: 8px;" />
+                <ui:Button text="TUTUP" name="btn-disc-close" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 100px; height: 34px;" />
+            </ui:VisualElement>
+
+            <!-- Settings -->
+            <ui:VisualElement class="nxl-overlay nxl-hidden" name="settings-overlay">
+                <ui:VisualElement class="nxl-dialog">
+                    <ui:Label text="SETTINGS" class="nxl-h2" />
+                    <ui:Label text="Hubungkan: Facebook / TikTok (segera hadir)" class="nxl-dim" style="margin-top: 10px; white-space: normal; -unity-text-align: middle-center;" />
+                    <ui:Button text="LOGOUT" name="btn-logout" class="nxl-btn nxl-btn--red" style="width: 240px; height: 48px; margin-top: 16px;" />
+                    <ui:Button text="TUTUP" name="btn-settings-close" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 160px; height: 36px; margin-top: 10px;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- ===================== RUANG TIM (Party Lobby) ===================== -->
+        <ui:VisualElement name="party-screen" class="nxl-overlay-screen nxl-hidden">
+            <ui:VisualElement class="nxl-party-glow" />
+
+            <ui:VisualElement name="party-header" class="nxl-row" style="align-items: center; padding-left: 24px; padding-top: 20px;">
+                <ui:Button name="party-back" class="nxl-back-btn nxl-back-btn--lg">
+                    <ui:Label text="&lt;" class="nxl-back-ic" />
+                    <ui:Label text="Kembali" class="nxl-back-lbl" />
+                </ui:Button>
+                <ui:VisualElement style="margin-left: 18px;">
+                    <ui:Label text="RANKED" name="party-title" class="nxl-prof-title" />
+                    <ui:Label text="Solo 1v1 · Kompetitif" name="party-sub" class="nxl-dim" style="margin-top: 2px;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ======= LADDER (Ranked Solo) ======= -->
+            <ui:VisualElement name="ladder-layout" class="nxl-hidden" style="flex-grow: 1; padding-left: 48px; padding-right: 48px; padding-top: 48px; padding-bottom: 48px;">
+                <ui:VisualElement class="nxl-panel nxl-lwindow" style="flex-grow: 1;">
+                    <!-- header jendela 56 -->
+                    <ui:VisualElement class="nxl-lwinhead">
+                        <ui:Label text="LEGION | RANKED SOLO" name="ld-winhead" class="nxl-h2" style="font-size: 18px;" />
+                        <ui:VisualElement class="nxl-spacer" />
+                        <ui:Button text="Keluar" name="ld-exit" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 120px; height: 36px;" />
+                    </ui:VisualElement>
+
+                    <!-- identitas 72 -->
+                    <ui:VisualElement class="nxl-row" style="min-height: 72px; align-items: center; padding-left: 20px;">
+                        <ui:Label text="N" name="ld-avatar" class="nxl-ic nxl-avatar" style="width: 52px; height: 52px; font-size: 22px;" />
+                        <ui:VisualElement style="margin-left: 12px;">
+                            <ui:Label text="Runner" name="ld-pname" class="nxl-h2" style="font-size: 20px;" />
+                            <ui:Label text="Rival" name="ld-ptier" class="nxl-gold" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <!-- body: 3 kartu (55%) + tab (45%), MENGISI tinggi -->
+                    <ui:VisualElement class="nxl-row" style="flex-grow: 1; align-items: stretch; padding-left: 16px; padding-right: 16px;">
+                        <ui:VisualElement class="nxl-row" style="width: 55%; align-items: stretch;">
+                            <ui:VisualElement class="nxl-card nxl-lcard">
+                                <ui:VisualElement class="nxl-lcard-visual"><ui:VisualElement name="ld-rank-emblem" class="nxl-ic-crest" /></ui:VisualElement>
+                                <ui:Label text="Ladder Rank" class="nxl-lcard-label" />
+                                <ui:Label text="Rival" name="ld-tier" class="nxl-lcard-big" style="font-size: 32px;" />
+                                <ui:VisualElement class="nxl-rp-track" name="ld-rank-track" style="width: 82%; margin-top: 10px;">
+                                    <ui:VisualElement class="nxl-rp-fill" name="ld-rank-fill" style="width: 0%;" />
+                                </ui:VisualElement>
+                                <ui:VisualElement class="nxl-ladder-divider" />
+                                <ui:Label text="Menang 0" name="ld-wins" class="nxl-lcard-detail" />
+                                <ui:Label text="Kalah 0" name="ld-losses" class="nxl-lcard-detail" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="nxl-card nxl-lcard">
+                                <ui:VisualElement class="nxl-lcard-visual"><ui:VisualElement class="nxl-ic-trophy" /></ui:VisualElement>
+                                <ui:Label text="WIN RATE" class="nxl-lcard-label" />
+                                <ui:Label text="0%" name="ld-winrate" class="nxl-lcard-big" />
+                                <ui:VisualElement class="nxl-ladder-divider" />
+                                <ui:Label text="0 Menang · 0 Kalah" name="ld-wr-sub" class="nxl-lcard-detail" style="white-space: normal; -unity-text-align: middle-center;" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="nxl-card nxl-lcard">
+                                <ui:VisualElement class="nxl-lcard-visual"><ui:VisualElement class="nxl-ic-swords" /></ui:VisualElement>
+                                <ui:Label text="KDA" class="nxl-lcard-label" />
+                                <ui:Label text="0.00" name="ld-third-big" class="nxl-lcard-big" />
+                                <ui:VisualElement class="nxl-ladder-divider" />
+                                <ui:Label text="K 0 · D 0 · A 0" name="ld-third-sub" class="nxl-lcard-detail" style="white-space: normal; -unity-text-align: middle-center;" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="nxl-card" style="width: 45%; margin-left: 12px;">
+                            <ui:VisualElement class="nxl-row">
+                                <ui:Label text="Grafik Ranking" name="ltab-graph" class="nxl-tab nxl-tab--active" style="height: 38px;" />
+                                <ui:Label text="Top 100" name="ltab-top" class="nxl-tab" style="height: 38px;" />
+                                <ui:Label text="Rekaman Battle" name="ltab-matches" class="nxl-tab" style="height: 38px;" />
+                            </ui:VisualElement>
+                            <ui:ScrollView name="ld-matches" class="nxl-ladder-list nxl-hidden" />
+                            <ui:ScrollView name="ld-top" class="nxl-ladder-list nxl-hidden" />
+                            <ui:VisualElement name="ld-graph" style="flex-grow: 1; margin-top: 10px;">
+                                <ui:VisualElement name="ld-graph-area" style="flex-grow: 1;">
+                                    <ui:VisualElement name="ld-graph-canvas" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0;" />
+                                    <ui:VisualElement name="ld-graph-empty" class="nxl-center nxl-hidden" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0;">
+                                        <ui:Label text="Grafik muncul setelah 2 pertandingan ranked." class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center;" />
+                                    </ui:VisualElement>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="ld-graph-dates" class="nxl-row" style="justify-content: space-between; margin-top: 4px; min-height: 18px;" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <!-- bawah 200: kolom chat (kiri, 44%) dan kolom MULAI (kanan, 44%), jarak tengah -->
+                    <ui:VisualElement class="nxl-row" style="height: 200px; align-items: stretch; justify-content: space-between; padding-left: 16px; padding-right: 16px; padding-bottom: 16px;">
+                        <ui:VisualElement class="nxl-chatbox" style="width: 44%; flex-shrink: 0; overflow: hidden;">
+                            <ui:Label text="LOBBY CHAT" class="nxl-h2" style="font-size: 16px;" />
+                            <ui:ScrollView name="ld-chat-log" class="nxl-chat-log" style="flex-grow: 1;" />
+                            <ui:VisualElement class="nxl-row" style="margin-top: 6px;">
+                                <ui:TextField name="ld-chat-input" class="nxl-input" style="flex-grow: 1; flex-shrink: 1; min-width: 0;" />
+                                <ui:Button text="KIRIM" name="ld-chat-send" class="nxl-btn nxl-btn--blue nxl-btn--sm" style="width: 78px; flex-shrink: 0; height: 34px; margin-left: 8px;" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement style="width: 44%; flex-shrink: 0; justify-content: flex-end;">
+                            <ui:Label text="Mode: Ranked Solo · Peta: Acak" class="nxl-dim" style="margin-bottom: 10px; -unity-text-align: middle-center;" />
+                            <ui:VisualElement class="nxl-row">
+                                <ui:Button text="MULAI" name="ladder-start" class="nxl-btn nxl-btn--orange nxl-btn--hero" style="flex-grow: 1; height: 72px;" />
+                                <ui:Button text="BATAL" name="ladder-cancel" class="nxl-btn nxl-btn--red nxl-hidden" style="width: 140px; flex-shrink: 0; height: 72px; margin-left: 10px;" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ======= TIM (banner) ======= -->
+            <ui:VisualElement name="team-layout" class="nxl-hidden" style="flex-grow: 1;">
+                <ui:VisualElement class="nxl-party-stage nxl-center" style="flex-grow: 1;">
+                    <ui:VisualElement name="party-slots" class="nxl-row" style="align-items: center; justify-content: center;" />
+                </ui:VisualElement>
+                <ui:VisualElement class="nxl-center" style="padding-bottom: 26px;">
+                    <ui:VisualElement class="nxl-row" style="align-items: center;">
+                        <ui:Button text="MULAI" name="party-start" class="nxl-btn nxl-btn--orange nxl-btn--hero" style="width: 360px; height: 72px;" />
+                        <ui:Button text="BATAL" name="party-cancel" class="nxl-btn nxl-btn--red nxl-hidden" style="width: 160px; height: 56px; margin-left: 12px;" />
+                    </ui:VisualElement>
+                    <ui:Button text="BUAT ROOM" name="party-create-room" class="nxl-btn nxl-btn--green nxl-hidden" style="width: 240px; height: 48px; margin-top: 10px;" />
+                </ui:VisualElement>
+                <ui:VisualElement name="party-chat" class="nxl-chatbox" style="position: absolute; left: 24px; bottom: 26px; width: 360px; height: 130px;">
+                    <ui:Label text="PARTY CHAT" class="nxl-h2" style="font-size: 16px;" />
+                    <ui:Label text="Segera Hadir" class="nxl-dim" style="margin-top: 8px;" />
+                </ui:VisualElement>
+                <ui:VisualElement name="party-invite" class="nxl-card" style="position: absolute; right: 24px; bottom: 26px; width: 300px;">
+                    <ui:Label text="UNDANG" class="nxl-h2" style="font-size: 16px;" />
+                    <ui:Label text="Teman &amp; Kode Party — Segera Hadir" class="nxl-dim" style="margin-top: 10px; white-space: normal;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ======= VS overlay (transisi lawan ketemu) ======= -->
+            <ui:VisualElement name="vs-overlay" class="nxl-overlay nxl-hidden">
+                <ui:VisualElement name="vs-slots" class="nxl-row" style="align-items: center; justify-content: center;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===================== LOGIN (layar sendiri) ===================== -->
+        <ui:VisualElement name="auth-screen" class="nxl-authscreen nxl-hidden">
+            <ui:Label text="NEXUS SAGA" class="nxl-logo" style="font-size: 54px;" />
+            <ui:Label text="CHRONICLES" class="nxl-chronicles" style="font-size: 16px; margin-bottom: 26px;" />
+
+            <ui:VisualElement class="nxl-dialog" style="width: 420px; align-items: stretch;">
+                <ui:Label text="Masuk untuk bermain" name="auth-subtitle" class="nxl-h2" style="font-size: 18px; -unity-text-align: middle-center;" />
+
+                <ui:Label text="Username" class="nxl-field-label" />
+                <ui:TextField name="auth-user" class="nxl-input" />
+
+                <ui:Label text="Password" class="nxl-field-label" />
+                <ui:VisualElement class="nxl-pass-wrap">
+                    <ui:TextField name="auth-pass" password="true" class="nxl-input nxl-input--pass" />
+                    <ui:Button name="auth-eye" class="nxl-eye nxl-ic-eye" tooltip="Tampilkan / sembunyikan" />
+                </ui:VisualElement>
+
+                <ui:Label text="Nama Tampilan" name="auth-name-label" class="nxl-field-label nxl-hidden" />
+                <ui:TextField name="auth-name" class="nxl-input nxl-hidden" />
+
+                <ui:Label text="" name="auth-msg" class="nxl-dim" style="margin-top: 10px; min-height: 20px; white-space: normal; -unity-text-align: middle-center; color: rgb(242, 140, 30);" />
+
+                <ui:Button text="LOGIN" name="auth-submit" class="nxl-btn nxl-btn--orange nxl-btn--hero" style="width: 100%; height: 56px; margin-top: 6px;" />
+                <ui:Label text="Belum punya akun? Daftar" name="auth-toggle" class="nxl-link" />
+                <ui:Button text="Main sebagai Guest" name="auth-guest" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 100%; height: 40px; margin-top: 14px;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

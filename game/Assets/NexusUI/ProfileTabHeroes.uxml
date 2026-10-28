@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="tab-heroes" class="nxl-prof-tab nxl-hidden">
+        <ui:Label text="HERO FAVORIT" class="nxl-prof-title" />
+        <ui:VisualElement class="nxl-card nxl-center" style="margin-top: 14px; min-height: 240px;">
+            <ui:Label text="Hero favorit akan muncul setelah kamu bermain." class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center;" />
+            <ui:Button text="MAIN SEKARANG" name="heroes-play" class="nxl-btn nxl-btn--orange" style="width: 240px; height: 48px; margin-top: 18px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

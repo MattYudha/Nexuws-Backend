@@ -1,0 +1,71 @@
+// Nexus Saga — Quantum 3 combat data contract (SPIKE v1: brawler mini).
+// Gerak 8 arah + lompat + dash, Guard 180 + crush/faint, Critical 3 Break Stock + Gear Drop, knockback.
+// Deterministik: semua FP, tanpa float, tanpa RNG non-seeded.
+
+#pragma max_players 10
+
+input
+{
+    byte MoveDir;    // 0 netral, 1=N..8=NW (searah jarum jam)
+    byte Buttons;    // bit: 1 Attack, 2 Skill, 4 Jump, 8 Dash, 16 Guard, 32 Swap hero
+    ushort AimYaw;
+    byte PickHero;   // layar select: 0 belum, 1 TITAN-01, 2 PULSE-X
+}
+
+component NxCombat
+{
+    player_ref Player;
+    byte       Team;
+    byte       Posture;      // 0 Stand, 1 Air, 2 Down
+    FPVector3  Pos;
+    FPVector3  Vel;
+    FP         Yaw;          // radian
+
+    FP         Hp;
+    byte       Critical;     // 0/1 (HP==0, 3 Break Stock)
+    byte       BreakStock;
+    byte       GearMask;     // bit: 1 Weapon, 2 Helm, 4 Armor, 8 Trinket
+
+    ushort     HitStun;
+    ushort     HitPause;
+    ushort     AttackTime;   // >0 = frame window serang aktif
+    ushort     Faint;        // guard crush → pusing
+    ushort     DashTime;     // >0 = sedang dash
+    ushort     DashCd;
+    byte       Invuln;       // i-frame (dash/getup)
+
+    byte       Guarding;     // 0/1
+    FP         GuardYaw;     // arah hadap terkunci saat guard
+    byte       GuardGauge;   // 0..100, habis → crush
+
+    ushort     AiTimer;      // untuk dummy/NPC
+    byte       Kos;          // jumlah KO diterima (spike bookkeeping)
+
+    byte       HeroId;       // 0 TITAN-01 (grappler/melee), 1 PULSE-X (zoner/ranged)
+    byte       Picked;       // 0 belum pilih hero, 1 sudah (layar select)
+    ushort     SkillCd;      // cooldown skill (K)
+    ushort     ShotCd;       // cooldown tembakan dasar PULSE (J)
+    ushort     CritTimer;    // hitung maju saat Critical → auto-KO/respawn bila tak tertolong (bleed-out)
+    ushort     Kills;        // jumlah KO yang DILAKUKAN (statistik profil). Kos = deaths.
+}
+
+// Proyektil PULSE-X (zoner). Entity terpisah; gerak lurus, kena → NxDamage, lalu hancur.
+component NxProjectile
+{
+    byte       Team;
+    player_ref Owner;        // untuk kredit KO (ScoreA)
+    FPVector3  Pos;
+    FPVector3  Vel;
+    ushort     Life;         // sisa tick sebelum hilang
+    FP         Damage;
+}
+
+global
+{
+    byte State;          // 0 Waiting, 1 Playing, 2 Over
+    int  CountdownTicks;
+    int  JoinedMask;
+    byte Mode;
+    byte ScoreA;         // KO oleh pemain (spike)
+    byte ScoreB;
+}

@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- Kartu profil (atas kolom kiri). Avatar klik -> Profile Page (binding Tahap 3). -->
+    <ui:VisualElement class="nxl-card nxl-profilecard" name="profile-card">
+        <ui:VisualElement class="nxl-ic nxl-avatar" name="avatar">
+            <ui:Label text="N" />
+        </ui:VisualElement>
+        <ui:VisualElement style="margin-left: 12px; flex-grow: 1;">
+            <ui:Label text="Runner" name="player-name" class="nxl-h2" style="font-size: 20px;" />
+            <ui:VisualElement class="nxl-row" style="margin-top: 4px;">
+                <ui:Label text="Lv 1" name="player-level" class="nxl-dim" />
+                <ui:VisualElement class="nxl-xp-track" name="xp-track" style="width: 180px; margin-left: 10px;">
+                    <ui:VisualElement class="nxl-xp-fill" name="xp-fill" style="width: 0%;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -25,3 +25,5 @@ game/*.keystore
 .DS_Store
 .idea/
 .vscode/
+game/buid_fix/
+game/Hasil_Build/

@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="nxl-prof-sidebar" name="profile-sidebar">
+        <ui:Button text="Profil" name="ptab-main" class="nxl-prof-navitem nxl-prof-navitem--active" />
+        <ui:Button text="Statistik" name="ptab-stats" class="nxl-prof-navitem" />
+        <ui:Button text="Hero Favorit" name="ptab-heroes" class="nxl-prof-navitem" />
+        <ui:Button text="Riwayat" name="ptab-history" class="nxl-prof-navitem" />
+    </ui:VisualElement>
+</ui:UXML>
