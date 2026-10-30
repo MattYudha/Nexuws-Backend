@@ -698,14 +698,15 @@ namespace Nexus
                 float mn = Mathf.Max(bnd.Min, lo), mx = Mathf.Min(bnd.Max, hi);
                 float y0 = padT + gh * (1f - (mx - lo) / (hi - lo));
                 float y1 = padT + gh * (1f - (mn - lo) / (hi - lo));
-                p.fillColor = (i % 2 == 0) ? new Color(1f, 1f, 1f, 0.035f) : new Color(0.31f, 0.82f, 1f, 0.06f);
+                // band tier = emas redup (-dim), bukan cyan
+                p.fillColor = (i % 2 == 0) ? new Color(0.961f, 0.773f, 0.259f, 0.05f) : new Color(0.961f, 0.773f, 0.259f, 0.085f);
                 p.BeginPath();
                 p.MoveTo(new Vector2(padL, y0)); p.LineTo(new Vector2(padL + gw, y0));
                 p.LineTo(new Vector2(padL + gw, y1)); p.LineTo(new Vector2(padL, y1)); p.ClosePath(); p.Fill();
             }
 
             int n = r.Length;
-            p.strokeColor = new Color(0.31f, 0.82f, 1f, 1f); p.lineWidth = 3f;
+            p.strokeColor = new Color(0.251f, 0.588f, 1f, 1f); p.lineWidth = 3f; // garis data = biru (kamu/ally)
             p.BeginPath();
             for (int i = 0; i < n; i++)
             {
@@ -715,12 +716,13 @@ namespace Nexus
             }
             p.Stroke();
 
-            p.fillColor = new Color(0.31f, 0.82f, 1f, 1f);
             for (int i = 0; i < n; i++)
             {
                 float x = padL + gw * (float)i / (n - 1);
                 float y = padT + gh * (1f - (Mathf.Clamp(r[i], lo, hi) - lo) / (hi - lo));
                 float rad = (i == n - 1) ? 7f : 3.5f;
+                // titik terakhir = sekarang/fokus → cyan; lainnya = biru (ally)
+                p.fillColor = (i == n - 1) ? new Color(0.31f, 0.82f, 1f, 1f) : new Color(0.251f, 0.588f, 1f, 1f);
                 p.BeginPath(); p.Arc(new Vector2(x, y), rad, Angle.Degrees(0f), Angle.Degrees(360f)); p.Fill();
             }
         }

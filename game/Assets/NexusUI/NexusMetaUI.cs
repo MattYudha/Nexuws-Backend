@@ -5,14 +5,18 @@ using UnityEngine.UIElements;
 namespace Nexus
 {
     /// <summary>
-    /// Meta UI (UI Toolkit) — casual arcade lobby (inspirasi LostSaga, brand NEXUS SAGA).
-    /// Home = lobby 3 kolom (sidebar tab · center battle+room+chat · mission/quest).
-    /// Gradient (backdrop & tombol) di-generate di kode. Banyak placeholder (room/mission/chat) — disambung menyusul.
+    /// LEGACY (IMGUI/UITK lama) — DIHAPUS DI POIN e. UI aktif sekarang = NexusLobbyController.
+    /// Kelas ini INERT (lihat LegacyEnabled=false; OnEnable langsung disable diri) agar tak terjangkau di build,
+    /// dan warna hardcode di sini DIKECUALIKAN dari audit grep warna (T1) — "legacy, dihapus di poin e".
+    /// Meta UI casual arcade lobby (inspirasi LostSaga): lobby 3 kolom; gradient di-generate di kode; banyak placeholder.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class NexusMetaUI : MonoBehaviour
     {
         public string BackendUrl = "http://localhost:5080";
+
+        // legacy, dihapus di poin e — JANGAN aktifkan; UI aktif = NexusLobbyController.
+        private const bool LegacyEnabled = false;
 
         private VisualElement _root;
         private NexusBackend _backend;
@@ -31,6 +35,8 @@ namespace Nexus
 
         private void OnEnable()
         {
+            if (!LegacyEnabled) { enabled = false; return; } // legacy inert — UI aktif = NexusLobbyController (dihapus di poin e)
+
             foreach (var es in FindObjectsOfType<UnityEngine.EventSystems.EventSystem>())
                 Destroy(es.gameObject); // legacy input → UITK DefaultEventSystem
 

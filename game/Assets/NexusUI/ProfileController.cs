@@ -580,13 +580,14 @@ namespace Nexus
                     var bn = bands[i]; if (bn.Max <= lo || bn.Min >= hi) continue;
                     float mn = Mathf.Max(bn.Min, lo), mx = Mathf.Min(bn.Max, hi);
                     float y0 = padT + gh * (1f - (mx - lo) / (hi - lo)), y1 = padT + gh * (1f - (mn - lo) / (hi - lo));
-                    p.fillColor = (i % 2 == 0) ? new Color(1f, 1f, 1f, 0.03f) : new Color(0.31f, 0.82f, 1f, 0.06f);
+                    // band tier = emas redup (-dim), bukan cyan
+                    p.fillColor = (i % 2 == 0) ? new Color(0.961f, 0.773f, 0.259f, 0.045f) : new Color(0.961f, 0.773f, 0.259f, 0.08f);
                     p.BeginPath(); p.MoveTo(new Vector2(padL, y0)); p.LineTo(new Vector2(padL + gw, y0));
                     p.LineTo(new Vector2(padL + gw, y1)); p.LineTo(new Vector2(padL, y1)); p.ClosePath(); p.Fill();
                 }
             }
             int n = s.Length;
-            p.strokeColor = new Color(0.31f, 0.82f, 1f, 1f); p.lineWidth = 2.5f; p.BeginPath();
+            p.strokeColor = new Color(0.251f, 0.588f, 1f, 1f); p.lineWidth = 2.5f; p.BeginPath(); // garis data = biru (ally)
             for (int i = 0; i < n; i++)
             {
                 float x = padL + gw * (float)i / (n - 1);
@@ -594,11 +595,12 @@ namespace Nexus
                 if (i == 0) p.MoveTo(new Vector2(x, y)); else p.LineTo(new Vector2(x, y));
             }
             p.Stroke();
-            p.fillColor = new Color(0.31f, 0.82f, 1f, 1f);
             for (int i = 0; i < n; i++)
             {
                 float x = padL + gw * (float)i / (n - 1);
                 float y = padT + gh * (1f - (Mathf.Clamp(s[i], lo, hi) - lo) / (hi - lo));
+                // titik terakhir = fokus → cyan; lainnya = biru (ally)
+                p.fillColor = (i == n - 1) ? new Color(0.31f, 0.82f, 1f, 1f) : new Color(0.251f, 0.588f, 1f, 1f);
                 p.BeginPath(); p.Arc(new Vector2(x, y), i == n - 1 ? 5f : 3f, Angle.Degrees(0f), Angle.Degrees(360f)); p.Fill();
             }
         }
