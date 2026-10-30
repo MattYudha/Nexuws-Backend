@@ -32,6 +32,7 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<MatchmakingService>();
 builder.Services.AddSingleton<LeaderboardService>();
+builder.Services.AddSingleton<FactionService>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.PasswordHasher<PhotonBackend.Api.Data.Player>>();
 builder.Services.AddScoped<MatchService>();
 

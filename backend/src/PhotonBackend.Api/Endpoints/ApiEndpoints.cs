@@ -38,6 +38,7 @@ public static class ApiEndpoints
         secured.MapPost("/matchmaking/leave", LeaveQueue);
 
         api.MapGet("/leaderboard", Leaderboard);
+        api.MapGet("/factions", GetFactions); // populasi + "Butuh Pejuang" (publik: layar onboarding)
         secured.MapStats(api); // /me/stats (auth) + /players/{id}/stats (anon)
     }
 
@@ -98,15 +99,32 @@ public static class ApiEndpoints
         return Results.Ok(AuthPayload(player, tokens));
     }
 
+    // Pilih faksi (docs/35): 1 ORDE / 2 LEGION. Guest ikut memilih. TERKUNCI setelah dipilih (satu season).
     private static async Task<IResult> SetFaction(
-        FactionRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct)
+        FactionRequest req, ClaimsPrincipal user, AppDbContext db, FactionService factions,
+        IOptions<GameOptions> game, CancellationToken ct)
     {
-        if (req.Faction is < 0 or > 2) return Results.BadRequest(new { error = "faction must be 0 (none), 1 (ORDE) or 2 (LEGION)." });
+        if (req.Faction is < 1 or > 2)
+            return Results.BadRequest(new { error = "faction harus 1 (ORDE) atau 2 (LEGION)." });
         var p = await db.Players.FirstOrDefaultAsync(x => x.Id == PlayerId(user), ct);
         if (p is null) return Results.NotFound();
+
+        if (p.Faction == req.Faction)                       // idempoten
+            return Results.Ok(new { faction = p.Faction, locked = game.Value.FactionLocked });
+        if (p.Faction != 0 && game.Value.FactionLocked)      // sudah pilih → terkunci musim ini
+            return Results.Conflict(new { error = "Faksi terkunci musim ini — tak bisa berpindah.", faction = p.Faction });
+
         p.Faction = req.Faction;
         await db.SaveChangesAsync(ct);
-        return Results.Ok(new { faction = p.Faction });
+        factions.Invalidate();                               // populasi berubah → hitung ulang "Butuh Pejuang"
+        return Results.Ok(new { faction = p.Faction, locked = game.Value.FactionLocked });
+    }
+
+    // Status populasi faksi + faksi yang "Butuh Pejuang" (minoritas) + bonus. Server-authoritative.
+    private static async Task<IResult> GetFactions(FactionService factions, CancellationToken ct)
+    {
+        var s = await factions.GetAsync(ct);
+        return Results.Ok(new { orde = s.Orde, legion = s.Legion, needsWarriors = s.NeedsWarriors, bonusPercent = s.BonusPercent });
     }
 
     private static object Serialize(MatchmakingResult r) => r.Assignment is { } a

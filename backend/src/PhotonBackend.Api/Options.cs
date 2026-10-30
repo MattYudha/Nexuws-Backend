@@ -52,4 +52,10 @@ public sealed class GameOptions
     // NONAKTIF selama development: 0 = floor tak pernah aktif → tier tampil = tier rating asli.
     // Kode/kolom DB/tes dipertahankan. AKTIFKAN KEMBALI (3) SEBELUM RILIS PUBLIK.
     public int DemotionGraceMatches { get; set; } = 0;   // setelah naik tier: tier TAMPIL tak turun sekian match ranked
+
+    // --- Faksi ORDE/LEGION (docs/35) ---
+    public bool FactionLocked { get; set; } = true;          // true: faksi terkunci setelah dipilih (satu season)
+    public int FactionMinPopulation { get; set; } = 2;       // di bawah ini: tak ada "Butuh Pejuang" (hindari noise awal)
+    public double FactionImbalanceThreshold { get; set; } = 0.45; // share minoritas < ini → "Butuh Pejuang"
+    public int FactionJoinBonusPercent { get; set; } = 15;   // bonus XP utk pemain faksi minoritas (insentif seimbang)
 }

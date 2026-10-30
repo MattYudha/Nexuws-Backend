@@ -346,6 +346,40 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task SetFaction_LockedAfterChosen_RejectsSwitchAndInvalid()
+    {
+        var client = await RegisterAsync("faction_lock", "secret123");
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
+
+        // Pindah ke faksi lain → DITOLAK (terkunci satu season).
+        var switchRes = await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 });
+        Assert.Equal(HttpStatusCode.Conflict, switchRes.StatusCode);
+
+        // Pilih faksi yang SAMA → idempoten OK.
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
+
+        // 0 (batal) / di luar 1-2 → 400.
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 0 })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 3 })).StatusCode);
+
+        // Faksi tetap 2.
+        var me = await client.GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(2, me.GetProperty("faction").GetInt32());
+    }
+
+    [Fact]
+    public async Task Factions_ReportsPopulation()
+    {
+        var client = await RegisterAsync("faction_pop", "secret123");
+        await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 });
+
+        var f = await client.GetFromJsonAsync<JsonElement>("/api/factions");
+        Assert.True(f.GetProperty("orde").GetInt32() >= 1);
+        Assert.True(f.TryGetProperty("needsWarriors", out _));
+        Assert.True(f.TryGetProperty("bonusPercent", out _));
+    }
+
+    [Fact]
     public async Task MatchReport_AccumulatesKillsDeathsKdaAndXp()
     {
         var (alice, _) = await factory.LoginAsync("device-stat-alice", "StatAlice");

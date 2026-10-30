@@ -30,7 +30,7 @@ public sealed record ReportPlayer(
 /// Records Pong results. Clients run a deterministic simulation, so both honest players
 /// report identical scores. A result is only rated once both players agree.
 /// </summary>
-public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options, ILogger<MatchService> logger)
+public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options, ILogger<MatchService> logger, FactionService factions)
 {
     private static readonly SemaphoreSlim[] Gates = Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
 
@@ -253,6 +253,14 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
         l.Kills += loser.ReportedKills; l.Deaths += loser.ReportedDeaths; l.Assists += loser.ReportedAssists;
         w.AccountXp += 100; // menang
         l.AccountXp += 60;  // kalah (partisipasi, biar Account Rank tetap naik)
+
+        // Bonus "Butuh Pejuang" (docs/35): pemain faksi minoritas dapat tambahan XP (insentif seimbang).
+        var fs = await factions.GetAsync(ct);
+        if (fs.NeedsWarriors != 0 && fs.BonusPercent > 0)
+        {
+            if (w.Faction == fs.NeedsWarriors) w.AccountXp += 100 * fs.BonusPercent / 100;
+            if (l.Faction == fs.NeedsWarriors) l.AccountXp += 60 * fs.BonusPercent / 100;
+        }
 
         winner.IsWinner = true;
         winner.RatingDelta = w.Rating - wBefore;
