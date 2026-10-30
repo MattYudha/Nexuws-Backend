@@ -360,7 +360,7 @@
     border-left-width: 4px; border-left-color: var(--nxl-border-dim);
 }
 .nxl-ladder-row--win { border-left-color: var(--nxl-gold); }
-.nxl-ladder-row--loss { border-left-color: var(--nxl-red); }
+.nxl-ladder-row--loss { border-left-color: var(--nx-result-loss); } /* KALAH = abu-baja, bukan merah */
 .nxl-ladder-row--me {
     background-color: rgba(79, 209, 255, 0.2); border-left-color: var(--nxl-cyan);
     border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px;
@@ -475,14 +475,14 @@
 }
 .nxl-hist-card:hover { translate: 0 -6px; border-color: var(--nxl-cyan); }
 .nxl-hist-card--win  { border-color: var(--nxl-gold); }
-.nxl-hist-card--loss { border-color: var(--nxl-red); }
+.nxl-hist-card--loss { border-color: var(--nx-result-loss); }
 
 .nxl-hist-head { height: 44px; flex-direction: row; align-items: center; padding-left: 12px; padding-right: 12px; }
 .nxl-hist-head--win  { background-color: rgba(214, 170, 60, 0.32); }
-.nxl-hist-head--loss { background-color: rgba(150, 44, 44, 0.3); }
+.nxl-hist-head--loss { background-color: rgba(110, 122, 140, 0.28); } /* abu-baja tint, bukan merah */
 .nxl-hist-res { font-size: 22px; -unity-font-definition: var(--nxl-font-title); }
 .nxl-hist-res--win  { color: var(--nxl-gold); }
-.nxl-hist-res--loss { color: rgb(255, 120, 120); }
+.nxl-hist-res--loss { color: var(--nx-result-loss); }
 .nxl-hist-mode { font-size: 12px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); }
 
 .nxl-hist-art { height: 260px; overflow: hidden; }
@@ -502,8 +502,8 @@
 .nxl-hist-vs { font-size: 15px; color: var(--nxl-text-2); -unity-text-align: middle-center; margin-top: -2px; }
 .nxl-hist-rank { flex-direction: row; align-items: center; justify-content: center; margin-top: 8px; }
 .nxl-hist-rankpts { font-size: 15px; -unity-font-definition: var(--nxl-font-head); margin-left: 8px; }
-.nxl-pts-up { color: rgb(120, 220, 140); }
-.nxl-pts-dn { color: rgb(240, 110, 110); }
+.nxl-pts-up { color: var(--nx-gain); }                /* +Poin Ladder */
+.nxl-pts-dn { color: var(--nx-result-loss); }         /* −Poin Ladder = abu-baja, BUKAN merah */
 .nxl-hist-tierlbl { -unity-text-align: middle-center; font-size: 12px; margin-top: 2px; }
 .nxl-hist-tierup { color: var(--nxl-gold); -unity-font-definition: var(--nxl-font-title); }
 .nxl-hist-tierdn { color: var(--nxl-text-2); }
@@ -531,8 +531,8 @@
 .nxl-dt-score { font-size: 56px; -unity-font-definition: var(--nxl-font-title); color: var(--nxl-text); }
 .nxl-dt-pname { font-size: 20px; -unity-font-definition: var(--nxl-font-head); color: var(--nxl-text); }
 .nxl-dt-hero { height: 200px; -unity-background-scale-mode: scale-and-crop; border-radius: 10px; overflow: hidden; }
-.nxl-dt-accent-you { color: rgb(79, 209, 255); }
-.nxl-dt-accent-opp { color: rgb(240, 110, 110); }
+.nxl-dt-accent-you { color: var(--nx-team-ally); }   /* kamu = kawan (biru) */
+.nxl-dt-accent-opp { color: var(--nx-team-enemy); }  /* lawan = musuh (merah) */
 .nxl-dt-statrow { margin-top: 10px; }
 .nxl-dt-statline { flex-direction: row; align-items: center; }
 .nxl-dt-statval { width: 80px; font-size: 18px; -unity-font-definition: var(--nxl-font-title); color: var(--nxl-text); }
@@ -541,8 +541,8 @@
 .nxl-dt-statlbl { flex-grow: 1; font-size: 16px; color: var(--nxl-text-2); -unity-text-align: middle-center; }
 .nxl-dt-win { color: var(--nxl-gold); }
 .nxl-dt-barwrap { flex-direction: row; height: 8px; margin-top: 4px; border-radius: 4px; overflow: hidden; background-color: rgba(255,255,255,0.08); }
-.nxl-dt-bar-you { background-color: rgb(79, 209, 255); }
-.nxl-dt-bar-opp { background-color: rgb(240, 110, 110); }
+.nxl-dt-bar-you { background-color: var(--nx-team-ally); }
+.nxl-dt-bar-opp { background-color: var(--nx-team-enemy); }
 .nxl-dt-herorow { flex-direction: row; justify-content: space-between; }
 
 /* --- Onboarding faksi (docs/35) --- */

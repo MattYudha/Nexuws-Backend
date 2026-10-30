@@ -18,6 +18,33 @@
     --nxl-green:      rgb(60, 176, 67);
     --nxl-red:        rgb(214, 72, 68);
 
+    /* ========================================================
+       TOKEN SEMANTIK (T1 — kunci arti warna; docs/90).
+       SATU warna = SATU arti. Jangan pakai token faksi utk ini,
+       dan jangan pakai token ini utk faksi.
+       - team-ally  : tim kamu / kawan (BIRU, beda dari cyan=fokus)
+       - team-enemy : lawan / musuh (MERAH — satu-satunya arti merah)
+       - result-win : MENANG (alias emas rank)
+       - result-loss: KALAH + delta negatif (ABU-BAJA, JANGAN merah) + art desaturate
+       - gain       : perolehan positif (+Poin)
+       - online     : status online (Fase 2 presence)
+       - hero-neutral: placeholder hero netral (+ ikon kelas)
+       Pemakaian: detail/scoreboard (kamu=ally, lawan=enemy), riwayat
+       (KALAH=loss), Poin Ladder delta (+gain / −loss), titik online,
+       placeholder hero. BUKAN utk badge/emblem faksi (lihat .nxl-facbadge).
+       ======================================================== */
+    --nx-team-ally:      rgb(64, 150, 255);
+    --nx-team-ally-dim:  rgb(44, 104, 178);
+    --nx-team-enemy:     rgb(240, 110, 110);
+    --nx-team-enemy-dim: rgb(178, 72, 72);
+    --nx-result-win:     rgb(245, 197, 66);   /* = --nxl-gold (emas rank + MENANG) */
+    --nx-result-loss:    rgb(138, 152, 170);  /* abu-baja (steel), BUKAN merah */
+    --nx-result-loss-dim:rgb(92, 104, 122);
+    --nx-gain:           rgb(52, 211, 153);   /* hijau kebiruan (+Poin) */
+    --nx-gain-dim:       rgb(34, 150, 108);
+    --nx-online:         rgb(52, 211, 153);   /* status online (presence, Fase 2) */
+    --nx-hero-neutral:   rgb(120, 130, 150);  /* placeholder hero netral */
+
     /* Font (Google Fonts OFL) — judul/tombol = Chakra Petch, teks kecil = Exo 2 */
     --nxl-font-title: url("Fonts/ChakraPetch-Bold.ttf");
     --nxl-font-head:  url("Fonts/ChakraPetch-Bold.ttf");
