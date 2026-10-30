@@ -119,10 +119,22 @@ namespace Nexus
             return LoggedIn;
         }
 
-        public async Task SetFactionAsync(int faction)
+        /// <summary>Kunci faksi (1 ORDE / 2 LEGION). true = sukses; false = ditolak (terkunci) / backend mati.</summary>
+        public async Task<bool> SetFactionAsync(int faction)
         {
             var res = await PostAsync("/api/me/faction", JsonUtility.ToJson(new FactionReq { faction = faction }), auth: true);
-            if (res != null) Faction = faction;
+            if (res == null) return false;
+            Faction = faction;
+            return true;
+        }
+
+        [Serializable] public sealed class FactionStatusRes { public int orde; public int legion; public int needsWarriors; public int bonusPercent; }
+
+        /// <summary>Populasi faksi + faksi "Butuh Pejuang" (minoritas) + bonus. Publik (layar onboarding).</summary>
+        public async Task<FactionStatusRes> GetFactionsAsync()
+        {
+            var res = await GetAsync("/api/factions");
+            return res == null ? null : JsonUtility.FromJson<FactionStatusRes>(res);
         }
 
         // ---------- Matchmaking ----------

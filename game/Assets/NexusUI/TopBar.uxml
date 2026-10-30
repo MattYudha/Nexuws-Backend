@@ -6,7 +6,10 @@
         <ui:VisualElement class="nxl-profile" name="profile-card">
             <ui:Label text="N" name="avatar" class="nxl-ic nxl-avatar" style="width: 52px; height: 52px;" />
             <ui:VisualElement style="margin-left: 10px; justify-content: center;">
-                <ui:Label text="Runner" name="player-name" class="nxl-h2" style="font-size: 18px;" />
+                <ui:VisualElement class="nxl-row" style="align-items: center;">
+                    <ui:Label text="Runner" name="player-name" class="nxl-h2" style="font-size: 18px;" />
+                    <ui:Label text="" name="player-faction" class="nxl-facbadge nxl-facbadge--none" style="margin-left: 8px;" />
+                </ui:VisualElement>
                 <ui:VisualElement class="nxl-row" style="margin-top: 3px;">
                     <ui:Label text="Lv 1" name="player-level" class="nxl-dim" />
                     <ui:VisualElement class="nxl-xp-track" style="width: 140px; margin-left: 8px;">

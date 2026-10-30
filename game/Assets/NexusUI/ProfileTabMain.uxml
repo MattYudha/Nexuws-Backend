@@ -10,7 +10,7 @@
                 <ui:VisualElement class="nxl-row" style="margin-top: 6px; align-items: center;">
                     <ui:Label text="ID: -" name="prof-id" class="nxl-dim" />
                     <ui:Button text="Salin" name="prof-copy" class="nxl-btn nxl-btn--blue nxl-btn--sm" style="width: 80px; height: 30px; margin-left: 10px;" />
-                    <ui:Label text="" name="prof-faction" class="nxl-badge-faction nxl-hidden" />
+                    <ui:Label text="" name="prof-faction" class="nxl-facbadge nxl-facbadge--none" style="margin-left: 10px;" />
                 </ui:VisualElement>
                 <ui:VisualElement class="nxl-row" style="margin-top: 12px; align-items: center;">
                     <ui:Label text="Lv 1" name="prof-level" class="nxl-accent" />

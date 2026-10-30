@@ -55,6 +55,21 @@ namespace Nexus
         public bool IsProfile => _screen == Page.Profile;
         public void UiProfileBack() { _screen = Page.Menu; }
 
+        // --- Faksi: onboarding UITK sebelum lobby (docs/35). Guest ikut memilih; terkunci satu season. ---
+        public int Faction => _backend?.Faction ?? 0;
+        public bool NeedsFaction => IsMenu && _backend != null && _backend.LoggedIn && _backend.Faction == 0;
+        public bool FactionBusy { get; private set; }
+        public string FactionMsg { get; private set; } = "";
+        public async void UiSetFaction(int f)
+        {
+            if (FactionBusy || _backend == null || (f != 1 && f != 2)) return;
+            FactionBusy = true; FactionMsg = "";
+            bool ok = await _backend.SetFactionAsync(f);
+            FactionBusy = false;
+            // sukses → _backend.Faction != 0 → NeedsFaction=false → NexusLobbyController tampilkan lobby.
+            if (!ok) FactionMsg = "Gagal mengunci faksi (terkunci / backend mati?). Coba lagi.";
+        }
+
         // --- Auth (login/register) ---
         private string _fUser = "", _fPass = "", _fName = "";
         private bool _authRegister, _authBusy;

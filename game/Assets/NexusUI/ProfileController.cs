@@ -125,8 +125,7 @@ namespace Nexus
             SetText("prof-level", "Lv " + b.AccountLevel);
             SetText("prof-xp", "XP " + b.AccountXp);
 
-            var fac = _root.Q<Label>("prof-faction");
-            if (fac != null) { string f = b.Faction == 1 ? "ORDE" : b.Faction == 2 ? "LEGION" : ""; fac.text = f; ShowEl(fac, f.Length > 0); }
+            NexusLobbyController.SetFactionBadge(_root.Q<Label>("prof-faction"), b.Faction); // badge faksi konsisten (docs/35)
 
             // Tier SELALU dari backend (TierFor rating) — tanpa placement.
             string tier = !string.IsNullOrEmpty(b.RankTier) ? b.RankTier : NexusRankConfig.TierForRating(b.Rating);

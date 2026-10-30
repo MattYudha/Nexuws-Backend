@@ -218,5 +218,29 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="faction-screen" class="nxl-authscreen nxl-hidden">
+            <ui:Label text="PILIH FAKSIMU" class="nxl-logo" style="font-size: 46px;" />
+            <ui:Label text="Loyalitasmu terkunci selama satu musim. Pilih dengan bijak." class="nxl-chronicles" style="font-size: 14px; margin-bottom: 26px;" />
+
+            <ui:VisualElement class="nxl-row" style="justify-content: center; align-items: stretch;">
+                <ui:VisualElement name="fac-orde" class="nxl-faccard nxl-faccard--orde">
+                    <ui:Label text="BUTUH PEJUANG" name="fac-orde-need" class="nxl-fac-need nxl-hidden" />
+                    <ui:VisualElement name="fac-orde-crest" class="nxl-fac-crest nxl-fac-crest--orde" />
+                    <ui:Label text="ORDE" class="nxl-fac-name" />
+                    <ui:Label text="Tatanan &amp; disiplin. Garda penjaga keseimbangan Nexus." class="nxl-fac-desc" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="fac-legion" class="nxl-faccard nxl-faccard--legion">
+                    <ui:Label text="BUTUH PEJUANG" name="fac-legion-need" class="nxl-fac-need nxl-hidden" />
+                    <ui:VisualElement name="fac-legion-crest" class="nxl-fac-crest nxl-fac-crest--legion" />
+                    <ui:Label text="LEGION" class="nxl-fac-name" />
+                    <ui:Label text="Kehendak &amp; kekuatan. Pendobrak tatanan demi perubahan." class="nxl-fac-desc" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:Label text="" name="fac-msg" class="nxl-dim" style="margin-top: 14px; min-height: 20px; white-space: normal; -unity-text-align: middle-center; color: rgb(242, 140, 30);" />
+            <ui:Button text="KUNCI FAKSI" name="fac-confirm" class="nxl-btn nxl-btn--orange nxl-btn--hero" style="width: 360px; height: 56px; margin-top: 4px;" />
+        </ui:VisualElement>
+
     </ui:VisualElement>
 </ui:UXML>

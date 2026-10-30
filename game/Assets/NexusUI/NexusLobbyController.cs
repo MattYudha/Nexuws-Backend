@@ -36,6 +36,15 @@ namespace Nexus
         private Button _authSubmit, _authEye;
         private bool _registerMode, _showPass;
 
+        // Faksi (onboarding UITK — docs/35)
+        private VisualElement _factionScreen, _facOrde, _facLegion;
+        private Label _facOrdeNeed, _facLegionNeed, _facMsg;
+        private Button _facConfirm;
+        private int _facSelected;          // 0 belum pilih, 1 ORDE, 2 LEGION
+        private int _facNeeds = -1;        // -1 belum di-fetch; 0 seimbang; 1/2 butuh pejuang
+        private int _facBonus;
+        private bool _facFetching;
+
         private GameObject _quantumStats; // overlay debug Quantum — dev-only, di match saja
 
         // Ruang Tim (Party Lobby)
@@ -181,6 +190,18 @@ namespace Nexus
             if (_authUser != null) _authUser.RegisterCallback<KeyDownEvent>(e => { if ((e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) && _authPass != null) _authPass.Focus(); });
             ApplyAuthMode();
 
+            // Faksi onboarding
+            _factionScreen = _root.Q<VisualElement>("faction-screen");
+            _facOrde = _root.Q<VisualElement>("fac-orde");
+            _facLegion = _root.Q<VisualElement>("fac-legion");
+            _facOrdeNeed = _root.Q<Label>("fac-orde-need");
+            _facLegionNeed = _root.Q<Label>("fac-legion-need");
+            _facMsg = _root.Q<Label>("fac-msg");
+            _facConfirm = _root.Q<Button>("fac-confirm");
+            if (_facOrde != null) _facOrde.RegisterCallback<ClickEvent>(_ => SelectFaction(1));
+            if (_facLegion != null) _facLegion.RegisterCallback<ClickEvent>(_ => SelectFaction(2));
+            Click("fac-confirm", () => { if (game != null && _facSelected != 0) game.UiSetFaction(_facSelected); });
+
             ShowEl(_searchOverlay, false); ShowEl(_discBanner, false); ShowEl(_settingsOverlay, false);
             ApplyMode(); RefreshAccount();
             _bound = true;
@@ -216,6 +237,17 @@ namespace Nexus
                 }
                 return;
             }
+
+            // Onboarding faksi: login sukses tapi belum punya faksi → pilih dulu sebelum masuk lobby (docs/35).
+            if (game.IsMenu && game.NeedsFaction)
+            {
+                ShowEl(_factionScreen, true);
+                ShowEl(_lobbyBody, false);
+                ShowEl(_partyScreen, false);
+                UpdateFactionScreen();
+                return;
+            }
+            ShowEl(_factionScreen, false);
 
             // Ruang Tim: aktif saat party terbuka — di menu ATAU sedang mencari lawan.
             bool partyActive = _inParty && (game.IsMenu || game.IsConnecting);
@@ -267,7 +299,41 @@ namespace Nexus
                 _lobbyBody.schedule.Execute(() => { if (_lobbyBody != null) _lobbyBody.style.opacity = 1f; }).StartingIn(24);
             }
             else if (st != 1) ShowEl(_lobbyBody, false);
+            if (st != 1) { ShowEl(_factionScreen, false); _facSelected = 0; _facNeeds = -1; } // reset onboarding di luar lobby
             if (st == 0) _wasConnecting = false;
+        }
+
+        // --- Onboarding faksi (docs/35) ---
+        private void SelectFaction(int f)
+        {
+            _facSelected = f;
+            if (_facOrde != null) _facOrde.EnableInClassList("nxl-faccard--sel", f == 1);
+            if (_facLegion != null) _facLegion.EnableInClassList("nxl-faccard--sel", f == 2);
+        }
+
+        private void UpdateFactionScreen()
+        {
+            if (_facNeeds < 0 && !_facFetching) FetchFactionStatus();     // sekali: "Butuh Pejuang"
+            if (_facConfirm != null)
+            {
+                bool busy = game != null && game.FactionBusy;
+                _facConfirm.SetEnabled(_facSelected != 0 && !busy);
+                _facConfirm.text = busy ? "MENGUNCI..." : "KUNCI FAKSI";
+            }
+            if (_facMsg != null && game != null) _facMsg.text = game.FactionMsg;
+        }
+
+        private async void FetchFactionStatus()
+        {
+            if (game == null || game.Backend == null) return;
+            _facFetching = true;
+            var s = await game.Backend.GetFactionsAsync();
+            _facFetching = false;
+            if (s == null) { _facNeeds = 0; return; }
+            _facNeeds = s.needsWarriors; _facBonus = s.bonusPercent;
+            string tag = _facBonus > 0 ? $"BUTUH PEJUANG +{_facBonus}%" : "BUTUH PEJUANG";
+            if (_facOrdeNeed != null) { _facOrdeNeed.text = tag; ShowEl(_facOrdeNeed, _facNeeds == 1); }
+            if (_facLegionNeed != null) { _facLegionNeed.text = tag; ShowEl(_facLegionNeed, _facNeeds == 2); }
         }
 
         private void ToggleShowPass()
@@ -758,6 +824,7 @@ namespace Nexus
             bool on = b != null && b.LoggedIn;
             string name = PlayerName(b);
             if (_name != null) _name.text = name;
+            SetFactionBadge(_root.Q<Label>("player-faction"), on ? b.Faction : 0); // badge faksi (docs/35)
             SetText("avatar", Initial(name)); // inisial dari display name
             if (_level != null) _level.text = on ? "Lv " + b.AccountLevel : "Lv -";
             string tier = on ? (!string.IsNullOrEmpty(b.RankTier) ? b.RankTier : NexusRankConfig.TierForRating(b.Rating)) : "UNRANKED";
@@ -768,6 +835,16 @@ namespace Nexus
             var rf = _root.Q("rank-mini-fill"); if (rf != null) rf.style.width = Length.Percent(rp >= 0f ? rp * 100f : 0f);
             SetEmblem(_root.Q("rank-mini-emblem"), on ? tier : "");
             // Currency (Gold/Ticket/Diamond) tetap 0 — belum ada backend ekonomi (tanpa dummy).
+        }
+
+        // Badge faksi konsisten (docs/35): ORDE (biru) / LEGION (merah) / sembunyi bila belum pilih.
+        public static void SetFactionBadge(Label el, int faction)
+        {
+            if (el == null) return;
+            el.EnableInClassList("nxl-facbadge--orde", faction == 1);
+            el.EnableInClassList("nxl-facbadge--legion", faction == 2);
+            el.EnableInClassList("nxl-facbadge--none", faction != 1 && faction != 2);
+            el.text = faction == 1 ? "ORDE" : faction == 2 ? "LEGION" : "";
         }
 
         private void SendChat()
