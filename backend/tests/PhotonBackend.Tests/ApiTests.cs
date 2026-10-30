@@ -381,8 +381,15 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         // Dengan header admin → reset faksi ke 0 (lewati kunci).
         var adminC = factory.CreateClient();
         adminC.DefaultRequestHeaders.Add("X-Admin-Secret", ApiFactory.AdminSecret);
-        var rOk = await adminC.PostAsJsonAsync("/api/admin/faction", new { playerId = login.PlayerId, faction = 0 });
+        var rOk = await adminC.PostAsJsonAsync("/api/admin/faction", new { playerId = login.PlayerId, faction = 0, adminSource = "unit-test" });
         Assert.Equal(HttpStatusCode.OK, rOk.StatusCode);
+
+        // Setiap perubahan admin tercatat di audit (lama→baru, sumber). Reset ORDE(1) → none(0).
+        var audits = await factory.FactionAuditsAsync(login.PlayerId);
+        var reset = Assert.Single(audits);
+        Assert.Equal(1, reset.OldFaction);
+        Assert.Equal(0, reset.NewFaction);
+        Assert.Contains("unit-test", reset.AdminSource);
 
         // Pemain kini bisa memilih lagi (kunci lepas).
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);

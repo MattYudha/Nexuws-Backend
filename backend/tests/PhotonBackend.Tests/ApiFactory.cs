@@ -53,4 +53,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         var p = await db.Players.FindAsync(playerId);
         return p?.IsTestAccount ?? false;
     }
+
+    /// <summary>Jejak audit perubahan faksi oleh admin untuk pemain ini (urut waktu).</summary>
+    public async Task<List<FactionAdminAudit>> FactionAuditsAsync(Guid playerId)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.FactionAdminAudits
+            .Where(a => a.PlayerId == playerId)
+            .OrderBy(a => a.At)
+            .ToListAsync();
+    }
 }

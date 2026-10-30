@@ -27,6 +27,20 @@ public sealed class Player
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>
+/// Jejak audit setiap perubahan faksi lewat endpoint admin (docs/35). Siapa (sumber), pemain, lama→baru, kapan.
+/// UTANG RILIS: ganti X-Admin-Secret dengan admin BERBASIS ROLE + audit log resmi (docs/90, docs/91) sebelum publik.
+/// </summary>
+public sealed class FactionAdminAudit
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid PlayerId { get; set; }
+    public int OldFaction { get; set; }              // 0 none, 1 ORDE, 2 LEGION
+    public int NewFaction { get; set; }
+    public string AdminSource { get; set; } = "";    // sumber dev (label opsional + IP); peran/identitas resmi menyusul
+    public DateTime At { get; set; } = DateTime.UtcNow;
+}
+
 public static class MatchStatus
 {
     public const string Created = "Created";

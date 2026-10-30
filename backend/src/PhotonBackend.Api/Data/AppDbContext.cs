@@ -8,6 +8,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<MatchPlayer> MatchPlayers => Set<MatchPlayer>();
     public DbSet<MatchPlayerHero> MatchPlayerHeroes => Set<MatchPlayerHero>();
+    public DbSet<FactionAdminAudit> FactionAdminAudits => Set<FactionAdminAudit>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -45,6 +46,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany(mp => mp.Heroes)
                 .HasForeignKey(x => new { x.MatchId, x.PlayerId })
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<FactionAdminAudit>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.PlayerId);
+            e.HasIndex(x => x.At);
+            e.Property(x => x.AdminSource).HasMaxLength(160);
         });
     }
 }

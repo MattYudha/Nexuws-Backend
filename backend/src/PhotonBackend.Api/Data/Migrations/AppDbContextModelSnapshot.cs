@@ -22,6 +22,38 @@ namespace PhotonBackend.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("PhotonBackend.Api.Data.FactionAdminAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminSource")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("NewFaction")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OldFaction")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("PlayerId");
+
+                    b.ToTable("FactionAdminAudits");
+                });
+
             modelBuilder.Entity("PhotonBackend.Api.Data.Match", b =>
                 {
                     b.Property<Guid>("Id")

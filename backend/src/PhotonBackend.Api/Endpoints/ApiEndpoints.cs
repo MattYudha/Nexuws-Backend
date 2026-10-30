@@ -13,7 +13,7 @@ public sealed record GuestLoginRequest(string? DeviceId, string? DisplayName, bo
 public sealed record RegisterRequest(string? Username, string? Password, string? DisplayName, bool? IsTest = null);
 public sealed record LoginRequest(string? Username, string? Password);
 public sealed record FactionRequest(int Faction);
-public sealed record AdminFactionRequest(Guid PlayerId, int Faction);
+public sealed record AdminFactionRequest(Guid PlayerId, int Faction, string? AdminSource = null);
 public sealed record ReportResultRequest(string? GameId, int Slot, int ScoreLeft, int ScoreRight, int Kills = 0, int Deaths = 0, int Assists = 0, int HeroId = 0, string? Mode = null, int DurationSec = 0, int PartySize = 1, List<ReportPlayer>? Players = null);
 public sealed record JoinQueueRequest(string? Region, string? BuildVersion = null, string? SimVersion = null);
 
@@ -144,15 +144,32 @@ public static class ApiEndpoints
     }
 
     // Admin/dev: set/reset faksi pemain (LEWATI kunci season). faction 0 = reset (pemain diminta pilih lagi).
-    private static async Task<IResult> AdminSetFaction(AdminFactionRequest req, AppDbContext db, FactionService factions, CancellationToken ct)
+    // Setiap perubahan WAJIB tercatat (FactionAdminAudit: sumber, lama→baru, waktu). UTANG RILIS: admin berbasis role (docs/90/91).
+    private static async Task<IResult> AdminSetFaction(
+        AdminFactionRequest req, HttpContext http, AppDbContext db, FactionService factions, ILoggerFactory loggers, CancellationToken ct)
     {
         if (req.Faction is < 0 or > 2) return Results.BadRequest(new { error = "faction 0 (reset), 1 (ORDE), atau 2 (LEGION)." });
         var p = await db.Players.FirstOrDefaultAsync(x => x.Id == req.PlayerId, ct);
         if (p is null) return Results.NotFound();
+
+        var old = p.Faction;
+        var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var label = string.IsNullOrWhiteSpace(req.AdminSource) ? "shared-secret" : req.AdminSource!.Trim();
+        var source = $"{label}@{ip}";
+        if (source.Length > 160) source = source[..160];
+
         p.Faction = req.Faction;
+        // TODO(Tugas 3): bila field pindah-gratis (FactionSwitchUsed) sudah ada, reset juga di sini agar pemain dapat jatah pindah lagi.
+        db.FactionAdminAudits.Add(new FactionAdminAudit
+        {
+            PlayerId = p.Id, OldFaction = old, NewFaction = req.Faction, AdminSource = source,
+        });
         await db.SaveChangesAsync(ct);
         factions.Invalidate();
-        return Results.Ok(new { playerId = p.Id, faction = p.Faction });
+
+        loggers.CreateLogger("AdminFaction").LogWarning(
+            "Admin faction change: player {PlayerId} {Old}->{New} by {Source}", p.Id, old, req.Faction, source);
+        return Results.Ok(new { playerId = p.Id, faction = p.Faction, previous = old });
     }
 
     private static object Serialize(MatchmakingResult r) => r.Assignment is { } a
