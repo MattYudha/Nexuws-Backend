@@ -26,16 +26,18 @@ namespace Quantum
                 p->Pos += p->Vel * f.DeltaTime;
 
                 bool hit = false;
+                var atk = NxDamage.FindByPlayer(f, p->Owner); // null bila bot → statistik tak diatribusi
                 foreach (var (vicE, vic) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
                 {
                     if (vic->Team == p->Team) continue;
                     FPVector3 dp = vic->Pos - p->Pos; dp.Y = 0;
                     if (dp.SqrMagnitude > HitR * HitR) continue;
-                    if (NxDamage.ApplyHit(f, p->Team, p->Owner, p->Pos, vicE, vic, p->Damage, Knock, Launch, ProjStun))
+                    var kind = NxDamage.ApplyHit(f, atk, p->Team, p->Owner, p->Pos, vicE, vic, p->Damage, Knock, Launch, ProjStun, p->IsSkill != 0);
+                    if (kind == NxDamage.HitKind.Blocked || kind == NxDamage.HitKind.Hit || kind == NxDamage.HitKind.Ko)
                     {
                         hit = true; break;
                     }
-                    // kalau meleset (korban i-frame), proyektil tembus — lanjut cek lawan lain.
+                    // Miss (i-frame) / Dodged (dash): proyektil tembus — lanjut cek lawan lain.
                 }
 
                 if (p->Life > 0) p->Life--;

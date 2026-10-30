@@ -30,6 +30,22 @@ namespace Nexus
             rating < 1800 ? "Gladiator" :
             rating < 2000 ? "Conqueror" : "Nexus Legend";
 
+        /// <summary>Poin Ladder 0–100 dalam tier (mirror backend Ranks.LadderPoints). Untuk standing saat ini.</summary>
+        public static int LadderPoints(int rating)
+        {
+            int lo = rating < 1200 ? 1000 : rating < 1400 ? 1200 : rating < 1600 ? 1400 : rating < 1800 ? 1600 : rating < 2000 ? 1800 : 2000;
+            int hi = lo + (lo >= 2000 ? 400 : 200);
+            return Mathf.Clamp(Mathf.RoundToInt(100f * (rating - lo) / (hi - lo)), 0, 100);
+        }
+
+        /// <summary>Indeks tier 0 Rookie … 5 Nexus Legend (mirror backend Ranks.TierOrder).</summary>
+        public static int TierOrder(int rating) =>
+            rating < 1200 ? 0 : rating < 1400 ? 1 : rating < 1600 ? 2 : rating < 1800 ? 3 : rating < 2000 ? 4 : 5;
+
+        /// <summary>Poin Ladder GLOBAL monotonik (tier*100 + poin dalam tier) → DELTA selalu searah rating.
+        /// WAJIB dipakai untuk perubahan "+X/-X Poin" (bukan LadderPoints per-tier yang reset di batas tier).</summary>
+        public static int LadderPointsGlobal(int rating) => TierOrder(rating) * 100 + LadderPoints(rating);
+
         /// <summary>0..1 posisi rating dalam band tier (match substring). -1 bila tier tak dikenal.</summary>
         public static float Progress(string tier, int rating)
         {

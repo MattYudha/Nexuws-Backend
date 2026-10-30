@@ -71,6 +71,8 @@ namespace Nexus
         private NexusBackend.LeaderRow[] _board;
         private bool _boardOpen;
         private NexusBackend.MatchRow[] _history;
+        private string _matchMode = "";   // "ranked" | "battle" — dikirim saat report
+        private float _matchStart;          // realtime saat match mulai → durasi
 
         private void ToggleLag()
         {
@@ -90,7 +92,13 @@ namespace Nexus
             return runner.Game.Frames.Predicted;
         }
 
-        private void Awake() => Application.targetFrameRate = 60;
+        private void Awake()
+        {
+            Application.targetFrameRate = 60;
+            // WAJIB: tetap jalan saat window tak fokus. Tanpa ini, instance ke-2 di 1 PC di-throttle →
+            // Photon tak di-service → "ClientServiceInactivity" disconnect → pemain drop dari sesi → bot & Disputed.
+            Application.runInBackground = true;
+        }
 
         private async void QuickMatch() => await ConnectSafe(null);
         private async void CreateRoom() => await ConnectSafe("nx-" + UnityEngine.Random.Range(1000, 9999));
@@ -99,18 +107,26 @@ namespace Nexus
         private async void RankedMatch()
         {
             if (_backend == null || !_backend.LoggedIn) { _screen = Page.Auth; return; } // harus login dulu
-            _screen = Page.Connecting; LastError = ""; OpponentFound = false;
+            _screen = Page.Connecting; LastError = ""; OpponentFound = false; _matchMode = "ranked";
             try
             {
                 await _backend.LeaveQueueAsync(); // retry bersih: hapus assignment/antrean lama dulu
                 _status = "Mencari lawan (MMR)...";
-                var mm = await _backend.JoinQueueAsync("asia");
-                for (int i = 0; i < 60 && (mm == null || mm.state != "Matched"); i++)
+                var mm = await _backend.JoinQueueAsync("asia", Application.version);
+                if (mm != null && mm.state == "VersionMismatch")
+                {
+                    _status = string.IsNullOrEmpty(mm.message) ? "Versi game berbeda, perbarui game." : mm.message;
+                    LastError = _status;
+                    _screen = Page.Menu;
+                    return;
+                }
+                for (int i = 0; i < 90 && (mm == null || mm.state != "Matched"); i++)
                 {
                     await Task.Delay(1000);
                     if (_screen != Page.Connecting) { await _backend.LeaveQueueAsync(); return; } // user tekan Cancel
                     mm = await _backend.QueueStatusAsync();
-                    _status = $"Mencari lawan (MMR)... {i + 1}";
+                    // Pencarian lama → beri tahu rentang sedang diperluas (biar tidak terasa menggantung).
+                    _status = i < 30 ? $"Mencari lawan (MMR)... {i + 1}" : $"Memperluas pencarian... {i + 1}";
                 }
                 if (mm == null || mm.state != "Matched" || string.IsNullOrEmpty(mm.gameId))
                 {
@@ -287,10 +303,45 @@ namespace Nexus
             _reported = true;
             var locals2 = runner.Game.GetLocalPlayers();
             PlayerRef me = locals2.Count > 0 ? locals2[0] : default;
-            int myKills = 0, myDeaths = 0;
+
+            // Hasil dasar DULU (langsung dari frame) — ini yang WAJIB tercatat di history.
+            int myKills = 0, myDeaths = 0, myHero = 0;
             foreach (var (e, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())
-                if (c->Player == me) { myKills = c->Kills; myDeaths = c->Kos; break; }
-            _ = ReportAsync(frame.Global->ScoreA, frame.Global->ScoreB, myKills, myDeaths);
+                if (c->Player == me) { myKills = c->Kills; myDeaths = c->Kos; myHero = c->H1Ticks > c->H0Ticks ? 1 : 0; break; }
+
+            // Statistik detail OPSIONAL — kalau gagal dibangun, JANGAN batalkan laporan (match tetap masuk history).
+            NexusBackend.PlayerStatRow[] payload = null;
+            try { payload = BuildStatsPayload(frame); }
+            catch (Exception ex) { Debug.LogWarning("Payload statistik gagal, lapor hasil dasar saja: " + ex.Message); }
+
+            _ = ReportAsync(frame.Global->ScoreA, frame.Global->ScoreB, myKills, myDeaths, myHero, payload);
+        }
+
+        // Kumpulkan statistik akumulator SEMUA pemain manusia dari frame deterministik.
+        // Dua klien menghasilkan array identik → backend bandingkan (docs/32 KEAMANAN MINIMUM).
+        private static unsafe NexusBackend.PlayerStatRow[] BuildStatsPayload(Frame frame)
+        {
+            var list = new System.Collections.Generic.List<NexusBackend.PlayerStatRow>();
+            foreach (var (e, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())
+            {
+                if (c->Player == PlayerRef.None) continue; // hanya manusia
+                var heroes = new System.Collections.Generic.List<NexusBackend.HeroStatRow>();
+                if (c->H0Ticks > 0) heroes.Add(new NexusBackend.HeroStatRow { heroId = 0, playTicks = c->H0Ticks, kills = c->H0Kills, damage = FPMath.RoundToInt(c->H0Dmg) });
+                if (c->H1Ticks > 0) heroes.Add(new NexusBackend.HeroStatRow { heroId = 1, playTicks = c->H1Ticks, kills = c->H1Kills, damage = FPMath.RoundToInt(c->H1Dmg) });
+                list.Add(new NexusBackend.PlayerStatRow
+                {
+                    slot = ((int)c->Player) & 1,
+                    kills = c->Kills, botKills = c->BotKills, deaths = c->Kos, heroId = c->H1Ticks > c->H0Ticks ? 1 : 0,
+                    damageDealt = FPMath.RoundToInt(c->DamageDealt), damageTaken = FPMath.RoundToInt(c->DamageTaken),
+                    skillsUsed = c->SkillsUsed, skillsHit = c->SkillsHit,
+                    hitsBlocked = c->HitsBlocked, dodges = c->Dodges, guardCrushes = c->GuardCrushes,
+                    criticals = c->Criticals, gearDrops = c->GearDrops,
+                    firstBlood = c->FirstBlood != 0, maxKillStreak = c->MaxStreak, maxDeficit = c->MaxDeficit,
+                    heroSwitches = c->HeroSwitches, heroes = heroes.ToArray(),
+                });
+            }
+            list.Sort((a, b) => a.slot.CompareTo(b.slot)); // identik antar-klien
+            return list.ToArray();
         }
 
         // Device id UNIK per-launch: editor, tiap .exe, bahkan 2 .exe di 1 mesin = akun BERBEDA → matchmaking
@@ -299,14 +350,15 @@ namespace Nexus
         private static readonly string _deviceId = "nx-" + System.Guid.NewGuid().ToString("N");
         private static string DeviceId() => _deviceId;
 
-        private async Task ReportAsync(int scoreLeft, int scoreRight, int kills, int deaths)
+        private async Task ReportAsync(int scoreLeft, int scoreRight, int kills, int deaths, int heroId, NexusBackend.PlayerStatRow[] players)
         {
             // Normalisasi ke hasil legal (pemenang = KoTarget, kalah < KoTarget). Deterministik → kedua klien sama.
             int t = NxCombatSystem.KoTarget;
             if (scoreLeft >= scoreRight) { scoreLeft = t; scoreRight = Mathf.Min(scoreRight, t - 1); }
             else { scoreRight = t; scoreLeft = Mathf.Min(scoreLeft, t - 1); }
 
-            var status = await _backend.ReportResultAsync(_gameId, _mySlot, scoreLeft, scoreRight, kills, deaths, 0);
+            int dur = Mathf.Max(0, (int)(Time.realtimeSinceStartup - _matchStart));
+            var status = await _backend.ReportResultAsync(_gameId, _mySlot, scoreLeft, scoreRight, kills, deaths, 0, heroId, _matchMode, dur, 1, players);
             await _backend.RefreshMeAsync();
             await _backend.LeaveQueueAsync(); // bersihkan assignment agar bisa rematch
             string winner = scoreLeft > scoreRight ? "TIM BIRU" : "TIM ORANYE";
@@ -315,7 +367,7 @@ namespace Nexus
 
         private async Task ConnectSafe(string roomName)
         {
-            _screen = Page.Connecting; LastError = "";
+            _screen = Page.Connecting; LastError = ""; _matchMode = "battle";
             _status = roomName == null ? "Mencari lawan..." : "Membuat room " + roomName;
             try { await StartSessionAsync(roomName); }
             catch (Exception e)
@@ -331,6 +383,8 @@ namespace Nexus
         private async Task StartSessionAsync(string roomName)
         {
             NexusInput.PendingPick = 0; // layar Pilih Hero fresh tiap match baru
+            // Jumlah petarung = parameter sesi Quantum (tersinkron pasti). RANKED 2 → 1v1 tanpa bot; BATTLE 10 → 5v5 isi bot.
+            int playerCount = _matchMode == "ranked" ? 2 : 10;
             var connectionArguments = new MatchmakingArguments
             {
                 PhotonSettings = new AppSettings(PhotonServerSettings.Global.AppSettings),
@@ -349,7 +403,7 @@ namespace Nexus
                 RuntimeConfig = RuntimeConfig ?? new RuntimeConfig(),
                 SessionConfig = QuantumDeterministicSessionConfigAsset.DefaultConfig,
                 GameMode = DeterministicGameMode.Multiplayer,
-                PlayerCount = 2,
+                PlayerCount = playerCount, // RANKED 2 (1v1) / BATTLE 10 (5v5 isi bot)
                 StartGameTimeoutInSeconds = 10,
                 Communicator = new QuantumNetworkCommunicator(_client),
             };
@@ -358,6 +412,7 @@ namespace Nexus
             runner.Game.AddPlayer(new RuntimePlayer { PlayerNickname = "Runner" + UnityEngine.Random.Range(10, 99) });
 
             _status = "";
+            _matchStart = Time.realtimeSinceStartup;
             _screen = Page.InMatch;
         }
 
@@ -381,15 +436,15 @@ namespace Nexus
                 const float bw = 460, bh = 400;
                 GUILayout.BeginArea(new Rect(w / 2 - bw / 2, 20, bw, bh), GUI.skin.box);
                 var bt = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-                GUILayout.Label("LEADERBOARD — Top Rating (Glicko-2)", bt);
+                GUILayout.Label("LEADERBOARD — Ranked (Poin Ladder)", bt);
                 GUILayout.Space(6);
                 if (_board == null) GUILayout.Label("Memuat...");
-                else if (_board.Length == 0) GUILayout.Label("(belum ada pemain)");
+                else if (_board.Length == 0) GUILayout.Label("(belum ada yang selesai placement)");
                 else
                     for (int i = 0; i < _board.Length; i++)
                     {
                         var r = _board[i];
-                        GUILayout.Label($"{i + 1,2}.  {r.displayName}    {r.rating}   (W{r.wins}/L{r.losses})");
+                        GUILayout.Label($"#{r.rank,2}  {r.displayName}   {r.tier} · {r.ladderPoints}   (W{r.wins}/L{r.losses} · {r.winRate:0.#}%)");
                     }
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("Tutup", GUILayout.Height(30))) _boardOpen = false;

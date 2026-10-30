@@ -26,10 +26,13 @@
 
                 <!-- Kontekstual: rank (mode Ranked) ATAU deskripsi mode -->
                 <ui:VisualElement class="nxl-rankmini nxl-row nxl-center" name="rank-mini" style="margin-top: 6px;">
-                    <ui:VisualElement class="nxl-rank-emblem-sm"><ui:Label text="?" /></ui:VisualElement>
+                    <ui:VisualElement name="rank-mini-emblem" class="nxl-emblem" />
                     <ui:VisualElement style="margin-left: 10px;">
                         <ui:Label text="UNRANKED" name="rank-tier" class="nxl-h2" style="font-size: 18px;" />
-                        <ui:Label text="Selesaikan 5 placement" name="rank-sub" class="nxl-dim" />
+                        <ui:Label text="" name="rank-sub" class="nxl-dim" />
+                        <ui:VisualElement class="nxl-rp-track" name="rank-mini-track" style="width: 180px; margin-top: 4px;">
+                            <ui:VisualElement class="nxl-rp-fill" name="rank-mini-fill" style="width: 0%;" />
+                        </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
                 <ui:Label text="Casual · tanpa peringkat" name="mode-desc" class="nxl-dim nxl-hidden" style="margin-top: 6px; -unity-text-align: middle-center;" />

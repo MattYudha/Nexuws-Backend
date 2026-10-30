@@ -89,9 +89,14 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(1, meA.GetProperty("wins").GetInt32());
         Assert.Equal(1, meB.GetProperty("losses").GetInt32());
 
+        // Akun uji (deviceId non-"nx-") + belum selesai placement (<5 ranked) → TIDAK tampil di leaderboard.
         var board = await alice.GetFromJsonAsync<JsonElement>("/api/leaderboard?limit=50");
         var names = board.EnumerateArray().Select(x => x.GetProperty("displayName").GetString()).ToList();
-        Assert.True(names.IndexOf("MatchAlice") < names.IndexOf("MatchBob"));
+        Assert.DoesNotContain("MatchAlice", names);
+        Assert.DoesNotContain("MatchBob", names);
+        // /api/me/rank: belum placement → placed=false + sisa match.
+        var rank = await alice.GetFromJsonAsync<JsonElement>("/api/me/rank");
+        Assert.False(rank.GetProperty("placed").GetBoolean());
 
         // Reporting again after finalization is rejected, so ratings cannot be farmed.
         var again = await alice.PostAsJsonAsync("/api/matches/result", new { gameId = "room-agree", slot = 0, scoreLeft = 5, scoreRight = 2 });
@@ -110,6 +115,108 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         await alice.PostAsJsonAsync("/api/matches/result", new { gameId = "room-dispute", slot = 0, scoreLeft = 5, scoreRight = 0 });
         var res = await bob.PostAsJsonAsync("/api/matches/result", new { gameId = "room-dispute", slot = 1, scoreLeft = 0, scoreRight = 5 });
+        Assert.Equal("Disputed", (await res.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString());
+
+        var me = await alice.GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(1500, me.GetProperty("rating").GetInt32());
+    }
+
+    // Payload statistik lengkap identik (deterministik) → Finished + statistik detail tersimpan.
+    [Fact]
+    public async Task MatchResult_FullPayloadAgrees_StoresDetailedStats()
+    {
+        var (alice, _) = await factory.LoginAsync("device-detail-alice", "DetailAlice");
+        var (bob, _) = await factory.LoginAsync("device-detail-bob", "DetailBob");
+
+        object[] players =
+        {
+            new { slot = 0, kills = 5, deaths = 2, heroId = 0, damageDealt = 320, damageTaken = 140, skillsUsed = 6, skillsHit = 4, hitsBlocked = 3, dodges = 2, guardCrushes = 1, criticals = 5, gearDrops = 7, firstBlood = true, maxKillStreak = 3, maxDeficit = 1, heroSwitches = 1,
+                heroes = new[] { new { heroId = 0, playTicks = 900, kills = 4, damage = 250 }, new { heroId = 1, playTicks = 300, kills = 1, damage = 70 } } },
+            new { slot = 1, kills = 2, deaths = 5, heroId = 1, damageDealt = 140, damageTaken = 320, skillsUsed = 5, skillsHit = 2, hitsBlocked = 1, dodges = 0, guardCrushes = 0, criticals = 2, gearDrops = 3, firstBlood = false, maxKillStreak = 1, maxDeficit = 3, heroSwitches = 0,
+                heroes = new[] { new { heroId = 1, playTicks = 1200, kills = 2, damage = 140 } } },
+        };
+
+        await alice.PostAsJsonAsync("/api/matches/result", new { gameId = "room-detail", slot = 0, scoreLeft = 5, scoreRight = 2, kills = 5, deaths = 2, durationSec = 120, mode = "ranked", players });
+        var r2 = await bob.PostAsJsonAsync("/api/matches/result", new { gameId = "room-detail", slot = 1, scoreLeft = 5, scoreRight = 2, kills = 2, deaths = 5, durationSec = 120, mode = "ranked", players });
+        Assert.Equal("Finished", (await r2.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString());
+
+        var history = await alice.GetFromJsonAsync<JsonElement>("/api/matches");
+        var m = history[0];
+        Assert.True(m.GetProperty("hasDetailedStats").GetBoolean());
+        var p0 = m.GetProperty("players").EnumerateArray().First(x => x.GetProperty("slot").GetInt32() == 0);
+        Assert.Equal(320, p0.GetProperty("damageDealt").GetInt32());
+        Assert.Equal(1, p0.GetProperty("guardCrushes").GetInt32());
+        Assert.True(p0.GetProperty("firstBlood").GetBoolean());
+        Assert.Equal(2, p0.GetProperty("heroes").GetArrayLength());
+    }
+
+    // Skor sama tapi statistik berbeda (klien dimodifikasi menggelembungkan) → Disputed, tidak di-rating.
+    [Fact]
+    public async Task MatchResult_PayloadMismatch_IsDisputed()
+    {
+        var (alice, _) = await factory.LoginAsync("device-mismatch-alice", "MisAlice");
+        var (bob, _) = await factory.LoginAsync("device-mismatch-bob", "MisBob");
+
+        object Row(int slot, int kills, int dmg) => new { slot, kills, deaths = 0, heroId = 0, damageDealt = dmg, damageTaken = 0, skillsUsed = 0, skillsHit = 0, hitsBlocked = 0, dodges = 0, guardCrushes = 0, criticals = 0, gearDrops = 0, firstBlood = false, maxKillStreak = 0, maxDeficit = 0, heroSwitches = 0, heroes = new object[0] };
+
+        var honest = new[] { Row(0, 5, 300), Row(1, 2, 140) };
+        var cheated = new[] { Row(0, 5, 999), Row(1, 2, 140) }; // damage digelembungkan
+
+        await alice.PostAsJsonAsync("/api/matches/result", new { gameId = "room-mismatch", slot = 0, scoreLeft = 5, scoreRight = 2, durationSec = 120, players = cheated });
+        var res = await bob.PostAsJsonAsync("/api/matches/result", new { gameId = "room-mismatch", slot = 1, scoreLeft = 5, scoreRight = 2, durationSec = 120, players = honest });
+        Assert.Equal("Disputed", (await res.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString());
+
+        var me = await alice.GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(1500, me.GetProperty("rating").GetInt32());
+    }
+
+    // docs/32 aturan 1v1: kills A = deaths B, kills tiap pemain = skor timnya (pemenang 5). Payload valid → ranked1v1.
+    private static object RankedRow(int slot, int kills, int deaths) => new { slot, kills, botKills = 0, deaths, heroId = 0, damageDealt = 100, damageTaken = 100, skillsUsed = 0, skillsHit = 0, hitsBlocked = 0, dodges = 0, guardCrushes = 0, criticals = 0, gearDrops = 0, firstBlood = slot == 0, maxKillStreak = 0, maxDeficit = 0, heroSwitches = 0, heroes = new object[0] };
+
+    [Fact]
+    public async Task Ranked1v1_ValidInvariant_IsFinishedAndTagged()
+    {
+        var (alice, _) = await factory.LoginAsync("device-inv-ok-a", "InvOkA");
+        var (bob, _) = await factory.LoginAsync("device-inv-ok-b", "InvOkB");
+        // skor 5-2: pemenang slot0 kills=5 deaths=2 ; pecundang slot1 kills=2 deaths=5 (kills A = deaths B).
+        var players = new[] { RankedRow(0, 5, 2), RankedRow(1, 2, 5) };
+        await alice.PostAsJsonAsync("/api/matches/result", new { gameId = "room-inv-ok", slot = 0, scoreLeft = 5, scoreRight = 2, durationSec = 60, mode = "ranked", players });
+        var r2 = await bob.PostAsJsonAsync("/api/matches/result", new { gameId = "room-inv-ok", slot = 1, scoreLeft = 5, scoreRight = 2, durationSec = 60, mode = "ranked", players });
+        Assert.Equal("Finished", (await r2.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString());
+
+        var history = await alice.GetFromJsonAsync<JsonElement>("/api/matches");
+        Assert.Equal("ranked1v1", history[0].GetProperty("format").GetString());
+        // Poin Ladder TIDAK boleh terbalik: pemenang ratingDelta >= 0, yang kalah <= 0.
+        Assert.True(history[0].GetProperty("won").GetBoolean());
+        Assert.True(history[0].GetProperty("ratingDelta").GetInt32() >= 0, "pemenang harus naik rating");
+        var p1 = history[0].GetProperty("players").EnumerateArray().First(x => x.GetProperty("slot").GetInt32() == 1);
+        Assert.True(p1.GetProperty("ratingDelta").GetInt32() <= 0, "yang kalah harus turun rating");
+    }
+
+    [Fact]
+    public async Task Ranked1v1_ViolatesInvariant_IsDisputed()
+    {
+        var (alice, _) = await factory.LoginAsync("device-inv-bad-a", "InvBadA");
+        var (bob, _) = await factory.LoginAsync("device-inv-bad-b", "InvBadB");
+        // Melanggar: p1.kills=4 tapi scoreRight=2 (kills ≠ skor) → Disputed, tak di-rating.
+        var players = new[] { RankedRow(0, 5, 2), RankedRow(1, 4, 5) };
+        await alice.PostAsJsonAsync("/api/matches/result", new { gameId = "room-inv-bad", slot = 0, scoreLeft = 5, scoreRight = 2, durationSec = 60, mode = "ranked", players });
+        var r2 = await bob.PostAsJsonAsync("/api/matches/result", new { gameId = "room-inv-bad", slot = 1, scoreLeft = 5, scoreRight = 2, durationSec = 60, mode = "ranked", players });
+        Assert.Equal("Disputed", (await r2.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString());
+
+        var me = await alice.GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(1500, me.GetProperty("rating").GetInt32());
+    }
+
+    // Durasi mustahil pendek → sanity-check menolak (Disputed).
+    [Fact]
+    public async Task MatchResult_FailsSanityCheck_IsDisputed()
+    {
+        var (alice, _) = await factory.LoginAsync("device-sanity-alice", "SanAlice");
+        var (bob, _) = await factory.LoginAsync("device-sanity-bob", "SanBob");
+
+        await alice.PostAsJsonAsync("/api/matches/result", new { gameId = "room-sanity", slot = 0, scoreLeft = 5, scoreRight = 2, durationSec = 2 });
+        var res = await bob.PostAsJsonAsync("/api/matches/result", new { gameId = "room-sanity", slot = 1, scoreLeft = 5, scoreRight = 2, durationSec = 2 });
         Assert.Equal("Disputed", (await res.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString());
 
         var me = await alice.GetFromJsonAsync<JsonElement>("/api/me");
@@ -158,6 +265,21 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("Matched", s1.GetProperty("state").GetString());
         Assert.Equal(gameId, s1.GetProperty("gameId").GetString());
         Assert.NotEqual(s1.GetProperty("slot").GetInt32(), m2.GetProperty("slot").GetInt32());
+    }
+
+    [Fact]
+    public async Task NewGuest_AnyDeviceId_DefaultsNotTestAccount()
+    {
+        // Login asli (mis. Facebook nanti) dgn deviceId "fb-..." TANPA flag isTest → BUKAN akun uji.
+        var (_, login) = await factory.LoginAsync("fb-real-user-123", "RealFbPlayer", isTest: false);
+        Assert.False(await factory.IsTestAccountAsync(login.PlayerId));
+    }
+
+    [Fact]
+    public async Task TestPathAccount_IsFlaggedExplicitly()
+    {
+        var (_, login) = await factory.LoginAsync("device-whatever", "SomeTestAcc"); // isTest default true (jalur tes)
+        Assert.True(await factory.IsTestAccountAsync(login.PlayerId));
     }
 
     private async Task<HttpClient> RegisterAsync(string username, string password, string? name = null)

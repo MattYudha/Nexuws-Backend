@@ -47,14 +47,38 @@ namespace Nexus
         [Serializable] private sealed class AuthRes { public string playerId; public string username; public string displayName; public int faction; public int rating; public string token; }
         [Serializable] private sealed class FactionReq { public int faction; }
         [Serializable] private sealed class LoginRes { public string playerId; public string displayName; public int rating; public string token; }
-        [Serializable] private sealed class RegionReq { public string region; }
-        [Serializable] public sealed class Matchmaking { public string state; public string gameId; public int slot; public string region; public string opponentId; }
-        [Serializable] private sealed class ResultReq { public string gameId; public int slot; public int scoreLeft; public int scoreRight; public int kills; public int deaths; public int assists; }
+        [Serializable] private sealed class RegionReq { public string region; public string buildVersion; public string simVersion; }
+        [Serializable] public sealed class Matchmaking { public string state; public string gameId; public int slot; public string region; public string opponentId; public string message; }
+        // Payload hasil LENGKAP (docs/32 KEAMANAN MINIMUM): tiap klien kirim statistik SEMUA pemain
+        // (deterministik → identik), backend bandingkan & tolak bila beda.
+        [Serializable] public sealed class HeroStatRow { public int heroId; public int playTicks; public int kills; public int damage; }
+        [Serializable] public sealed class PlayerStatRow {
+            public int slot; public int kills; public int botKills; public int deaths; public int heroId;
+            public int damageDealt; public int damageTaken; public int skillsUsed; public int skillsHit;
+            public int hitsBlocked; public int dodges; public int guardCrushes; public int criticals; public int gearDrops;
+            public bool firstBlood; public int maxKillStreak; public int maxDeficit; public int heroSwitches; // firstBlood = bool (cocok dgn backend)
+            public HeroStatRow[] heroes;
+        }
+        [Serializable] private sealed class ResultReq {
+            public string gameId; public int slot; public int scoreLeft; public int scoreRight;
+            public int kills; public int deaths; public int assists; public int heroId;
+            public string mode; public int durationSec; public int partySize;
+            public PlayerStatRow[] players;
+        }
         [Serializable] private sealed class StatusRes { public string status; public string message; }
         [Serializable] private sealed class MeRes { public string playerId; public string username; public string displayName; public int faction; public int rating; public string rankTier; public int accountLevel; public string accountRank; public int accountXp; public int wins; public int losses; public int matchesPlayed; public float winRate; public int kills; public int deaths; public int assists; public float kda; }
-        [Serializable] public sealed class LeaderRow { public string displayName; public int rating; public int wins; public int losses; }
+        [Serializable] public sealed class LeaderRow { public int rank; public string displayName; public string tier; public int ladderPoints; public int wins; public int losses; public float winRate; public int matches; }
         [Serializable] private sealed class LeaderWrap { public LeaderRow[] items; }
-        [Serializable] public sealed class MatchRow { public string gameId; public string endedAt; public int slot; public int scoreLeft; public int scoreRight; public bool won; public int ratingDelta; }
+        [Serializable] public sealed class MyRankRes { public bool placed; public int rank; public string tier; public int ladderPoints; public int wins; public int losses; public float winRate; public int matches; public int needed; public int rankedMatches; }
+        [Serializable] public sealed class MatchHeroRow { public int heroId; public int playTicks; public int kills; public int damage; }
+        [Serializable] public sealed class MatchPlayerRow {
+            public int slot; public string displayName; public int heroId; public int kills; public int botKills; public int deaths; public int assists;
+            public int ratingDelta; public int ratingBefore; public bool isWinner; public bool hasDetailedStats;
+            public int damageDealt; public int damageTaken; public int hitsBlocked; public int dodges; public int guardCrushes; public int criticals;
+            public int skillsUsed; public int skillsHit; public bool firstBlood; public int maxKillStreak; public int maxDeficit; public int heroSwitches;
+            public MatchHeroRow[] heroes;
+        }
+        [Serializable] public sealed class MatchRow { public string gameId; public string endedAt; public string mode; public string format; public int durationSec; public int slot; public int scoreLeft; public int scoreRight; public bool won; public int ratingDelta; public int ratingBefore; public int heroId; public int partySize; public MatchPlayerRow[] players; }
         [Serializable] private sealed class MatchWrap { public MatchRow[] items; }
 
         // ---------- Auth ----------
@@ -102,9 +126,13 @@ namespace Nexus
         }
 
         // ---------- Matchmaking ----------
-        public async Task<Matchmaking> JoinQueueAsync(string region)
+        // Versi simulasi — BUMP tiap kali Nexus.qtn / logika sim berubah (harus sama dgn Game:RequiredSimVersion backend).
+        public const string SimVersion = "nx-sim-2026-10-29-1v1b";
+
+        public async Task<Matchmaking> JoinQueueAsync(string region, string buildVersion)
         {
-            var res = await PostAsync("/api/matchmaking/join", JsonUtility.ToJson(new RegionReq { region = region }), auth: true);
+            var body = JsonUtility.ToJson(new RegionReq { region = region, buildVersion = buildVersion, simVersion = SimVersion });
+            var res = await PostAsync("/api/matchmaking/join", body, auth: true);
             return res == null ? null : JsonUtility.FromJson<Matchmaking>(res);
         }
 
@@ -121,9 +149,9 @@ namespace Nexus
 
         // ---------- Result ----------
         /// <summary>Lapor hasil 1v1. slot = slot pemain ini (dari identitas in-game), scoreLeft/Right absolut (sim deterministik → identik di kedua klien).</summary>
-        public async Task<string> ReportResultAsync(string gameId, int slot, int scoreLeft, int scoreRight, int kills, int deaths, int assists)
+        public async Task<string> ReportResultAsync(string gameId, int slot, int scoreLeft, int scoreRight, int kills, int deaths, int assists, int heroId, string mode, int durationSec, int partySize, PlayerStatRow[] players = null)
         {
-            var body = JsonUtility.ToJson(new ResultReq { gameId = gameId, slot = slot, scoreLeft = scoreLeft, scoreRight = scoreRight, kills = kills, deaths = deaths, assists = assists });
+            var body = JsonUtility.ToJson(new ResultReq { gameId = gameId, slot = slot, scoreLeft = scoreLeft, scoreRight = scoreRight, kills = kills, deaths = deaths, assists = assists, heroId = heroId, mode = mode, durationSec = durationSec, partySize = partySize, players = players });
             var res = await PostAsync("/api/matches/result", body, auth: true);
             return res == null ? null : JsonUtility.FromJson<StatusRes>(res)?.status;
         }
@@ -136,6 +164,13 @@ namespace Nexus
             // JsonUtility tak bisa array top-level → bungkus dulu.
             var wrap = JsonUtility.FromJson<LeaderWrap>("{\"items\":" + res + "}");
             return wrap != null && wrap.items != null ? wrap.items : System.Array.Empty<LeaderRow>();
+        }
+
+        /// <summary>Peringkat pemain sendiri (placed + rank, atau status placement).</summary>
+        public async Task<MyRankRes> GetMyRankAsync()
+        {
+            var res = await GetAsync("/api/me/rank");
+            return res == null ? null : JsonUtility.FromJson<MyRankRes>(res);
         }
 
         /// <summary>Riwayat match terakhir (hanya yang selesai).</summary>

@@ -1,9 +1,87 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="tab-stats" class="nxl-prof-tab nxl-hidden">
         <ui:Label text="STATISTIK" class="nxl-prof-title" />
-        <ui:VisualElement class="nxl-card nxl-center" style="margin-top: 14px; min-height: 240px;">
-            <ui:Label text="Belum ada pertandingan. Statistik akan muncul setelah kamu bermain." class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center;" />
-            <ui:Button text="MAIN SEKARANG" name="stats-play" class="nxl-btn nxl-btn--orange" style="width: 240px; height: 48px; margin-top: 18px;" />
+
+        <ui:VisualElement class="nxl-row" style="margin-top: 10px; align-items: center;">
+            <ui:Label text="Semua" name="sf-all" class="nxl-tab nxl-tab--active" style="width: 110px; height: 36px;" />
+            <ui:Label text="Ranked" name="sf-ranked" class="nxl-tab" style="width: 110px; height: 36px;" />
+            <ui:Label text="Battle" name="sf-battle" class="nxl-tab" style="width: 110px; height: 36px;" />
+            <ui:VisualElement class="nxl-spacer" />
+            <ui:Label text="Semua Season" class="nxl-dim" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="stats-empty" class="nxl-card nxl-center nxl-hidden" style="margin-top: 12px; min-height: 220px;">
+            <ui:Label text="Belum ada pertandingan. Statistik akan muncul setelah kamu bermain." name="stats-msg" class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center;" />
+            <ui:Button text="MAIN SEKARANG" name="stats-play" class="nxl-btn nxl-btn--orange" style="width: 220px; height: 46px; margin-top: 16px;" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="stats-content">
+            <ui:VisualElement class="nxl-row" style="margin-top: 16px; justify-content: space-around;">
+                <ui:VisualElement class="nxl-center">
+                    <ui:VisualElement class="nxl-statring nxl-statring--purple"><ui:Label text="0" name="st-matches" class="nxl-statring-num" /></ui:VisualElement>
+                    <ui:Label text="Total Pertandingan" class="nxl-dim" style="margin-top: 8px;" />
+                </ui:VisualElement>
+                <ui:VisualElement class="nxl-center">
+                    <ui:VisualElement class="nxl-statring nxl-statring--gold"><ui:Label text="0%" name="st-winrate" class="nxl-statring-num" /></ui:VisualElement>
+                    <ui:Label text="Win Rate" class="nxl-dim" style="margin-top: 8px;" />
+                </ui:VisualElement>
+                <ui:VisualElement class="nxl-center">
+                    <ui:VisualElement class="nxl-statring nxl-statring--green"><ui:Label text="0.00" name="st-kda" class="nxl-statring-num" /></ui:VisualElement>
+                    <ui:Label text="KDA" class="nxl-dim" style="margin-top: 8px;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="nxl-card" style="margin-top: 16px;">
+                <ui:VisualElement class="nxl-row" style="align-items: flex-start;">
+                    <ui:VisualElement style="width: 50%;">
+                        <ui:VisualElement class="nxl-statrow"><ui:Label text="Menang" class="nxl-statrow-l" /><ui:Label text="0" name="st-wins" class="nxl-statrow-v" /></ui:VisualElement>
+                        <ui:VisualElement class="nxl-statrow"><ui:Label text="Kalah" class="nxl-statrow-l" /><ui:Label text="0" name="st-losses" class="nxl-statrow-v" /></ui:VisualElement>
+                        <ui:VisualElement class="nxl-statrow"><ui:Label text="Kill" class="nxl-statrow-l" /><ui:Label text="0" name="st-kills" class="nxl-statrow-v" /></ui:VisualElement>
+                        <ui:VisualElement class="nxl-statrow"><ui:Label text="Death" class="nxl-statrow-l" /><ui:Label text="0" name="st-deaths" class="nxl-statrow-v" /></ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement style="width: 50%;">
+                        <ui:VisualElement class="nxl-statrow"><ui:Label text="Assist" class="nxl-statrow-l" /><ui:Label text="0" name="st-assists" class="nxl-statrow-v" /></ui:VisualElement>
+                        <ui:VisualElement class="nxl-statrow"><ui:Label text="Kill Tertinggi" class="nxl-statrow-l" /><ui:Label text="0" name="st-maxkill" class="nxl-statrow-v" /></ui:VisualElement>
+                        <ui:VisualElement class="nxl-statrow"><ui:Label text="Win Streak Tertinggi" class="nxl-statrow-l" /><ui:Label text="0" name="st-streak" class="nxl-statrow-v" /></ui:VisualElement>
+                        <ui:VisualElement class="nxl-statrow"><ui:Label text="Rata-rata Durasi" class="nxl-statrow-l" /><ui:Label text="0:00" name="st-avgdur" class="nxl-statrow-v" /></ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="nxl-row" style="margin-top: 16px;">
+                <ui:VisualElement class="nxl-card" style="width: 50%; margin-right: 12px; height: 220px;">
+                    <ui:Label text="Win Rate dari Waktu" class="nxl-h2" style="font-size: 15px;" />
+                    <ui:VisualElement class="nxl-row" style="flex-grow: 1; margin-top: 6px;">
+                        <ui:VisualElement style="width: 38px; justify-content: space-between; padding-top: 2px; padding-bottom: 20px;">
+                            <ui:Label text="100%" class="nxl-graph-tier" />
+                            <ui:Label text="50%" class="nxl-graph-tier" />
+                            <ui:Label text="0%" class="nxl-graph-tier" />
+                        </ui:VisualElement>
+                        <ui:VisualElement style="flex-grow: 1;">
+                            <ui:VisualElement name="st-wr-canvas" style="flex-grow: 1;" />
+                            <ui:VisualElement name="st-wr-dates" class="nxl-row" style="justify-content: space-between; min-height: 16px;" />
+                            <ui:Label text="" name="st-wr-empty" class="nxl-dim nxl-hidden" style="position: absolute; left: 0; right: 0; top: 40%; -unity-text-align: middle-center; white-space: normal;" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="nxl-card" style="width: 50%; height: 220px;">
+                    <ui:Label text="Perjalanan Rank" class="nxl-h2" style="font-size: 15px;" />
+                    <ui:VisualElement class="nxl-row" style="flex-grow: 1; margin-top: 6px;">
+                        <ui:VisualElement style="width: 72px; justify-content: space-between; padding-top: 2px; padding-bottom: 20px;">
+                            <ui:Label text="Conqueror" class="nxl-graph-tier" />
+                            <ui:Label text="Gladiator" class="nxl-graph-tier" />
+                            <ui:Label text="Rival" class="nxl-graph-tier" />
+                            <ui:Label text="Contender" class="nxl-graph-tier" />
+                        </ui:VisualElement>
+                        <ui:VisualElement style="flex-grow: 1;">
+                            <ui:VisualElement name="st-rank-canvas" style="flex-grow: 1;" />
+                            <ui:VisualElement name="st-rank-dates" class="nxl-row" style="justify-content: space-between; min-height: 16px;" />
+                            <ui:Label text="" name="st-rank-empty" class="nxl-dim nxl-hidden" style="position: absolute; left: 0; right: 0; top: 40%; -unity-text-align: middle-center; white-space: normal;" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label text="Sebagian data dari pertandingan lama tidak tersedia." name="stats-note" class="nxl-dim nxl-hidden" style="margin-top: 8px; margin-bottom: 12px; white-space: normal;" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

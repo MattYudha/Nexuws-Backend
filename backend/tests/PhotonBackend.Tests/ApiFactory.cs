@@ -23,6 +23,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Secret", "test-secret-test-secret-test-secret-123");
         builder.UseSetting("Photon:WebhookSecret", WebhookSecret);
         builder.UseSetting("Photon:AuthSecret", AuthSecret);
+        builder.UseSetting("Game:AllowTestAccounts", "true"); // izinkan flag IsTest di lingkungan tes
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<AppDbContext>>();
@@ -32,13 +33,22 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public record Login(Guid PlayerId, string DisplayName, int Rating, string Token);
 
-    public async Task<(HttpClient Client, Login Login)> LoginAsync(string deviceId, string name)
+    // Akun uji selalu di-flag IsTest lewat jalur tes (isTest=true) — tak bergantung tebakan awalan.
+    public async Task<(HttpClient Client, Login Login)> LoginAsync(string deviceId, string name, bool isTest = true)
     {
         var client = CreateClient();
-        var res = await client.PostAsJsonAsync("/api/auth/guest", new { deviceId, displayName = name });
+        var res = await client.PostAsJsonAsync("/api/auth/guest", new { deviceId, displayName = name, isTest });
         res.EnsureSuccessStatusCode();
         var login = (await res.Content.ReadFromJsonAsync<Login>(new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))!;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.Token);
         return (client, login);
+    }
+
+    public async Task<bool> IsTestAccountAsync(Guid playerId)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var p = await db.Players.FindAsync(playerId);
+        return p?.IsTestAccount ?? false;
     }
 }

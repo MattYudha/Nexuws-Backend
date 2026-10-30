@@ -9,12 +9,12 @@ using PhotonBackend.Api.Services;
 
 namespace PhotonBackend.Api.Endpoints;
 
-public sealed record GuestLoginRequest(string? DeviceId, string? DisplayName);
-public sealed record RegisterRequest(string? Username, string? Password, string? DisplayName);
+public sealed record GuestLoginRequest(string? DeviceId, string? DisplayName, bool? IsTest = null);
+public sealed record RegisterRequest(string? Username, string? Password, string? DisplayName, bool? IsTest = null);
 public sealed record LoginRequest(string? Username, string? Password);
 public sealed record FactionRequest(int Faction);
-public sealed record ReportResultRequest(string? GameId, int Slot, int ScoreLeft, int ScoreRight, int Kills = 0, int Deaths = 0, int Assists = 0);
-public sealed record JoinQueueRequest(string? Region);
+public sealed record ReportResultRequest(string? GameId, int Slot, int ScoreLeft, int ScoreRight, int Kills = 0, int Deaths = 0, int Assists = 0, int HeroId = 0, string? Mode = null, int DurationSec = 0, int PartySize = 1, List<ReportPlayer>? Players = null);
+public sealed record JoinQueueRequest(string? Region, string? BuildVersion = null, string? SimVersion = null);
 
 /// <summary>REST API used by the Unity client.</summary>
 public static class ApiEndpoints
@@ -31,12 +31,14 @@ public static class ApiEndpoints
         secured.MapGet("/me", Me);
         secured.MapPost("/me/faction", SetFaction);
         secured.MapGet("/matches", MyMatches);
+        secured.MapGet("/me/rank", MyRank);
         secured.MapPost("/matches/result", ReportResult);
         secured.MapPost("/matchmaking/join", JoinQueue);
         secured.MapGet("/matchmaking/status", QueueStatus);
         secured.MapPost("/matchmaking/leave", LeaveQueue);
 
         api.MapGet("/leaderboard", Leaderboard);
+        secured.MapStats(api); // /me/stats (auth) + /players/{id}/stats (anon)
     }
 
     private static object AuthPayload(Player p, TokenService tokens) => new
@@ -67,6 +69,7 @@ public static class ApiEndpoints
         {
             Username = username, DisplayName = name,
             Rating = game.Value.StartRating, Rd = game.Value.StartRd, Volatility = game.Value.StartVolatility,
+            IsTestAccount = game.Value.AllowTestAccounts && (req.IsTest ?? false), // eksplisit; default false
         };
         player.PasswordHash = hasher.HashPassword(player, password);
         db.Players.Add(player);
@@ -107,21 +110,31 @@ public static class ApiEndpoints
     }
 
     private static object Serialize(MatchmakingResult r) => r.Assignment is { } a
-        ? new { state = r.State.ToString(), gameId = a.GameId, slot = a.Slot, region = a.Region, opponentId = a.OpponentId }
-        : new { state = r.State.ToString(), gameId = (string?)null, slot = (int?)null, region = (string?)null, opponentId = (Guid?)null };
+        ? new { state = r.State.ToString(), gameId = a.GameId, slot = a.Slot, region = a.Region, opponentId = a.OpponentId, message = (string?)null }
+        : new { state = r.State.ToString(), gameId = (string?)null, slot = (int?)null, region = (string?)null, opponentId = (Guid?)null, message = (string?)null };
 
     private static async Task<IResult> JoinQueue(
-        JoinQueueRequest req, ClaimsPrincipal user, AppDbContext db, MatchmakingService mm, CancellationToken ct)
+        JoinQueueRequest req, ClaimsPrincipal user, AppDbContext db, MatchmakingService mm,
+        IOptions<GameOptions> game, CancellationToken ct)
     {
         var region = req.Region?.Trim() ?? "";
         if (region.Length is < 1 or > 32)
             return Results.BadRequest(new { error = "region must be 1-32 characters." });
 
+        // Pengecekan versi: tolak build/sim berbeda agar tak match lalu desync. Hanya aktif bila dikonfigurasi.
+        var g = game.Value;
+        var sim = req.SimVersion ?? "";
+        var build = req.BuildVersion ?? "";
+        bool simBad = !string.IsNullOrEmpty(g.RequiredSimVersion) && sim != g.RequiredSimVersion;
+        bool buildBad = !string.IsNullOrEmpty(g.RequiredBuildVersion) && build != g.RequiredBuildVersion;
+        if (simBad || buildBad)
+            return Results.Ok(new { state = "VersionMismatch", message = "Versi game berbeda, perbarui game.", gameId = (string?)null, slot = (int?)null, region = (string?)null, opponentId = (Guid?)null });
+
         var id = PlayerId(user);
         var p = await db.Players.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null) return Results.NotFound();
 
-        return Results.Ok(Serialize(mm.Join(id, p.Rating, region)));
+        return Results.Ok(Serialize(mm.Join(id, p.Rating, region, build, sim)));
     }
 
     private static IResult QueueStatus(ClaimsPrincipal user, MatchmakingService mm) =>
@@ -153,6 +166,7 @@ public static class ApiEndpoints
             {
                 DeviceId = deviceId, DisplayName = name,
                 Rating = game.Value.StartRating, Rd = game.Value.StartRd, Volatility = game.Value.StartVolatility,
+                IsTestAccount = game.Value.AllowTestAccounts && (req.IsTest ?? false), // eksplisit; default false
             };
             db.Players.Add(player);
         }
@@ -198,7 +212,9 @@ public static class ApiEndpoints
             displayName = p.DisplayName,
             faction = p.Faction,
             rating = p.Rating,
-            rankTier = Ranks.TierFor(p.Rating),      // ladder Solo 1v1
+            // ladder Solo 1v1 — dengan proteksi demosi (docs/33 opsi 1): tier tampil di-floor setelah naik tier.
+            rankTier = Ranks.TierName(Ranks.ApplyFloor(
+                Ranks.TierOrder(Ranks.TierFor(p.Rating)), p.TierFloorOrder, p.TierFloorLeft)),
             accountLevel = level,
             accountRank = Ranks.AccountRankFor(level), // Trainee→Colonel
             accountXp = p.AccountXp,
@@ -217,33 +233,84 @@ public static class ApiEndpoints
     private static async Task<IResult> MyMatches(ClaimsPrincipal user, AppDbContext db, CancellationToken ct)
     {
         var id = PlayerId(user);
-        var rows = await db.MatchPlayers.AsNoTracking()
-            .Where(mp => mp.PlayerId == id && mp.Match.Status == MatchStatus.Finished)
-            .OrderByDescending(mp => mp.Match.EndedAt)
+        var rows = await db.Matches.AsNoTracking()
+            .Where(m => m.Status == MatchStatus.Finished && m.Players.Any(mp => mp.PlayerId == id))
+            .OrderByDescending(m => m.EndedAt)
             .Take(20)
-            .Select(mp => new
+            .Select(m => new
             {
-                gameId = mp.Match.GameId,
-                endedAt = mp.Match.EndedAt,
-                slot = mp.Slot,
-                scoreLeft = mp.Match.ScoreLeft,
-                scoreRight = mp.Match.ScoreRight,
-                won = mp.IsWinner,
-                ratingDelta = mp.RatingDelta,
+                gameId = m.GameId,
+                endedAt = m.EndedAt,
+                mode = m.Mode,
+                format = m.Format,
+                durationSec = m.DurationSec,
+                scoreLeft = m.ScoreLeft,
+                scoreRight = m.ScoreRight,
+                slot = m.Players.First(mp => mp.PlayerId == id).Slot,
+                won = m.Players.First(mp => mp.PlayerId == id).IsWinner,
+                ratingDelta = m.Players.First(mp => mp.PlayerId == id).RatingDelta,
+                ratingBefore = m.Players.First(mp => mp.PlayerId == id).RatingBefore,
+                heroId = m.Players.First(mp => mp.PlayerId == id).HeroId,
+                partySize = m.Players.First(mp => mp.PlayerId == id).PartySize,
+                hasDetailedStats = m.Players.First(mp => mp.PlayerId == id).HasDetailedStats,
+                players = m.Players.OrderBy(mp => mp.Slot).Select(mp => new
+                {
+                    slot = mp.Slot,
+                    displayName = mp.Player.DisplayName,
+                    heroId = mp.HeroId,
+                    kills = mp.ReportedKills,
+                    deaths = mp.ReportedDeaths,
+                    assists = mp.ReportedAssists,
+                    ratingDelta = mp.RatingDelta,
+                    ratingBefore = mp.RatingBefore,
+                    isWinner = mp.IsWinner,
+                    hasDetailedStats = mp.HasDetailedStats,
+                    botKills = mp.BotKills,
+                    damageDealt = mp.DamageDealt,
+                    damageTaken = mp.DamageTaken,
+                    skillsUsed = mp.SkillsUsed,
+                    skillsHit = mp.SkillsHit,
+                    hitsBlocked = mp.HitsBlocked,
+                    dodges = mp.Dodges,
+                    guardCrushes = mp.GuardCrushes,
+                    criticals = mp.Criticals,
+                    gearDrops = mp.GearDrops,
+                    firstBlood = mp.FirstBlood,
+                    maxKillStreak = mp.MaxKillStreak,
+                    maxDeficit = mp.MaxDeficit,
+                    heroSwitches = mp.HeroSwitches,
+                    heroes = mp.Heroes.OrderBy(h => h.HeroId).Select(h => new
+                    {
+                        heroId = h.HeroId, playTicks = h.PlayTicks, kills = h.Kills, damage = h.Damage,
+                    }).ToList(),
+                }).ToList(),
             })
             .ToListAsync(ct);
         return Results.Ok(rows);
     }
 
-    private static async Task<IResult> Leaderboard(AppDbContext db, int? limit, CancellationToken ct)
+    private static async Task<IResult> Leaderboard(LeaderboardService lb, int? limit, CancellationToken ct)
     {
-        var take = Math.Clamp(limit ?? 20, 1, 100);
-        var rows = await db.Players.AsNoTracking()
-            .OrderByDescending(p => p.Rating).ThenBy(p => p.CreatedAt)
-            .Take(take)
-            .Select(p => new { displayName = p.DisplayName, rating = p.Rating, wins = p.Wins, losses = p.Losses })
-            .ToListAsync(ct);
+        var take = Math.Clamp(limit ?? 100, 1, 100);
+        var all = await lb.GetAsync(ct);
+        var rows = all.Take(take).Select(e => new
+        {
+            rank = e.Rank, displayName = e.DisplayName, tier = e.Tier, ladderPoints = e.LadderPoints,
+            wins = e.Wins, losses = e.Losses, winRate = e.WinRate, matches = e.Matches,
+        });
         return Results.Ok(rows);
+    }
+
+    // Peringkat pemain sendiri (untuk baris highlight / status placement di leaderboard).
+    private static async Task<IResult> MyRank(ClaimsPrincipal user, LeaderboardService lb, AppDbContext db, CancellationToken ct)
+    {
+        var id = PlayerId(user);
+        var e = await lb.RankOfAsync(id, ct);
+        if (e != null)
+            return Results.Ok(new { placed = true, rank = e.Rank, tier = e.Tier, ladderPoints = e.LadderPoints,
+                wins = e.Wins, losses = e.Losses, winRate = e.WinRate, matches = e.Matches });
+        int rm = await db.MatchPlayers.CountAsync(mp => mp.PlayerId == id && mp.Match.Mode == "ranked" && mp.Match.Status == MatchStatus.Finished, ct);
+        return Results.Ok(new { placed = false, needed = Math.Max(0, LeaderboardService.PlacementMatches - rm), rankedMatches = rm });
     }
 
     private static async Task<IResult> ReportResult(
@@ -254,7 +321,8 @@ public static class ApiEndpoints
             return Results.BadRequest(new { error = "gameId must be 1-128 characters." });
 
         var outcome = await matches.ReportAsync(gameId, PlayerId(user), req.Slot, req.ScoreLeft, req.ScoreRight,
-                                                req.Kills, req.Deaths, req.Assists, ct);
+                                                req.Kills, req.Deaths, req.Assists,
+                                                req.HeroId, req.Mode ?? "", req.DurationSec, req.PartySize, req.Players, ct);
         var body = new { status = outcome.Status.ToString(), message = outcome.Message };
         return outcome.Status switch
         {

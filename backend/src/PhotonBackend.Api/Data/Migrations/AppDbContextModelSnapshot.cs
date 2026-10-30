@@ -31,13 +31,24 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("DurationSec")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("EndedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("GameId")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("PhotonResultRaw")
                         .HasColumnType("text");
@@ -74,8 +85,59 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<Guid>("PlayerId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("BotKills")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Criticals")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DamageDealt")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DamageTaken")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Dodges")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("FirstBlood")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("GearDrops")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GuardCrushes")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("HasDetailedStats")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("HeroId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HeroSwitches")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HitsBlocked")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsWinner")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("MaxDeficit")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxKillStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("PartyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PartySize")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RatingBefore")
+                        .HasColumnType("integer");
 
                     b.Property<int>("RatingDelta")
                         .HasColumnType("integer");
@@ -95,6 +157,15 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<int?>("ReportedScoreRight")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ResultPayload")
+                        .HasColumnType("text");
+
+                    b.Property<int>("SkillsHit")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SkillsUsed")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Slot")
                         .HasColumnType("integer");
 
@@ -106,6 +177,37 @@ namespace PhotonBackend.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("MatchPlayers");
+                });
+
+            modelBuilder.Entity("PhotonBackend.Api.Data.MatchPlayerHero", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Damage")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HeroId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Kills")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("MatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PlayTicks")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MatchId", "PlayerId");
+
+                    b.ToTable("MatchPlayerHeroes");
                 });
 
             modelBuilder.Entity("PhotonBackend.Api.Data.Player", b =>
@@ -138,7 +240,13 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<int>("Faction")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsTestAccount")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Kills")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LastRankedTierOrder")
                         .HasColumnType("integer");
 
                     b.Property<int>("Losses")
@@ -152,6 +260,12 @@ namespace PhotonBackend.Api.Data.Migrations
 
                     b.Property<double>("Rd")
                         .HasColumnType("double precision");
+
+                    b.Property<int>("TierFloorLeft")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TierFloorOrder")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Username")
                         .HasMaxLength(24)
@@ -195,9 +309,25 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Navigation("Player");
                 });
 
+            modelBuilder.Entity("PhotonBackend.Api.Data.MatchPlayerHero", b =>
+                {
+                    b.HasOne("PhotonBackend.Api.Data.MatchPlayer", "MatchPlayer")
+                        .WithMany("Heroes")
+                        .HasForeignKey("MatchId", "PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MatchPlayer");
+                });
+
             modelBuilder.Entity("PhotonBackend.Api.Data.Match", b =>
                 {
                     b.Navigation("Players");
+                });
+
+            modelBuilder.Entity("PhotonBackend.Api.Data.MatchPlayer", b =>
+                {
+                    b.Navigation("Heroes");
                 });
 #pragma warning restore 612, 618
         }

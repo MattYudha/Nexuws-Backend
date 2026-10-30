@@ -40,8 +40,7 @@ namespace Quantum
 
         public override void OnInit(Frame f)
         {
-            f.Global->State = 0; // 0 = layar Pilih Hero (semua beku) → 1 Playing setelah semua pemain pilih
-            SpawnTeams(f);
+            f.Global->State = 0; // 0 = layar Pilih Hero. Bot di-spawn saat match MULAI (tahu jumlah manusia & mode).
         }
 
         public void OnPlayerAdded(Frame f, PlayerRef player, bool firstTime)
@@ -62,12 +61,23 @@ namespace Quantum
             };
         }
 
-        // Team brawler: tiap tim diisi TeamSize-1 bot, menyisakan 1 slot per tim untuk pemain manusia.
-        // Online ranked (2 manusia, 1 per tim) → 5v5. Local practice (1 manusia) → 5v4 bot.
-        private static void SpawnTeams(Frame f)
+        // Spawn bot saat match MULAI, isi tiap tim sampai perTeam (dari f.PlayerCount — parameter sesi
+        // Quantum yang PASTI tersinkron, bukan field custom). RANKED set PlayerCount=2 → perTeam=1 → 1v1
+        // (2 manusia = TANPA bot; 1 manusia = +1 bot). BATTLE set PlayerCount=10 → perTeam=5 → 5v5 isi bot.
+        private static void StartMatch(Frame f)
         {
-            for (int i = 0; i < TeamSize - 1; i++) SpawnBot(f, 1, i);    // musuh
-            for (int i = 0; i < TeamSize - 1; i++) SpawnBot(f, 0, i);    // sekutu
+            int h0 = 0, h1 = 0;
+            foreach (var (e, o) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
+                if (o->Player != PlayerRef.None) { if (o->Team == 0) h0++; else h1++; }
+
+            int target = f.PlayerCount;                 // total petarung yang diinginkan sesi ini
+            int perTeam = target <= 2 ? 1 : (target + 1) / 2;
+            if (perTeam > TeamSize) perTeam = TeamSize;
+
+            for (int i = h0; i < perTeam; i++) SpawnBot(f, 0, i);
+            for (int i = h1; i < perTeam; i++) SpawnBot(f, 1, i);
+
+            f.Global->State = 1;
         }
 
         private static void SpawnBot(Frame f, byte team, int index)
@@ -87,6 +97,11 @@ namespace Quantum
             if (f.Global->State == 0) { HeroSelect(f, c); return; } // layar pilih hero
             if (f.Global->State != 1) return;
 
+            // Statistik deterministik (docs/32): waktu bermain per hero + defisit KO terbesar.
+            if (c->HeroId == 0) c->H0Ticks++; else c->H1Ticks++;
+            int deficit = c->Team == 0 ? f.Global->ScoreB - f.Global->ScoreA : f.Global->ScoreA - f.Global->ScoreB;
+            if (deficit > c->MaxDeficit) c->MaxDeficit = (byte)deficit;
+
             if (c->HitPause > 0) { c->HitPause--; return; }   // hitpause membekukan semua
 
             // Bleed-out: kalau nyangkut di Critical tanpa dihabisi, auto-KO → respawn (jadi SELALU balik).
@@ -95,9 +110,15 @@ namespace Quantum
                 c->CritTimer++;
                 if (c->CritTimer >= CritBleedTicks)
                 {
-                    c->Kos++; // mati karena bleed-out = death juga
-                    if (c->Team == 0) f.Global->ScoreB++; else f.Global->ScoreA++; // kredit tim lawan
-                    NxDamage.Respawn(f, c);
+                    // Bleed-out = KO oleh penyerang TERAKHIR (beri kill + skor), bukan "mati tanpa pembunuh".
+                    if (c->LastHitValid != 0)
+                        NxDamage.Ko(f, c->LastHitByTeam, c->LastHitByPlayer, filter.Entity, c);
+                    else
+                    {
+                        c->Kos++; c->CurStreak = 0;
+                        if (c->Team == 0) f.Global->ScoreB++; else f.Global->ScoreA++;
+                        NxDamage.Respawn(f, c);
+                    }
                     return;
                 }
             }
@@ -142,7 +163,7 @@ namespace Quantum
                 count++;
                 if (o->Picked == 0) allPicked = false;
             }
-            if (count > 0 && allPicked) f.Global->State = 1;
+            if (count > 0 && allPicked) StartMatch(f); // spawn bot sesuai mode + State→1 (sekali)
         }
 
         private static void HandleInput(Frame f, NxCombat* c, Input* input, bool controllable)
@@ -160,6 +181,7 @@ namespace Quantum
             if ((input->Buttons & 32) != 0 && c->SkillCd == 0)
             {
                 c->HeroId = (byte)(c->HeroId ^ 1);
+                c->HeroSwitches++;
                 c->SkillCd = 20; c->ShotCd = 0; c->AttackTime = 0;
                 return;
             }
@@ -167,17 +189,18 @@ namespace Quantum
             // Skill (K) — hero-spesifik.
             if ((input->Buttons & 2) != 0 && c->SkillCd == 0 && c->Posture == 0)
             {
+                c->SkillsUsed++;
                 if (c->HeroId == 1)
                 {
                     // PULSE-X: charged shot (lebih kencang & sakit).
-                    FireProjectile(f, c, PulseHeavySpeed, PulseHeavyDmg, PulseHeavyLife);
+                    FireProjectile(f, c, PulseHeavySpeed, PulseHeavyDmg, PulseHeavyLife, 1);
                     c->SkillCd = (ushort)PulseHeavyCd;
                 }
                 else
                 {
                     // TITAN-01: lunge gap-closer panjang + armor (i-frame tembus peluru saat menyerbu).
                     c->DashTime = (ushort)LungeDashTicks; c->Invuln = (byte)LungeDashTicks;
-                    c->AttackTime = (ushort)(AttackActiveTicks + 6);
+                    c->AttackTime = (ushort)(AttackActiveTicks + 6); c->SkillSwing = 1;
                     c->SkillCd = (ushort)SkillCooldown;
                 }
                 return;
@@ -197,11 +220,11 @@ namespace Quantum
                 if (c->HeroId == 1)
                 {
                     // PULSE-X: tembak bila siap → diam 1 tick. Saat cooldown JANGAN kunci gerak (bisa kiting).
-                    if (c->ShotCd == 0) { FireProjectile(f, c, PulseShotSpeed, PulseShotDmg, PulseShotLife); c->ShotCd = (ushort)PulseShotCd; return; }
+                    if (c->ShotCd == 0) { FireProjectile(f, c, PulseShotSpeed, PulseShotDmg, PulseShotLife, 0); c->ShotCd = (ushort)PulseShotCd; return; }
                 }
                 else
                 {
-                    c->AttackTime = (ushort)AttackActiveTicks; // TITAN: ayunan melee, recovery mengunci gerak
+                    c->AttackTime = (ushort)AttackActiveTicks; c->SkillSwing = 0; // TITAN: ayunan melee normal
                     return;
                 }
             }
@@ -209,7 +232,7 @@ namespace Quantum
             Move(c, input->MoveDir);
         }
 
-        private static void FireProjectile(Frame f, NxCombat* c, FP speed, FP damage, int life)
+        private static void FireProjectile(Frame f, NxCombat* c, FP speed, FP damage, int life, byte isSkill)
         {
             FPVector3 fwd = new FPVector3(FPMath.Sin(c->Yaw), 0, FPMath.Cos(c->Yaw));
             var e = f.Create();
@@ -221,6 +244,7 @@ namespace Quantum
                 Vel = fwd * speed,
                 Life = (ushort)life,
                 Damage = damage,
+                IsSkill = isSkill,
             });
         }
 
@@ -242,14 +266,14 @@ namespace Quantum
                 if (range2 < 12) { c->Vel.X = -n.X * MoveSpeed / 2; c->Vel.Z = -n.Z * MoveSpeed / 2; }        // hanya mundur kalau SANGAT dekat
                 else if (range2 > 52) { c->Vel.X = n.X * MoveSpeed / 2; c->Vel.Z = n.Z * MoveSpeed / 2; }     // terlalu jauh → maju
                 else { c->Vel.X = 0; c->Vel.Z = 0; }
-                if (c->AiTimer > 40 && c->ShotCd == 0) { FireProjectile(f, c, PulseShotSpeed, PulseShotDmg, PulseShotLife); c->ShotCd = (ushort)PulseShotCd; c->AiTimer = 0; }
+                if (c->AiTimer > 40 && c->ShotCd == 0) { FireProjectile(f, c, PulseShotSpeed, PulseShotDmg, PulseShotLife, 0); c->ShotCd = (ushort)PulseShotCd; c->AiTimer = 0; }
             }
             else
             {
                 // Grappler: mendekat lalu melee.
                 if (range2 > 4) { FPVector3 n = to.Normalized; c->Vel.X = n.X * MoveSpeed / 2; c->Vel.Z = n.Z * MoveSpeed / 2; }
                 else { c->Vel.X = 0; c->Vel.Z = 0; }
-                if (range2 < 6 && c->AiTimer > 90) { c->AttackTime = (ushort)AttackActiveTicks; c->AiTimer = 0; }
+                if (range2 < 6 && c->AiTimer > 90) { c->AttackTime = (ushort)AttackActiveTicks; c->SkillSwing = 0; c->AiTimer = 0; }
             }
         }
 

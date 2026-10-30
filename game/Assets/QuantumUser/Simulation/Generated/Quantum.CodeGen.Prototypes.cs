@@ -98,6 +98,31 @@ namespace Quantum.Prototypes {
     public UInt16 ShotCd;
     public UInt16 CritTimer;
     public UInt16 Kills;
+    public UInt16 BotKills;
+    public PlayerRef LastHitByPlayer;
+    public Byte LastHitByTeam;
+    public Byte LastHitValid;
+    public FP DamageDealt;
+    public FP DamageTaken;
+    public UInt16 SkillsUsed;
+    public UInt16 SkillsHit;
+    public UInt16 HitsBlocked;
+    public UInt16 Dodges;
+    public UInt16 GuardCrushes;
+    public UInt16 Criticals;
+    public UInt16 GearDrops;
+    public Byte FirstBlood;
+    public UInt16 CurStreak;
+    public UInt16 MaxStreak;
+    public Byte MaxDeficit;
+    public Byte SkillSwing;
+    public UInt16 HeroSwitches;
+    public Int32 H0Ticks;
+    public Int32 H1Ticks;
+    public Byte H0Kills;
+    public Byte H1Kills;
+    public FP H0Dmg;
+    public FP H1Dmg;
     partial void MaterializeUser(Frame frame, ref Quantum.NxCombat result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.NxCombat component = default;
@@ -133,6 +158,31 @@ namespace Quantum.Prototypes {
         result.ShotCd = this.ShotCd;
         result.CritTimer = this.CritTimer;
         result.Kills = this.Kills;
+        result.BotKills = this.BotKills;
+        result.LastHitByPlayer = this.LastHitByPlayer;
+        result.LastHitByTeam = this.LastHitByTeam;
+        result.LastHitValid = this.LastHitValid;
+        result.DamageDealt = this.DamageDealt;
+        result.DamageTaken = this.DamageTaken;
+        result.SkillsUsed = this.SkillsUsed;
+        result.SkillsHit = this.SkillsHit;
+        result.HitsBlocked = this.HitsBlocked;
+        result.Dodges = this.Dodges;
+        result.GuardCrushes = this.GuardCrushes;
+        result.Criticals = this.Criticals;
+        result.GearDrops = this.GearDrops;
+        result.FirstBlood = this.FirstBlood;
+        result.CurStreak = this.CurStreak;
+        result.MaxStreak = this.MaxStreak;
+        result.MaxDeficit = this.MaxDeficit;
+        result.SkillSwing = this.SkillSwing;
+        result.HeroSwitches = this.HeroSwitches;
+        result.H0Ticks = this.H0Ticks;
+        result.H1Ticks = this.H1Ticks;
+        result.H0Kills = this.H0Kills;
+        result.H1Kills = this.H1Kills;
+        result.H0Dmg = this.H0Dmg;
+        result.H1Dmg = this.H1Dmg;
         MaterializeUser(frame, ref result, in context);
     }
   }
@@ -145,6 +195,7 @@ namespace Quantum.Prototypes {
     public FPVector3 Vel;
     public UInt16 Life;
     public FP Damage;
+    public Byte IsSkill;
     partial void MaterializeUser(Frame frame, ref Quantum.NxProjectile result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.NxProjectile component = default;
@@ -158,6 +209,7 @@ namespace Quantum.Prototypes {
         result.Vel = this.Vel;
         result.Life = this.Life;
         result.Damage = this.Damage;
+        result.IsSkill = this.IsSkill;
         MaterializeUser(frame, ref result, in context);
     }
   }

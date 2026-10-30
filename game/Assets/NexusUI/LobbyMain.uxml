@@ -96,15 +96,14 @@
                     <ui:VisualElement class="nxl-row" style="flex-grow: 1; align-items: stretch; padding-left: 16px; padding-right: 16px;">
                         <ui:VisualElement class="nxl-row" style="width: 55%; align-items: stretch;">
                             <ui:VisualElement class="nxl-card nxl-lcard">
-                                <ui:VisualElement class="nxl-lcard-visual"><ui:VisualElement name="ld-rank-emblem" class="nxl-ic-crest" /></ui:VisualElement>
+                                <ui:VisualElement class="nxl-lcard-visual"><ui:VisualElement name="ld-rank-emblem" class="nxl-emblem-lg" /></ui:VisualElement>
                                 <ui:Label text="Ladder Rank" class="nxl-lcard-label" />
                                 <ui:Label text="Rival" name="ld-tier" class="nxl-lcard-big" style="font-size: 32px;" />
                                 <ui:VisualElement class="nxl-rp-track" name="ld-rank-track" style="width: 82%; margin-top: 10px;">
                                     <ui:VisualElement class="nxl-rp-fill" name="ld-rank-fill" style="width: 0%;" />
                                 </ui:VisualElement>
                                 <ui:VisualElement class="nxl-ladder-divider" />
-                                <ui:Label text="Menang 0" name="ld-wins" class="nxl-lcard-detail" />
-                                <ui:Label text="Kalah 0" name="ld-losses" class="nxl-lcard-detail" />
+                                <ui:Label text="—" name="ld-rank-next" class="nxl-lcard-detail" style="white-space: normal; -unity-text-align: middle-center;" />
                             </ui:VisualElement>
                             <ui:VisualElement class="nxl-card nxl-lcard">
                                 <ui:VisualElement class="nxl-lcard-visual"><ui:VisualElement class="nxl-ic-trophy" /></ui:VisualElement>

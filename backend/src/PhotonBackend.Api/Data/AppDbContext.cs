@@ -7,6 +7,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Player> Players => Set<Player>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<MatchPlayer> MatchPlayers => Set<MatchPlayer>();
+    public DbSet<MatchPlayerHero> MatchPlayerHeroes => Set<MatchPlayerHero>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -34,6 +35,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasIndex(x => new { x.MatchId, x.Slot }).IsUnique();
             e.HasOne(x => x.Match).WithMany(m => m.Players).HasForeignKey(x => x.MatchId);
             e.HasOne(x => x.Player).WithMany().HasForeignKey(x => x.PlayerId);
+        });
+
+        b.Entity<MatchPlayerHero>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.MatchId, x.PlayerId });
+            e.HasOne(x => x.MatchPlayer)
+                .WithMany(mp => mp.Heroes)
+                .HasForeignKey(x => new { x.MatchId, x.PlayerId })
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

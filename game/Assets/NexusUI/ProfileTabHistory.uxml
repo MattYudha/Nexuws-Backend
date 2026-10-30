@@ -1,9 +1,26 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="tab-history" class="nxl-prof-tab nxl-hidden">
-        <ui:Label text="RIWAYAT" class="nxl-prof-title" />
-        <ui:VisualElement class="nxl-card nxl-center" style="margin-top: 14px; min-height: 240px;">
-            <ui:Label text="Belum ada pertandingan selesai." class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center;" />
+        <ui:VisualElement class="nxl-row" style="align-items: center;">
+            <ui:Label text="RIWAYAT" class="nxl-prof-title" />
+            <ui:VisualElement class="nxl-spacer" />
+            <ui:Label text="Semua" name="hf-all" class="nxl-tab nxl-tab--active" style="width: 92px; height: 34px;" />
+            <ui:Label text="Ranked" name="hf-ranked" class="nxl-tab" style="width: 92px; height: 34px;" />
+            <ui:Label text="Battle" name="hf-battle" class="nxl-tab" style="width: 92px; height: 34px;" />
+        </ui:VisualElement>
+
+        <ui:Label text="" name="hist-summary" class="nxl-hist-summary nxl-hidden" />
+
+        <ui:VisualElement name="history-empty" class="nxl-card nxl-center nxl-hidden" style="margin-top: 14px; min-height: 300px;">
+            <ui:Label text="Belum ada pertandingan selesai." name="history-msg" class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center;" />
             <ui:Button text="MAIN SEKARANG" name="history-play" class="nxl-btn nxl-btn--orange" style="width: 240px; height: 48px; margin-top: 18px;" />
         </ui:VisualElement>
+
+        <ui:VisualElement name="hist-wrap" style="flex-grow: 1; flex-direction: row; align-items: center; margin-top: 10px;">
+            <ui:Button text="‹" name="hist-left" class="nxl-hist-nav" />
+            <ui:ScrollView name="hist-list" mode="Horizontal" horizontal-scroller-visibility="Hidden" class="nxl-hist-scroll" style="flex-grow: 1;" />
+            <ui:Button text="›" name="hist-right" class="nxl-hist-nav" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="hist-detail" class="nxl-detail-overlay nxl-hidden" />
     </ui:VisualElement>
 </ui:UXML>

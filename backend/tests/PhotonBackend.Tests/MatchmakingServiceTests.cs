@@ -6,8 +6,14 @@ namespace PhotonBackend.Tests;
 
 public class MatchmakingServiceTests
 {
+    // Window tetap (tanpa pelebaran) agar uji pairing deterministik.
     private static MatchmakingService New(int window = 400) =>
-        new(Options.Create(new GameOptions { MatchmakingWindow = window }));
+        new(Options.Create(new GameOptions
+        {
+            MatchmakingWindowStart = window,
+            MatchmakingWindowGrowthPerSec = 0,
+            MatchmakingMaxWaitSeconds = 100_000,
+        }));
 
     [Fact]
     public void TwoPlayersInWindow_Paired_OppositeSlots_SameGame()
@@ -66,6 +72,25 @@ public class MatchmakingServiceTests
         Assert.Equal(MatchmakingState.Matched, rc.State);
         Assert.Equal(a, rc.Assignment!.OpponentId);          // a (selisih 150) lebih dekat dari b (200)
         Assert.Equal(MatchmakingState.Searching, mm.Status(b).State); // b masih menunggu
+    }
+
+    [Fact]
+    public void IgnoreRatingDebug_PairsAnyRatings()
+    {
+        // Debug dev: abaikan rentang → dua akun uji dengan rating jauh tetap bertemu seketika.
+        var mm = new MatchmakingService(Options.Create(new GameOptions { MatchmakingIgnoreRating = true }));
+        mm.Join(Guid.NewGuid(), 1300, "asia");
+        var rb = mm.Join(Guid.NewGuid(), 2000, "asia");
+        Assert.Equal(MatchmakingState.Matched, rb.State);
+    }
+
+    [Fact]
+    public void DifferentVersion_NotPaired()
+    {
+        var mm = New();
+        mm.Join(Guid.NewGuid(), 1500, "asia", build: "1.0", sim: "nx-sim-1");
+        var rb = mm.Join(Guid.NewGuid(), 1500, "asia", build: "1.0", sim: "nx-sim-2"); // sim beda
+        Assert.Equal(MatchmakingState.Searching, rb.State);
     }
 
     [Fact]

@@ -4,9 +4,7 @@
 
         <!-- Profil (klik -> Profile Page) -->
         <ui:VisualElement class="nxl-profile" name="profile-card">
-            <ui:VisualElement class="nxl-ic nxl-avatar" name="avatar" style="width: 52px; height: 52px;">
-                <ui:Label text="N" />
-            </ui:VisualElement>
+            <ui:Label text="N" name="avatar" class="nxl-ic nxl-avatar" style="width: 52px; height: 52px;" />
             <ui:VisualElement style="margin-left: 10px; justify-content: center;">
                 <ui:Label text="Runner" name="player-name" class="nxl-h2" style="font-size: 18px;" />
                 <ui:VisualElement class="nxl-row" style="margin-top: 3px;">

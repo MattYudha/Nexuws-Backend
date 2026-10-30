@@ -18,40 +18,24 @@ public sealed record MatchmakingResult(MatchmakingState State, MatchAssignment? 
 /// </summary>
 public sealed class MatchmakingService(IOptions<GameOptions> options)
 {
-    private readonly object _lock = new();
-    private readonly Dictionary<Guid, (int Rating, string Region, DateTime At)> _waiting = new();
-    private readonly Dictionary<Guid, MatchAssignment> _assignments = new();
-    private readonly int _window = options.Value.MatchmakingWindow;
+    private sealed record Waiter(int Rating, string Region, DateTime At, string Build, string Sim);
 
-    public MatchmakingResult Join(Guid playerId, int rating, string region)
+    private readonly object _lock = new();
+    private readonly Dictionary<Guid, Waiter> _waiting = new();
+    private readonly Dictionary<Guid, MatchAssignment> _assignments = new();
+    private readonly GameOptions _o = options.Value;
+
+    public MatchmakingResult Join(Guid playerId, int rating, string region, string build = "", string sim = "")
     {
         lock (_lock)
         {
             if (_assignments.TryGetValue(playerId, out var already))
                 return new MatchmakingResult(MatchmakingState.Matched, already);
 
-            // Lawan menunggu terbaik: region sama, selisih rating terkecil dalam window.
-            Guid bestId = default; int bestDiff = int.MaxValue; bool found = false;
-            foreach (var (id, w) in _waiting)
-            {
-                if (id == playerId) continue;
-                if (!string.Equals(w.Region, region, StringComparison.OrdinalIgnoreCase)) continue;
-                int diff = Math.Abs(w.Rating - rating);
-                if (diff <= _window && diff < bestDiff) { bestId = id; bestDiff = diff; found = true; }
-            }
-
-            if (found)
-            {
-                _waiting.Remove(bestId);
-                _waiting.Remove(playerId);
-                var gameId = "mm-" + Guid.NewGuid().ToString("N")[..12];
-                _assignments[bestId] = new MatchAssignment(gameId, 0, region, playerId);   // yang menunggu = slot 0
-                _assignments[playerId] = new MatchAssignment(gameId, 1, region, bestId);    // pendatang = slot 1
-                return new MatchmakingResult(MatchmakingState.Matched, _assignments[playerId]);
-            }
-
-            _waiting[playerId] = (rating, region, DateTime.UtcNow); // overwrite = perbarui rating/region
-            return new MatchmakingResult(MatchmakingState.Searching, null);
+            // Upsert: PERTAHANKAN waktu masuk antre lama agar pelebaran rentang terus berjalan.
+            var at = _waiting.TryGetValue(playerId, out var ex) ? ex.At : DateTime.UtcNow;
+            _waiting[playerId] = new Waiter(rating, region, at, build ?? "", sim ?? "");
+            return TryMatch(playerId);
         }
     }
 
@@ -60,9 +44,49 @@ public sealed class MatchmakingService(IOptions<GameOptions> options)
         lock (_lock)
         {
             if (_assignments.TryGetValue(playerId, out var a)) return new MatchmakingResult(MatchmakingState.Matched, a);
-            if (_waiting.ContainsKey(playerId)) return new MatchmakingResult(MatchmakingState.Searching, null);
+            if (_waiting.ContainsKey(playerId)) return TryMatch(playerId); // re-evaluasi: rentang mungkin sudah melebar
             return new MatchmakingResult(MatchmakingState.Idle, null);
         }
+    }
+
+    // Dipanggil di dalam _lock; playerId dijamin ada di _waiting (atau sudah ter-assign).
+    private MatchmakingResult TryMatch(Guid playerId)
+    {
+        if (_assignments.TryGetValue(playerId, out var already))
+            return new MatchmakingResult(MatchmakingState.Matched, already);
+
+        var me = _waiting[playerId];
+        var now = DateTime.UtcNow;
+        int myWin = Window((now - me.At).TotalSeconds);
+
+        // Lawan terbaik: region + VERSI sama, selisih terkecil dalam rentang efektif (maks dari kedua penunggu).
+        Guid bestId = default; int bestDiff = int.MaxValue; bool found = false;
+        foreach (var (oid, w) in _waiting)
+        {
+            if (oid == playerId) continue;
+            if (!string.Equals(w.Region, me.Region, StringComparison.OrdinalIgnoreCase)) continue;
+            if (w.Sim != me.Sim || w.Build != me.Build) continue; // jangan pasangkan versi berbeda
+            int pairWin = Math.Max(myWin, Window((now - w.At).TotalSeconds));
+            int diff = Math.Abs(w.Rating - me.Rating);
+            if (diff <= pairWin && diff < bestDiff) { bestId = oid; bestDiff = diff; found = true; }
+        }
+
+        if (!found) return new MatchmakingResult(MatchmakingState.Searching, null);
+
+        _waiting.Remove(bestId);
+        _waiting.Remove(playerId);
+        var gameId = "mm-" + Guid.NewGuid().ToString("N")[..12];
+        _assignments[bestId] = new MatchAssignment(gameId, 0, me.Region, playerId);   // yang menunggu lebih dulu = slot 0
+        _assignments[playerId] = new MatchAssignment(gameId, 1, me.Region, bestId);   // pendatang = slot 1
+        return new MatchmakingResult(MatchmakingState.Matched, _assignments[playerId]);
+    }
+
+    // Rentang rating efektif: melebar per detik, lalu tak terbatas setelah MaxWait (selalu dapat lawan).
+    private int Window(double elapsedSec)
+    {
+        if (_o.MatchmakingIgnoreRating) return int.MaxValue;                  // debug dev
+        if (elapsedSec >= _o.MatchmakingMaxWaitSeconds) return int.MaxValue;  // batas tunggu → terima siapa pun
+        return _o.MatchmakingWindowStart + (int)(_o.MatchmakingWindowGrowthPerSec * elapsedSec);
     }
 
     /// <summary>Keluar antre / lepas assignment (mis. sudah connect atau batal).</summary>

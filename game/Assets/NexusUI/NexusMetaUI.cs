@@ -223,9 +223,9 @@ namespace Nexus
                 {
                     var m = _board[i];
                     var row = new VisualElement(); row.AddToClassList("nx-row"); row.AddToClassList("nx-mt8");
-                    var name = new Label($"{i + 1,2}.  {m.displayName}"); name.AddToClassList("nx-value");
+                    var name = new Label($"#{m.rank,2}  {m.displayName}"); name.AddToClassList("nx-value");
                     var sp = new VisualElement(); sp.AddToClassList("nx-spacer");
-                    var r = new Label($"{m.rating}   W{m.wins}/L{m.losses}"); r.AddToClassList("nx-label");
+                    var r = new Label($"{m.tier} · {m.ladderPoints}   W{m.wins}/L{m.losses}"); r.AddToClassList("nx-label");
                     row.Add(name); row.Add(sp); row.Add(r); card.Add(row);
                 }
             card.Add(Btn("KEMBALI", BtnV.Gray, () => { _showBoard = false; Render(); }));

@@ -27,28 +27,25 @@ namespace Quantum
                 foreach (var (vicE, vic) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
                 {
                     if (vicE == attE || vic->Team == att->Team) continue;
-                    if (vic->HitStun > 0 || vic->Invuln > 0 || vic->Faint > 0) continue;
                     if ((vic->Pos - center).SqrMagnitude > HitRange * HitRange) continue;
+                    // Lolos lewat dash (i-frame) = dodge berhasil → ayunan whiff (dedup: 1 dodge per ayunan).
+                    if (vic->DashTime > 0) { vic->Dodges++; att->AttackTime = 0; break; }
+                    // i-frame lain (hitstun/getup/respawn/faint): tak bisa dipukul lagi (anti-juggle), bukan dodge.
+                    if (vic->HitStun > 0 || vic->Invuln > 0 || vic->Faint > 0) continue;
 
-                    bool contact = NxDamage.ApplyHit(f, att->Team, att->Player, att->Pos, vicE, vic,
-                                                     HitDamage, Knockback, LaunchUp, NxDamage.HitStunTicks);
-                    if (contact)
-                    {
-                        att->AttackTime = 0;
-                        att->HitPause = (ushort)NxDamage.HitPauseTicks;
-                        break; // satu ayunan = satu kontak
-                    }
+                    var kind = NxDamage.ApplyHit(f, att, att->Team, att->Player, att->Pos, vicE, vic,
+                                                 HitDamage, Knockback, LaunchUp, NxDamage.HitStunTicks, att->SkillSwing != 0);
+                    if (kind == NxDamage.HitKind.Miss) continue;
+                    // kontak (Blocked/Hit/Ko)
+                    att->AttackTime = 0;
+                    att->HitPause = (ushort)NxDamage.HitPauseTicks;
+                    break; // satu ayunan = satu kontak
                 }
             }
 
-            // Win-condition RANKED: tim pertama capai KoTarget KO → match selesai.
-            // Hanya aktif bila ada >=2 pemain manusia (practice 1 pemain = tak berujung).
-            // Ditaruh di sini (sistem yang SELALU terdaftar) agar tidak bergantung pada NxProjectileSystem.
-            int humans = 0;
-            foreach (var (_, c) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
-                if (c->Player != PlayerRef.None) humans++;
-            if (humans >= 2 &&
-                (f.Global->ScoreA >= NxCombatSystem.KoTarget || f.Global->ScoreB >= NxCombatSystem.KoTarget))
+            // Win-condition: tim pertama capai KoTarget KO → match selesai. Selalu ada lawan
+            // (ranked = 2 manusia; practice = 1 manusia + 1 bot; battle = tim isi bot), jadi tak berujung-mati.
+            if (f.Global->ScoreA >= NxCombatSystem.KoTarget || f.Global->ScoreB >= NxCombatSystem.KoTarget)
                 f.Global->State = 2; // Over
         }
     }

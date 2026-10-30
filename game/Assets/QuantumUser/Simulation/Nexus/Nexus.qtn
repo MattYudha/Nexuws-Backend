@@ -46,7 +46,35 @@ component NxCombat
     ushort     SkillCd;      // cooldown skill (K)
     ushort     ShotCd;       // cooldown tembakan dasar PULSE (J)
     ushort     CritTimer;    // hitung maju saat Critical → auto-KO/respawn bila tak tertolong (bleed-out)
-    ushort     Kills;        // jumlah KO yang DILAKUKAN (statistik profil). Kos = deaths.
+    ushort     Kills;        // KO terhadap MANUSIA (statistik ranked/K/D). Kos = deaths.
+    ushort     BotKills;     // KO terhadap BOT (dipisah; TIDAK dihitung di ranked/leaderboard)
+    player_ref LastHitByPlayer; // penyerang terakhir yang mengenai korban (kredit KO bleed-out)
+    byte       LastHitByTeam;   // tim penyerang terakhir (skor bleed-out)
+    byte       LastHitValid;    // 1 bila LastHitBy* terisi
+
+    // --- Statistik akumulator per match (deterministik; docs/32 Lapisan 1) ---
+    FP         DamageDealt;  // total damage diberikan
+    FP         DamageTaken;  // total damage diterima
+    ushort     SkillsUsed;   // tombol skill (K) dipakai
+    ushort     SkillsHit;    // skill yang mengenai lawan (kena)
+    ushort     HitsBlocked;  // serangan lawan yang berhasil di-guard
+    ushort     Dodges;       // serangan lolos karena i-frame dash
+    ushort     GuardCrushes; // membuat lawan Faint
+    ushort     Criticals;    // membuat lawan masuk Critical
+    ushort     GearDrops;    // merontokkan gear lawan
+    byte       FirstBlood;   // 1 bila melakukan KO pertama di match
+    ushort     CurStreak;    // streak KO berjalan (reset saat mati)
+    ushort     MaxStreak;    // streak KO terpanjang
+    byte       MaxDeficit;   // selisih KO terbesar saat tertinggal
+    byte       SkillSwing;   // transien: ayunan melee aktif berasal dari skill
+    ushort     HeroSwitches; // jumlah ganti hero (H)
+    // per hero dalam match ini (0 TITAN, 1 PULSE)
+    int        H0Ticks;
+    int        H1Ticks;
+    byte       H0Kills;
+    byte       H1Kills;
+    FP         H0Dmg;
+    FP         H1Dmg;
 }
 
 // Proyektil PULSE-X (zoner). Entity terpisah; gerak lurus, kena → NxDamage, lalu hancur.
@@ -58,6 +86,7 @@ component NxProjectile
     FPVector3  Vel;
     ushort     Life;         // sisa tick sebelum hilang
     FP         Damage;
+    byte       IsSkill;      // 1 = charged shot (skill) → untuk statistik skillsHit
 }
 
 global
@@ -68,4 +97,5 @@ global
     byte Mode;
     byte ScoreA;         // KO oleh pemain (spike)
     byte ScoreB;
+    byte FirstBloodTaken; // 0 sampai KO pertama match terjadi (untuk statistik firstBlood)
 }

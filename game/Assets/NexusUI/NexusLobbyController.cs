@@ -452,19 +452,19 @@ namespace Nexus
             string tier = on ? (!string.IsNullOrEmpty(b.RankTier) ? b.RankTier : NexusRankConfig.TierForRating(b.Rating)) : "—";
             int w = on ? b.Wins : 0, l = on ? b.Losses : 0;
             string wr = on ? b.WinRate.ToString("0.#") : "0";
-            string fac = (on && b.Faction == 1) ? "ORDE" : (on && b.Faction == 2) ? "LEGION" : "NEXUS";
-
-            SetText("ld-winhead", fac + " | RANKED SOLO");
+            // Faction hanya ORDE/LEGION. Kalau kosong → jangan tampilkan "NEXUS", cukup "RANKED SOLO".
+            string fac = (on && b.Faction == 1) ? "ORDE" : (on && b.Faction == 2) ? "LEGION" : "";
+            SetText("ld-winhead", fac.Length > 0 ? fac + " | RANKED SOLO" : "RANKED SOLO");
             SetText("ld-avatar", name.Length > 0 ? name.Substring(0, 1).ToUpperInvariant() : "N");
             SetText("ld-pname", name);
             SetText("ld-ptier", tier);
 
             SetText("ld-tier", tier);
+            SetEmblem(_root.Q("ld-rank-emblem"), on ? tier : "");
             float p = on ? NexusRankConfig.Progress(tier, b.Rating) : -1f;
             ShowEl(_root.Q("ld-rank-track"), p >= 0f);
             var fill = _root.Q("ld-rank-fill"); if (fill != null) fill.style.width = Length.Percent(p >= 0f ? p * 100f : 0f);
-            SetText("ld-wins", "Menang " + w);
-            SetText("ld-losses", "Kalah " + l);
+            SetText("ld-rank-next", on ? NextTierText(tier, b.Rating) : "");
 
             SetText("ld-winrate", wr + "%");
             SetText("ld-wr-sub", w + " Menang · " + l + " Kalah");
@@ -479,7 +479,8 @@ namespace Nexus
             var matches = await b.GetMatchHistoryAsync();
             if (_partySolo) { FillMatches(matches); BuildGraph(matches); }
             var board = await b.GetLeaderboardAsync(100);
-            if (_partySolo) FillTop(board);
+            var myRank = await b.GetMyRankAsync();
+            if (_partySolo) FillTop(board, myRank);
         }
 
         private void FillMatches(NexusBackend.MatchRow[] rows)
@@ -491,48 +492,75 @@ namespace Nexus
             {
                 var row = new VisualElement(); row.AddToClassList("nxl-ladder-row");
                 row.AddToClassList(mr.won ? "nxl-ladder-row--win" : "nxl-ladder-row--loss");
+                row.style.flexDirection = FlexDirection.Column; row.style.minHeight = 54;
+
+                var l1 = new VisualElement(); l1.style.flexDirection = FlexDirection.Row;
                 var res = new Label(mr.won ? "MENANG" : "KALAH"); res.AddToClassList("nxl-ladder-rowtxt"); res.style.width = 86;
-                var sc = new Label(mr.scoreLeft + "-" + mr.scoreRight); sc.AddToClassList("nxl-ladder-rowdim"); sc.style.width = 60;
-                string d = mr.ratingDelta >= 0 ? "+" + mr.ratingDelta : mr.ratingDelta.ToString();
-                var dl = new Label(d + " poin"); dl.AddToClassList("nxl-ladder-rowdim"); dl.style.flexGrow = 1;
+                string mode = string.IsNullOrEmpty(mr.mode) ? "" : mr.mode.ToUpperInvariant();
+                var hero = new Label(HeroName(mr.heroId) + (mode.Length > 0 ? "  ·  " + mode : "")); hero.AddToClassList("nxl-ladder-rowdim"); hero.style.flexGrow = 1;
                 var tm = new Label(ShortTime(mr.endedAt)); tm.AddToClassList("nxl-ladder-rowdim");
-                row.Add(res); row.Add(sc); row.Add(dl); row.Add(tm);
+                l1.Add(res); l1.Add(hero); l1.Add(tm);
+
+                var mine = FindPlayer(mr, mr.slot, true);
+                var opp = FindPlayer(mr, mr.slot, false);
+                var l2 = new VisualElement(); l2.style.flexDirection = FlexDirection.Row; l2.style.marginTop = 2;
+                var vs = new Label("vs " + (opp != null && !string.IsNullOrEmpty(opp.displayName) ? opp.displayName : "-")); vs.AddToClassList("nxl-ladder-rowdim"); vs.style.flexGrow = 1;
+                var k = new Label(mine != null ? ("K" + mine.kills + " / D" + mine.deaths + " / A" + mine.assists) : ""); k.AddToClassList("nxl-ladder-rowdim"); k.style.width = 130;
+                l2.Add(vs); l2.Add(k);
+                if ((mr.mode ?? "").Trim().ToLowerInvariant() == "ranked") { string d = mr.ratingDelta >= 0 ? "+" + mr.ratingDelta : mr.ratingDelta.ToString(); var dl = new Label(d); dl.AddToClassList("nxl-ladder-rowdim"); dl.style.width = 60; l2.Add(dl); }
+
+                row.Add(l1); row.Add(l2);
                 log.Add(row);
             }
         }
 
-        private void FillTop(NexusBackend.LeaderRow[] rows)
+        private void FillTop(NexusBackend.LeaderRow[] rows, NexusBackend.MyRankRes myRank)
         {
             var log = _root.Q<ScrollView>("ld-top"); if (log == null) return;
             log.Clear();
-            if (rows == null || rows.Length == 0) { log.Add(Dim("Belum ada pemain di papan.")); return; }
             var b = game != null ? game.Backend : null;
             string me = b != null ? (!string.IsNullOrEmpty(b.DisplayName) ? b.DisplayName : b.Username) : "";
+
+            if (rows == null || rows.Length == 0)
+                log.Add(Dim("Belum ada pemain yang selesai placement (min 5 match ranked)."));
+
             bool meShown = false;
-            for (int i = 0; i < rows.Length; i++)
+            if (rows != null)
+                for (int i = 0; i < rows.Length; i++)
+                {
+                    var r = rows[i];
+                    bool mine = !string.IsNullOrEmpty(me) && r.displayName == me;
+                    if (mine) meShown = true;
+                    log.Add(TopRow("#" + r.rank, r.displayName, r.tier, r.ladderPoints, r.wins, r.losses, r.winRate, mine));
+                }
+
+            // Baris pemain sendiri di bawah: peringkat asli (kalau di luar daftar) / status placement.
+            if (myRank != null && !meShown)
             {
-                var r = rows[i];
-                bool mine = !string.IsNullOrEmpty(me) && r.displayName == me;
-                if (mine) meShown = true;
-                log.Add(TopRow("#" + (i + 1), r.displayName, NexusRankConfig.TierForRating(r.rating), r.wins, r.losses, mine));
-            }
-            // Pemain di luar Top 100 → tampilkan di bawah (peringkat asli belum ada endpoint → "100+").
-            if (!meShown && b != null && b.LoggedIn)
-            {
-                string tier = !string.IsNullOrEmpty(b.RankTier) ? b.RankTier : NexusRankConfig.TierForRating(b.Rating);
-                log.Add(TopRow("100+", me, tier, b.Wins, b.Losses, true));
+                if (myRank.placed)
+                    log.Add(TopRow("#" + myRank.rank, me, myRank.tier, myRank.ladderPoints, myRank.wins, myRank.losses, myRank.winRate, true));
+                else
+                {
+                    var note = Dim(myRank.needed > 0
+                        ? $"Selesaikan {myRank.needed} match ranked lagi untuk masuk peringkat."
+                        : "Main match ranked untuk masuk peringkat.");
+                    note.style.marginTop = 6;
+                    log.Add(note);
+                }
             }
         }
 
-        private VisualElement TopRow(string rank, string name, string tier, int w, int l, bool mine)
+        private VisualElement TopRow(string rank, string name, string tier, int points, int w, int l, float winRate, bool mine)
         {
             var row = new VisualElement(); row.AddToClassList("nxl-ladder-row"); row.style.minHeight = 40;
             if (mine) row.AddToClassList("nxl-ladder-row--me");
-            var rk = new Label(rank); rk.AddToClassList("nxl-ladder-rowtxt"); rk.style.width = 56;
-            var nm = new Label(string.IsNullOrEmpty(name) ? "-" : name); nm.AddToClassList("nxl-ladder-rowtxt"); nm.style.flexGrow = 1;
-            var tr = new Label(tier); tr.AddToClassList("nxl-ladder-rowdim"); tr.style.width = 110;
-            var wl = new Label("W" + w + " / L" + l); wl.AddToClassList("nxl-ladder-rowdim"); wl.style.width = 104;
-            row.Add(rk); row.Add(nm); row.Add(tr); row.Add(wl);
+            var rk = new Label(rank); rk.AddToClassList("nxl-ladder-rowtxt"); rk.style.width = 52;
+            var em = new VisualElement(); em.AddToClassList("nxl-emblem"); SetEmblem(em, tier); em.style.width = 26; em.style.height = 26; em.style.flexShrink = 0;
+            var nm = new Label(string.IsNullOrEmpty(name) ? "-" : name); nm.AddToClassList("nxl-ladder-rowtxt"); nm.style.flexGrow = 1; nm.style.marginLeft = 8;
+            var tp = new Label(tier + " · " + points); tp.AddToClassList("nxl-ladder-rowdim"); tp.style.width = 150;
+            var wl = new Label("W" + w + " / L" + l); wl.AddToClassList("nxl-ladder-rowdim"); wl.style.width = 92;
+            var wr = new Label(winRate.ToString("0.#") + "%"); wr.AddToClassList("nxl-ladder-rowdim"); wr.style.width = 56;
+            row.Add(rk); row.Add(em); row.Add(nm); row.Add(tp); row.Add(wl); row.Add(wr);
             return row;
         }
 
@@ -666,6 +694,44 @@ namespace Nexus
         public static string PlayerName(NexusBackend b)
             => b == null ? "Runner" : (!string.IsNullOrEmpty(b.DisplayName) ? b.DisplayName : (!string.IsNullOrEmpty(b.Username) ? b.Username : "Runner"));
 
+        public static string Initial(string name) => string.IsNullOrEmpty(name) ? "N" : name.Substring(0, 1).ToUpperInvariant();
+
+        private static readonly string[] EmblemTiers = { "rookie", "contender", "rival", "gladiator", "conqueror", "nexuslegend" };
+        public static string TierKey(string tier)
+        {
+            if (string.IsNullOrEmpty(tier)) return "rookie";
+            string t = tier.ToLowerInvariant();
+            if (t.Contains("nexus")) return "nexuslegend";
+            if (t.Contains("conqueror")) return "conqueror";
+            if (t.Contains("gladiator")) return "gladiator";
+            if (t.Contains("rival")) return "rival";
+            if (t.Contains("contender")) return "contender";
+            return "rookie";
+        }
+        public static void SetEmblem(VisualElement e, string tier)
+        {
+            if (e == null) return;
+            string key = TierKey(tier);
+            foreach (var t in EmblemTiers) e.EnableInClassList("nxl-emblem--" + t, t == key);
+        }
+
+        private static readonly string[] TierDisplay = { "Rookie", "Contender", "Rival", "Gladiator", "Conqueror", "Nexus Legend" };
+        public static string NextTierText(string tier, int rating)
+        {
+            int idx = System.Array.IndexOf(EmblemTiers, TierKey(tier));
+            if (idx < 0) return "";
+            if (idx >= EmblemTiers.Length - 1) return "Tier tertinggi";
+            int pct = Mathf.RoundToInt(Mathf.Clamp01(NexusRankConfig.Progress(tier, rating)) * 100f);
+            return pct + "% menuju " + TierDisplay[idx + 1];
+        }
+        public static string HeroName(int heroId) => heroId == 0 ? "TITAN-01" : "PULSE-X";
+        private static NexusBackend.MatchPlayerRow FindPlayer(NexusBackend.MatchRow m, int slot, bool same)
+        {
+            if (m.players == null) return null;
+            foreach (var p in m.players) if ((p.slot == slot) == same) return p;
+            return null;
+        }
+
         private void SetText(string n, string v) { var l = _root.Q<Label>(n); if (l != null) l.text = v; }
         private void Active2(string n, bool v) { var e = _root.Q(n); if (e != null) e.EnableInClassList("nxl-tab--active", v); }
         private void ClickEl(string n, System.Action cb) { var e = _root.Q(n); if (e != null) e.RegisterCallback<ClickEvent>(_ => cb()); }
@@ -690,10 +756,17 @@ namespace Nexus
         {
             var b = game != null ? game.Backend : null;
             bool on = b != null && b.LoggedIn;
-            if (_name != null) _name.text = PlayerName(b);
+            string name = PlayerName(b);
+            if (_name != null) _name.text = name;
+            SetText("avatar", Initial(name)); // inisial dari display name
             if (_level != null) _level.text = on ? "Lv " + b.AccountLevel : "Lv -";
-            if (_rankTier != null) _rankTier.text = on && !string.IsNullOrEmpty(b.RankTier) ? b.RankTier : "UNRANKED";
-            if (_rankSub != null) _rankSub.text = on && b.MatchesPlayed > 0 ? "Rating " + b.Rating : "Selesaikan 5 placement";
+            string tier = on ? (!string.IsNullOrEmpty(b.RankTier) ? b.RankTier : NexusRankConfig.TierForRating(b.Rating)) : "UNRANKED";
+            if (_rankTier != null) _rankTier.text = tier;
+            if (_rankSub != null) _rankSub.text = on ? ("Menang " + b.Wins + " · Kalah " + b.Losses) : "Belum ada data";
+            float rp = on ? NexusRankConfig.Progress(tier, b.Rating) : -1f; // tier + bar saja, TANPA angka MMR
+            ShowEl(_root.Q("rank-mini-track"), rp >= 0f);
+            var rf = _root.Q("rank-mini-fill"); if (rf != null) rf.style.width = Length.Percent(rp >= 0f ? rp * 100f : 0f);
+            SetEmblem(_root.Q("rank-mini-emblem"), on ? tier : "");
             // Currency (Gold/Ticket/Diamond) tetap 0 — belum ada backend ekonomi (tanpa dummy).
         }
 

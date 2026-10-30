@@ -30,5 +30,24 @@ public sealed class GameOptions
     public double StartRd { get; set; } = 350.0;    // RD awal (pemain baru = tak pasti)
     public double StartVolatility { get; set; } = 0.06;
     public double Tau { get; set; } = 0.5;          // konstanta sistem Glicko-2 (0.3–1.2)
-    public int MatchmakingWindow { get; set; } = 400; // selisih rating maksimum untuk dipasangkan
+    public int MatchmakingWindow { get; set; } = 400; // (lama; dipakai sbg Start default)
+
+    // --- Matchmaking: rentang rating melebar bertahap + batas tunggu + versi + debug ---
+    public int MatchmakingWindowStart { get; set; } = 400;        // rentang rating awal
+    public int MatchmakingWindowGrowthPerSec { get; set; } = 40;  // pelebaran per detik menunggu
+    public int MatchmakingMaxWaitSeconds { get; set; } = 75;      // setelah ini: terima lawan mana pun (region+versi sama)
+    public bool MatchmakingIgnoreRating { get; set; } = false;    // DEBUG dev: abaikan rentang rating (dua akun uji selalu bertemu)
+    public string RequiredSimVersion { get; set; } = "";         // kalau diisi: join wajib simVersion sama (tolak build lama)
+    public string RequiredBuildVersion { get; set; } = "";       // opsional: samakan versi build juga
+
+    // --- Sanity-check & anti-kolusi hasil ranked (docs/32 KEAMANAN MINIMUM) ---
+    public bool AllowTestAccounts { get; set; } = false; // true HANYA di dev/test → izinkan buat akun dgn flag IsTest
+    public int MinMatchSeconds { get; set; } = 8;        // durasi di bawah ini → hasil mencurigakan (tolak)
+    public double MaxKoPerSecond { get; set; } = 1.0;    // laju KO di atas ini → mencurigakan (tolak)
+    public int CollusionWindowMinutes { get; set; } = 30; // jendela deteksi pasangan berulang
+    public int CollusionThreshold { get; set; } = 3;     // >= sekian pertemuan dalam jendela → redam rating
+    public double CollusionRatingFactor { get; set; } = 0.25; // faktor pengali perolehan rating saat diredam
+
+    // --- Proteksi demosi (docs/33 opsi 1) ---
+    public int DemotionGraceMatches { get; set; } = 3;   // setelah naik tier: tier TAMPIL tak turun sekian match ranked
 }
