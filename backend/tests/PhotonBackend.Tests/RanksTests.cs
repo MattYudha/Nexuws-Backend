@@ -77,6 +77,19 @@ public class RanksTests
     }
 
     [Fact]
+    public void StepTierFloor_GraceZero_FloorNeverActivates()   // proteksi demosi NONAKTIF selama dev
+    {
+        // Promosi besar (Contender→Conqueror) dengan grace 0 → tak ada floor sama sekali.
+        var (last, floor, left) = Ranks.StepTierFloor(1, 1850, 0, 0, grace: 0);
+        Assert.Equal((4, 0, 0), (last, floor, left));          // floorOrder & floorLeft tetap 0
+        // Lalu turun jauh → tetap tanpa proteksi → tampil = tier rating asli.
+        (last, floor, left) = Ranks.StepTierFloor(last, 1350, floor, left, grace: 0);
+        Assert.Equal(0, left);
+        int disp = Ranks.ApplyFloor(Ranks.TierOrder(Ranks.TierFor(1350)), floor, left);
+        Assert.Equal(Ranks.TierOrder(Ranks.TierFor(1350)), disp);
+    }
+
+    [Fact]
     public void StepTierFloor_RepromotionResetsGrace()
     {
         const int grace = 3;

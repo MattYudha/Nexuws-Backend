@@ -49,5 +49,7 @@ public sealed class GameOptions
     public double CollusionRatingFactor { get; set; } = 0.25; // faktor pengali perolehan rating saat diredam
 
     // --- Proteksi demosi (docs/33 opsi 1) ---
-    public int DemotionGraceMatches { get; set; } = 3;   // setelah naik tier: tier TAMPIL tak turun sekian match ranked
+    // NONAKTIF selama development: 0 = floor tak pernah aktif → tier tampil = tier rating asli.
+    // Kode/kolom DB/tes dipertahankan. AKTIFKAN KEMBALI (3) SEBELUM RILIS PUBLIK.
+    public int DemotionGraceMatches { get; set; } = 0;   // setelah naik tier: tier TAMPIL tak turun sekian match ranked
 }

@@ -62,26 +62,28 @@ public sealed class LeaderboardService(IServiceScopeFactory scopes)
             .Select(p => new { p.Id, p.DisplayName, p.Rating, p.Rd, p.Wins, p.Losses, p.TierFloorOrder, p.TierFloorLeft })
             .ToListAsync(ct);
 
-        var rows = new List<(string Tier, int Pts, double Wr, int Matches, Guid Id, string Name, int W, int L)>();
+        var rows = new List<(string Tier, int Pts, double Wr, int Matches, Guid Id, string Name, int W, int L, double Cons)>();
         foreach (var p in players)
         {
             int rm = rankedCount.TryGetValue(p.Id, out var c) ? c : 0;
             if (rm < PlacementMatches) continue; // belum selesai placement
 
-            int cons = (int)Math.Round(p.Rating - 2 * p.Rd); // conservative rating → posisi
-            int baseOrder = Ranks.TierOrder(Ranks.TierFor(cons));
-            int dispOrder = Ranks.ApplyFloor(baseOrder, p.TierFloorOrder, p.TierFloorLeft); // proteksi demosi (opsi 1)
+            // TIER YANG DITAMPILKAN = dari RATING ASLI (konsisten dgn profil/lobby/riwayat). docs/33 §2.
+            int baseOrder = Ranks.TierOrder(Ranks.TierFor(p.Rating));
+            int dispOrder = Ranks.ApplyFloor(baseOrder, p.TierFloorOrder, p.TierFloorLeft); // proteksi demosi (NONAKTIF: no-op)
             string tier = Ranks.TierName(dispOrder);
-            int pts = dispOrder > baseOrder ? 0 : Ranks.LadderPoints(cons); // di-floor → dasar tier baru (0 poin)
+            int pts = dispOrder > baseOrder ? 0 : Ranks.LadderPoints(p.Rating); // di-floor → dasar tier baru (0 poin)
+            // CONSERVATIVE rating (rating − 2·RD) HANYA untuk URUTAN POSISI (akun RD tinggi tak melompat ke puncak).
+            double cons = p.Rating - 2 * p.Rd;
             int total = p.Wins + p.Losses;
             double wr = total > 0 ? Math.Round(100.0 * p.Wins / total, 1) : 0;
-            rows.Add((tier, pts, wr, total, p.Id, p.DisplayName, p.Wins, p.Losses));
+            rows.Add((tier, pts, wr, total, p.Id, p.DisplayName, p.Wins, p.Losses, cons));
         }
 
+        // Posisi diurutkan MURNI dari conservative rating (kontinu → tanpa masalah tepi band), tiebreak WR lalu match.
         rows.Sort((a, b) =>
         {
-            int t = Ranks.TierOrder(b.Tier).CompareTo(Ranks.TierOrder(a.Tier)); if (t != 0) return t;
-            int pt = b.Pts.CompareTo(a.Pts); if (pt != 0) return pt;
+            int cc = b.Cons.CompareTo(a.Cons); if (cc != 0) return cc;
             int wr = b.Wr.CompareTo(a.Wr); if (wr != 0) return wr;
             return b.Matches.CompareTo(a.Matches);
         });

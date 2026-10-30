@@ -77,6 +77,15 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
         .Where(p => PhotonBackend.Api.Services.Ranks.TierOrder(PhotonBackend.Api.Services.Ranks.TierFor(p.Rating)) > 0).ToList();
     foreach (var p in noFloor) p.LastRankedTierOrder = PhotonBackend.Api.Services.Ranks.TierOrder(PhotonBackend.Api.Services.Ranks.TierFor(p.Rating));
     if (noFloor.Count > 0) db.SaveChanges();
+
+    // Proteksi demosi NONAKTIF (DemotionGraceMatches=0) → bersihkan floor yang mungkin masih aktif
+    // (akun uji dari masa percobaan). Idempoten. Hapus blok ini TIDAK perlu saat fitur diaktifkan lagi.
+    if (app.Configuration.GetValue("Game:DemotionGraceMatches", 0) <= 0)
+    {
+        var activeFloors = db.Players.Where(p => p.TierFloorLeft > 0 || p.TierFloorOrder > 0).ToList();
+        foreach (var p in activeFloors) { p.TierFloorLeft = 0; p.TierFloorOrder = 0; }
+        if (activeFloors.Count > 0) db.SaveChanges();
+    }
 }
 
 app.UseAuthentication();

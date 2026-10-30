@@ -49,9 +49,12 @@ public static class Ranks
         int prevLastTier, int newRating, int floorOrder, int floorLeft, int grace)
     {
         int raw = TierOrder(TierFor(newRating));
-        if (raw > prevLastTier)                       // promosi (termasuk promosi ulang saat proteksi aktif)
-            return (raw, raw, System.Math.Max(0, grace));
-        int left = floorLeft > 0 ? floorLeft - 1 : 0; // stagnan/turun → grace berkurang
+        if (raw > prevLastTier)                        // promosi (termasuk promosi ulang saat proteksi aktif)
+        {
+            int g = System.Math.Max(0, grace);
+            return (raw, g > 0 ? raw : 0, g);          // grace 0 (NONAKTIF) → tak ada floor
+        }
+        int left = floorLeft > 0 ? floorLeft - 1 : 0;  // stagnan/turun → grace berkurang
         return (raw, left > 0 ? floorOrder : 0, left);
     }
 

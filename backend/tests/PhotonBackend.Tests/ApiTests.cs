@@ -89,7 +89,7 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(1, meA.GetProperty("wins").GetInt32());
         Assert.Equal(1, meB.GetProperty("losses").GetInt32());
 
-        // Akun uji (deviceId non-"nx-") + belum selesai placement (<5 ranked) → TIDAK tampil di leaderboard.
+        // Belum selesai placement (baru 1 ranked, perlu ≥5) → TIDAK tampil di leaderboard. (Bukan karena deviceId.)
         var board = await alice.GetFromJsonAsync<JsonElement>("/api/leaderboard?limit=50");
         var names = board.EnumerateArray().Select(x => x.GetProperty("displayName").GetString()).ToList();
         Assert.DoesNotContain("MatchAlice", names);
