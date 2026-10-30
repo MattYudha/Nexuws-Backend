@@ -74,7 +74,7 @@ namespace Nexus
         [Serializable] public sealed class MatchPlayerRow {
             public int slot; public string displayName; public int heroId; public int kills; public int botKills; public int deaths; public int assists;
             public int ratingDelta; public int ratingBefore; public bool isWinner; public bool hasDetailedStats;
-            public int damageDealt; public int damageTaken; public int hitsBlocked; public int dodges; public int guardCrushes; public int criticals;
+            public int damageDealt; public int damageTaken; public int hitsBlocked; public int dodges; public int guardCrushes; public int criticals; public int gearDrops;
             public int skillsUsed; public int skillsHit; public bool firstBlood; public int maxKillStreak; public int maxDeficit; public int heroSwitches;
             public MatchHeroRow[] heroes;
         }

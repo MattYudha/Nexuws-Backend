@@ -31,6 +31,8 @@ namespace Nexus
         private ScrollView _histList; private VisualElement _histEmpty, _histDetail; private VisualElement _histLeft, _histRight;
         private NexusBackend.MatchRow[] _histMatches;
         private int _histFilter; private bool _histFetched; private bool _detailOpen;
+        public enum DetailMode { History, Result }   // History = dari Riwayat; Result = layar hasil pasca-match (wiring NexusGame = poin e)
+        private DetailMode _detailMode = DetailMode.History;
 
         private void Awake()
         {
@@ -75,6 +77,8 @@ namespace Nexus
             _histList = _root.Q<ScrollView>("hist-list");
             _histEmpty = _root.Q("history-empty");
             _histDetail = _root.Q("hist-detail");
+            // Overlay Detail Match = layar penuh: pindahkan ke profile-root agar menutupi sidebar + konten (sembunyikan sidebar & tombol Back profil).
+            if (_histDetail != null && _profileRoot != null) { _histDetail.RemoveFromHierarchy(); _profileRoot.Add(_histDetail); }
             _histLeft = _root.Q("hist-left"); _histRight = _root.Q("hist-right");
             if (_histList != null) _histList.RegisterCallback<GeometryChangedEvent>(_ => UpdateArrows());
             ClickEl("hf-all", () => SetHistFilter(0));
@@ -308,124 +312,173 @@ namespace Nexus
             return t.Length > 0 ? d + " " + t : d;
         }
 
-        private void OpenDetail(NexusBackend.MatchRow m)
+        private void OpenDetail(NexusBackend.MatchRow m, DetailMode mode = DetailMode.History)
         {
             if (_histDetail == null) return;
+            _detailMode = mode;
             _histDetail.Clear();
             var me = Mine(m);
             NexusBackend.MatchPlayerRow opp = null;
             if (m.players != null) foreach (var p in m.players) if (p.slot != m.slot) { opp = p; break; }
             bool r1 = m.format == "ranked1v1";
-            int loserScore = Mathf.Min(m.scoreLeft, m.scoreRight);
+            bool flawless = Mathf.Min(m.scoreLeft, m.scoreRight) == 0;
+            int myScore = m.slot == 0 ? m.scoreLeft : m.scoreRight;      // skor KAMU di kiri, apa pun slot-nya
+            int oppScore = m.slot == 0 ? m.scoreRight : m.scoreLeft;
 
-            // HEADER tengah: MENANG/KALAH besar + skor diapit nama + baris mode·tanggal·durasi.
-            var header = new VisualElement(); header.style.alignItems = Align.Center;
-            var title = new Label(m.won ? "MENANG" : "KALAH"); title.AddToClassList("nxl-dt-title"); title.AddToClassList(m.won ? "nxl-hist-res--win" : "nxl-hist-res--loss");
-            header.Add(title);
-            var scoreRow = new VisualElement(); scoreRow.style.flexDirection = FlexDirection.Row; scoreRow.style.alignItems = Align.Center; scoreRow.style.marginTop = 4;
-            scoreRow.Add(SideName(me, true));
-            var sc = new Label(m.scoreLeft + " — " + m.scoreRight); sc.AddToClassList("nxl-dt-score"); sc.style.marginLeft = 28; sc.style.marginRight = 28;
-            scoreRow.Add(sc); scoreRow.Add(SideName(opp, false)); header.Add(scoreRow);
-            var sub = new Label(ModeLabel(m) + "   ·   " + ShortDateTime(m.endedAt) + "   ·   " + (m.durationSec > 0 ? FmtDur(m.durationSec) : "–")); sub.AddToClassList("nxl-dim"); sub.style.marginTop = 6; header.Add(sub);
-            _histDetail.Add(header);
+            // ===== BANNER: skor kamu | MENANG/KALAH | skor lawan, lalu meta satu baris (tak overlap) =====
+            var banner = new VisualElement(); banner.AddToClassList("nxl-dtx-banner");
+            var brow = new VisualElement(); brow.AddToClassList("nxl-dtx-brow");
+            var sL = new Label(myScore.ToString()); sL.AddToClassList("nxl-dtx-score"); sL.AddToClassList("nxl-dtx-score--you");
+            var res = new Label(m.won ? "MENANG" : "KALAH"); res.AddToClassList("nxl-dtx-res"); res.AddToClassList(m.won ? "nxl-dtx-res--win" : "nxl-dtx-res--loss");
+            var sR = new Label(oppScore.ToString()); sR.AddToClassList("nxl-dtx-score"); sR.AddToClassList("nxl-dtx-score--opp");
+            brow.Add(sL); brow.Add(res); brow.Add(sR); banner.Add(brow);
+            var meta = new Label(ModeLabel(m) + "   ·   " + ShortDateTime(m.endedAt) + "   ·   " + (m.durationSec > 0 ? FmtDur(m.durationSec) : "–"));
+            meta.AddToClassList("nxl-dtx-meta"); banner.Add(meta);
+            _histDetail.Add(banner);
 
-            // DUA SISI hero.
-            var sides = new VisualElement(); sides.style.flexDirection = FlexDirection.Row; sides.style.justifyContent = Justify.SpaceBetween; sides.style.marginTop = 16;
-            sides.Add(HeroSide(me, true, loserScore == 0)); sides.Add(HeroSide(opp, false, loserScore == 0));
-            _histDetail.Add(sides);
+            // ===== BODY: KAMU (biru) | panel tengah | LAWAN (merah) =====
+            var body = new VisualElement(); body.AddToClassList("nxl-dtx-body");
+            body.Add(PlayerColumn(me, true, flawless, m, r1));
+            body.Add(CenterPanel(me, opp, r1));
+            body.Add(PlayerColumn(opp, false, flawless, m, r1));
+            _histDetail.Add(body);
 
-            // STATISTIK CERMIN (ranked1v1).
-            if (r1 && me != null && opp != null)
-            {
-                var stats = new VisualElement(); stats.AddToClassList("nxl-card"); stats.style.marginTop = 16;
-                stats.Add(MirrorRow("K / D", me.kills + " / " + me.deaths, opp.kills + " / " + opp.deaths, me.kills - me.deaths, opp.kills - opp.deaths));
-                stats.Add(MirrorInt("Damage diberikan", me.damageDealt, opp.damageDealt));
-                stats.Add(MirrorInt("Damage diterima", me.damageTaken, opp.damageTaken));
-                stats.Add(MirrorInt("Guard crush", me.guardCrushes, opp.guardCrushes));
-                stats.Add(MirrorInt("Critical", me.criticals, opp.criticals));
-                stats.Add(MirrorInt("Dodge berhasil", me.dodges, opp.dodges));
-                stats.Add(MirrorInt("Serangan di-guard", me.hitsBlocked, opp.hitsBlocked));
-                int accMe = me.skillsUsed > 0 ? Mathf.RoundToInt(100f * me.skillsHit / me.skillsUsed) : 0;
-                int accOpp = opp.skillsUsed > 0 ? Mathf.RoundToInt(100f * opp.skillsHit / opp.skillsUsed) : 0;
-                stats.Add(MirrorRow("Akurasi skill", accMe + "%", accOpp + "%", accMe, accOpp));
-                stats.Add(MirrorInt("Kill streak terpanjang", me.maxKillStreak, opp.maxKillStreak));
-                _histDetail.Add(stats);
-            }
-            else { var na = new Label("Statistik detail tidak tersedia (format lama)."); na.AddToClassList("nxl-dim"); na.style.marginTop = 16; _histDetail.Add(na); }
-
-            // FOOTER: Match ID + Salin (kiri), KEMBALI (kanan).
-            var foot = new VisualElement(); foot.style.flexDirection = FlexDirection.Row; foot.style.alignItems = Align.Center; foot.style.marginTop = 18;
+            // ===== FOOTER: Match ID + Salin (kiri), SATU tombol (kanan) =====
+            var foot = new VisualElement(); foot.AddToClassList("nxl-dtx-foot");
             var idl = new Label("Match ID: " + (m.gameId ?? "")); idl.AddToClassList("nxl-dim");
-            var cp = new Button(() => { GUIUtility.systemCopyBuffer = m.gameId ?? ""; }) { text = "Salin" }; cp.AddToClassList("nxl-btn"); cp.AddToClassList("nxl-btn--gray"); cp.style.marginLeft = 8; cp.style.height = 30; cp.style.width = 80;
+            var cp = new Button(() => { GUIUtility.systemCopyBuffer = m.gameId ?? ""; }) { text = "Salin" };
+            cp.AddToClassList("nxl-btn"); cp.AddToClassList("nxl-btn--gray"); cp.style.marginLeft = 8; cp.style.height = 30; cp.style.width = 80;
             var fsp = new VisualElement(); fsp.style.flexGrow = 1;
-            var back = new Button(CloseDetail) { text = "KEMBALI (Esc)" }; back.AddToClassList("nxl-btn"); back.AddToClassList("nxl-btn--gray"); back.style.width = 160; back.style.height = 42;
-            foot.Add(idl); foot.Add(cp); foot.Add(fsp); foot.Add(back); _histDetail.Add(foot);
+            Button cta = (mode == DetailMode.Result)
+                ? new Button(CloseDetail) { text = "LANJUT" }
+                : new Button(CloseDetail) { text = "KEMBALI" };
+            cta.AddToClassList("nxl-btn"); cta.AddToClassList(mode == DetailMode.Result ? "nxl-btn--orange" : "nxl-btn--gray");
+            cta.style.width = 180; cta.style.height = 46;
+            foot.Add(idl); foot.Add(cp); foot.Add(fsp); foot.Add(cta);
+            _histDetail.Add(foot);
 
             ShowEl(_histDetail, true); _detailOpen = true;
         }
 
-        private VisualElement SideName(NexusBackend.MatchPlayerRow p, bool meSide)
+        // Kolom pemain: header KAMU/LAWAN, potret setinggi kolom (netral, desaturate bila kalah), identitas tiap baris sendiri, badge, Poin Ladder.
+        private VisualElement PlayerColumn(NexusBackend.MatchPlayerRow p, bool meSide, bool matchFlawless, NexusBackend.MatchRow m, bool ranked)
         {
-            string name = p != null && !string.IsNullOrEmpty(p.displayName) ? p.displayName : (meSide ? "Kamu" : "Lawan");
-            var l = new Label(name); l.AddToClassList("nxl-dt-pname"); l.AddToClassList(meSide ? "nxl-dt-accent-you" : "nxl-dt-accent-opp");
-            return l;
-        }
+            var col = new VisualElement(); col.AddToClassList("nxl-dtx-col");
+            var hd = new Label(meSide ? "KAMU" : "LAWAN"); hd.AddToClassList("nxl-dtx-colhead"); hd.AddToClassList(meSide ? "nxl-dtx-colhead--you" : "nxl-dtx-colhead--opp"); col.Add(hd);
 
-        private VisualElement HeroSide(NexusBackend.MatchPlayerRow p, bool meSide, bool matchFlawless)
-        {
-            var side = new VisualElement(); side.AddToClassList("nxl-card"); side.AddToClassList("nxl-dt-side");
             int heroId = p != null ? p.heroId : -1;
+            bool thisWon = meSide ? m.won : (p != null && p.isWinner);
+
+            var art = new VisualElement(); art.AddToClassList("nxl-dtx-portrait"); art.AddToClassList(HeroCss(heroId));
+            if (!thisWon) { var ds = new VisualElement(); ds.AddToClassList("nxl-dtx-portrait-desat"); art.Add(ds); } // pihak kalah = desaturate
+            col.Add(art);
+
+            var nm = new Label(p != null && !string.IsNullOrEmpty(p.displayName) ? p.displayName : (meSide ? "Kamu" : "Lawan"));
+            nm.AddToClassList("nxl-dtx-name"); nm.AddToClassList(meSide ? "nxl-dt-accent-you" : "nxl-dt-accent-opp"); col.Add(nm);
+
             int rating = p != null ? p.ratingBefore + p.ratingDelta : 0;
             string tier = NexusRankConfig.TierForRating(rating);
+            var trow = new VisualElement(); trow.AddToClassList("nxl-dtx-tier");
+            trow.Add(Emblem(tier, 24)); var tn = new Label(tier); tn.AddToClassList("nxl-dtx-tiername"); trow.Add(tn); col.Add(trow);
 
-            var art = new VisualElement(); art.AddToClassList("nxl-dt-hero"); art.AddToClassList(HeroCss(heroId)); side.Add(art);
-            var nm = new Label(p != null && !string.IsNullOrEmpty(p.displayName) ? p.displayName : (meSide ? "Kamu" : "Lawan"));
-            nm.AddToClassList("nxl-dt-pname"); nm.AddToClassList(meSide ? "nxl-dt-accent-you" : "nxl-dt-accent-opp"); nm.style.marginTop = 8; side.Add(nm);
+            if (p != null) { var hl = new Label(HeroName(heroId)); hl.AddToClassList("nxl-dtx-heroline"); col.Add(hl); }
 
-            var tr = new VisualElement(); tr.AddToClassList("nxl-hist-rank"); tr.style.justifyContent = Justify.FlexStart; tr.style.marginTop = 4;
-            tr.Add(Emblem(tier, 26)); var trn = new Label("  " + tier); trn.AddToClassList("nxl-dim"); tr.Add(trn); side.Add(tr);
+            var badges = new VisualElement(); badges.AddToClassList("nxl-dtx-badges");
+            if (thisWon && matchFlawless) badges.Add(Badge("FLAWLESS", "nxl-badge--flawless"));
+            if (thisWon && p != null && p.maxDeficit >= 3) badges.Add(Badge("COMEBACK", "nxl-badge--comeback"));
+            if (p != null && p.firstBlood) badges.Add(Badge("FIRST BLOOD", "nxl-badge--firstblood"));
+            col.Add(badges);
 
-            if (p != null && p.heroes != null && p.heroes.Length > 0)
-            {
-                int total = 0; foreach (var h in p.heroes) total += h.playTicks; if (total <= 0) total = 1;
-                foreach (var h in p.heroes)
-                {
-                    int pct = Mathf.RoundToInt(100f * h.playTicks / total);
-                    var hl = new Label(HeroName(h.heroId) + "  ·  " + FmtDur(h.playTicks / 60) + "  ·  " + pct + "%"); hl.AddToClassList("nxl-dim"); hl.style.fontSize = 13; side.Add(hl);
-                }
-            }
-
-            if (p != null)
+            if (ranked && p != null)
             {
                 int dG = NexusRankConfig.LadderPointsGlobal(p.ratingBefore + p.ratingDelta) - NexusRankConfig.LadderPointsGlobal(p.ratingBefore);
-                var lp = new Label((dG >= 0 ? "+" : "") + dG + " Poin Ladder"); lp.AddToClassList(dG >= 0 ? "nxl-pts-up" : "nxl-pts-dn"); lp.style.marginTop = 6; side.Add(lp);
+                if (meSide) col.Add(LadderBlock(p, dG));
+                else { var d = new Label((dG >= 0 ? "+" : "") + dG + " Poin"); d.AddToClassList(dG >= 0 ? "nxl-pts-up" : "nxl-pts-dn"); d.AddToClassList("nxl-dtx-oppdelta"); col.Add(d); }
             }
-
-            var badges = new VisualElement(); badges.AddToClassList("nxl-badges"); badges.style.justifyContent = Justify.FlexStart;
-            bool won = p != null && p.isWinner;
-            if (won && matchFlawless) badges.Add(Badge("FLAWLESS", "nxl-badge--flawless"));
-            if (won && p != null && p.maxDeficit >= 3) badges.Add(Badge("COMEBACK", "nxl-badge--comeback"));
-            if (p != null && p.firstBlood) badges.Add(Badge("FIRST BLOOD", "nxl-badge--firstblood"));
-            side.Add(badges);
-            return side;
+            return col;
         }
 
-        private static VisualElement MirrorInt(string label, int you, int opp) => MirrorRow(label, you.ToString(), opp.ToString(), you, opp);
-        private static VisualElement MirrorRow(string label, string youStr, string oppStr, int youN, int oppN)
+        // Poin Ladder (kolom kamu): bar progres tier + delta. Mode result = isi animasi 0,8 dtk + "NAIK TIER!"; history = langsung.
+        private VisualElement LadderBlock(NexusBackend.MatchPlayerRow p, int dG)
         {
-            var row = new VisualElement(); row.AddToClassList("nxl-dt-statrow");
-            var line = new VisualElement(); line.AddToClassList("nxl-dt-statline");
-            var yv = new Label(youStr); yv.AddToClassList("nxl-dt-statval"); yv.AddToClassList("nxl-dt-statval--you"); if (youN >= oppN) yv.AddToClassList("nxl-dt-win");
-            var lbl = new Label(label); lbl.AddToClassList("nxl-dt-statlbl");
-            var ov = new Label(oppStr); ov.AddToClassList("nxl-dt-statval"); ov.AddToClassList("nxl-dt-statval--opp"); if (oppN >= youN) ov.AddToClassList("nxl-dt-win");
-            line.Add(yv); line.Add(lbl); line.Add(ov); row.Add(line);
-            // tug-of-war bar
-            int tot = Mathf.Max(1, Mathf.Abs(youN) + Mathf.Abs(oppN));
-            float yf = (Mathf.Abs(youN) + Mathf.Abs(oppN)) == 0 ? 0.5f : (float)Mathf.Abs(youN) / tot;
-            var barwrap = new VisualElement(); barwrap.AddToClassList("nxl-dt-barwrap");
-            var by = new VisualElement(); by.AddToClassList("nxl-dt-bar-you"); by.style.width = Length.Percent(yf * 100f);
-            var bo = new VisualElement(); bo.AddToClassList("nxl-dt-bar-opp"); bo.style.flexGrow = 1;
-            barwrap.Add(by); barwrap.Add(bo); row.Add(barwrap);
+            var wrap = new VisualElement(); wrap.AddToClassList("nxl-dtx-ladder");
+            var cap = new Label("Poin Ladder"); cap.AddToClassList("nxl-dtx-ladcap"); wrap.Add(cap);
+            int before = p.ratingBefore, after = p.ratingBefore + p.ratingDelta;
+            int beforePts = Mathf.Clamp(NexusRankConfig.LadderPoints(before), 0, 100);
+            int afterPts = Mathf.Clamp(NexusRankConfig.LadderPoints(after), 0, 100);
+            var track = new VisualElement(); track.AddToClassList("nxl-dtx-ladtrack");
+            var fill = new VisualElement(); fill.AddToClassList("nxl-dtx-ladfill"); track.Add(fill); wrap.Add(track);
+            var delta = new Label((dG >= 0 ? "+" : "") + dG + " Poin"); delta.AddToClassList(dG >= 0 ? "nxl-pts-up" : "nxl-pts-dn"); delta.AddToClassList("nxl-dtx-laddelta"); wrap.Add(delta);
+
+            bool tierUp = NexusRankConfig.TierForRating(after) != NexusRankConfig.TierForRating(before) && after > before;
+            if (_detailMode == DetailMode.Result)
+            {
+                fill.style.width = Length.Percent(beforePts);
+                int target = afterPts;
+                fill.schedule.Execute(() => fill.style.width = Length.Percent(target)).StartingIn(60);
+            }
+            else fill.style.width = Length.Percent(afterPts);
+            if (tierUp) { var pop = new Label("NAIK TIER!"); pop.AddToClassList("nxl-dtx-tierup"); wrap.Add(pop); }
+            return wrap;
+        }
+
+        // Panel tengah: tab + baris tug-of-war (1v1, tanpa baris cermin ganda).
+        private VisualElement CenterPanel(NexusBackend.MatchPlayerRow me, NexusBackend.MatchPlayerRow opp, bool r1)
+        {
+            var panel = new VisualElement(); panel.AddToClassList("nxl-dtx-center");
+            var tabs = new VisualElement(); tabs.AddToClassList("nxl-dtx-tabs");
+            var t1 = new Label("RINGKASAN"); t1.AddToClassList("nxl-dtx-tab"); t1.AddToClassList("nxl-dtx-tab--active"); tabs.Add(t1);
+            // Tab "JALANNYA MATCH" DISEMBUNYIKAN sampai data koTimeline ada (T2) — tanpa data palsu.
+            panel.Add(tabs);
+
+            var content = new VisualElement(); content.AddToClassList("nxl-dtx-tabcontent");
+            if (r1 && me != null && opp != null)
+            {
+                content.Add(TugRow("KO", me.kills.ToString(), opp.kills.ToString(), me.kills, opp.kills, true));
+                content.Add(TugInt("Damage diberikan", me.damageDealt, opp.damageDealt));
+                content.Add(TugInt("Critical", me.criticals, opp.criticals));
+                content.Add(TugInt("Guard crush", me.guardCrushes, opp.guardCrushes));
+                content.Add(TugInt("Gear drop", me.gearDrops, opp.gearDrops));
+                content.Add(TugInt("Dodge berhasil", me.dodges, opp.dodges));
+                content.Add(TugInt("Serangan di-guard", me.hitsBlocked, opp.hitsBlocked));
+                content.Add(TugAcc("Akurasi skill", me.skillsUsed, me.skillsHit, opp.skillsUsed, opp.skillsHit));
+                content.Add(TugInt("Kill streak terpanjang", me.maxKillStreak, opp.maxKillStreak));
+            }
+            else { var na = new Label("Statistik detail tidak tersedia (format lama)."); na.AddToClassList("nxl-dim"); na.style.marginTop = 16; content.Add(na); }
+            panel.Add(content);
+            return panel;
+        }
+
+        private static VisualElement TugInt(string label, int you, int opp) => TugRow(label, you.ToString(), opp.ToString(), you, opp, true);
+        private static VisualElement TugAcc(string label, int suMe, int shMe, int suOpp, int shOpp)
+        {
+            bool defMe = suMe > 0, defOpp = suOpp > 0;   // skillsUsed=0 → "–", bukan 0%
+            int aMe = defMe ? Mathf.RoundToInt(100f * shMe / suMe) : 0;
+            int aOpp = defOpp ? Mathf.RoundToInt(100f * shOpp / suOpp) : 0;
+            return TugRow(label, defMe ? aMe + "%" : "–", defOpp ? aOpp + "%" : "–", aMe, aOpp, defMe && defOpp);
+        }
+
+        // Satu baris tug-of-war: label tengah atas + bar proporsi (kiri biru = a/(a+b), kanan merah = sisa), nilai di kedua ujung (putih, sisi besar bold).
+        // defined=false atau total 0 → bar netral abu, tanpa pemenang. Warna ikut SISI, bukan baik/buruk. TANPA emas.
+        private static VisualElement TugRow(string label, string youStr, string oppStr, int youN, int oppN, bool defined)
+        {
+            var row = new VisualElement(); row.AddToClassList("nxl-dtx-trow");
+            var lab = new Label(label); lab.AddToClassList("nxl-dtx-tlabel"); row.Add(lab);
+
+            var line = new VisualElement(); line.AddToClassList("nxl-dtx-tbarline");
+            var yv = new Label(youStr); yv.AddToClassList("nxl-dtx-tval"); yv.AddToClassList("nxl-dtx-tval--you"); if (defined && youN > oppN) yv.AddToClassList("nxl-dtx-tval--big");
+            var bar = new VisualElement(); bar.AddToClassList("nxl-dtx-tbar");
+            int tot = Mathf.Abs(youN) + Mathf.Abs(oppN);
+            if (!defined || tot == 0) { var nz = new VisualElement(); nz.AddToClassList("nxl-dtx-tneutral"); bar.Add(nz); }
+            else
+            {
+                float yf = (float)Mathf.Abs(youN) / tot;
+                var by = new VisualElement(); by.AddToClassList("nxl-dtx-tbar-you"); by.style.width = Length.Percent(yf * 100f);
+                var bo = new VisualElement(); bo.AddToClassList("nxl-dtx-tbar-opp");
+                bar.Add(by); bar.Add(bo);
+            }
+            var ov = new Label(oppStr); ov.AddToClassList("nxl-dtx-tval"); ov.AddToClassList("nxl-dtx-tval--opp"); if (defined && oppN > youN) ov.AddToClassList("nxl-dtx-tval--big");
+            line.Add(yv); line.Add(bar); line.Add(ov); row.Add(line);
             return row;
         }
 

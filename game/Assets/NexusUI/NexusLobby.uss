@@ -548,6 +548,58 @@
 .nxl-dt-bar-opp { background-color: var(--nx-team-enemy); }
 .nxl-dt-herorow { flex-direction: row; justify-content: space-between; }
 
+/* ===== Detail Match v2 (post-match gaya Wild Rift, adaptasi 1v1) — docs/34. Semua warna dari token, teks ≥16px. ===== */
+.nxl-dtx-banner { align-items: center; }
+.nxl-dtx-brow { flex-direction: row; align-items: center; justify-content: center; }
+.nxl-dtx-score { font-size: 64px; -unity-font-definition: var(--nxl-font-title); }
+.nxl-dtx-score--you { color: var(--nx-team-ally); }
+.nxl-dtx-score--opp { color: var(--nx-team-enemy); }
+.nxl-dtx-res { font-size: 56px; margin-left: 28px; margin-right: 28px; -unity-font-definition: var(--nxl-font-title); letter-spacing: 2px; }
+.nxl-dtx-res--win { color: var(--nx-result-win); }    /* MENANG = emas */
+.nxl-dtx-res--loss { color: var(--nx-result-loss); }  /* KALAH = abu-baja */
+.nxl-dtx-meta { font-size: 16px; color: var(--nxl-text-2); margin-top: 8px; -unity-font-definition: var(--nxl-font-head); }
+
+.nxl-dtx-body { flex-direction: row; flex-grow: 1; margin-top: 16px; }
+.nxl-dtx-col { width: 26%; align-items: stretch; }
+.nxl-dtx-center { flex-grow: 1; margin-left: 18px; margin-right: 18px; }
+
+.nxl-dtx-colhead { font-size: 18px; -unity-font-definition: var(--nxl-font-title); letter-spacing: 1px; -unity-text-align: middle-center; padding-top: 4px; padding-bottom: 6px; }
+.nxl-dtx-colhead--you { color: var(--nx-team-ally); }
+.nxl-dtx-colhead--opp { color: var(--nx-team-enemy); }
+.nxl-dtx-portrait { flex-grow: 1; min-height: 300px; -unity-background-scale-mode: scale-and-crop; background-color: var(--nx-hero-neutral); border-radius: 12px; overflow: hidden; }
+.nxl-dtx-portrait-desat { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgba(18, 20, 28, 0.5); }
+.nxl-dtx-name { font-size: 28px; -unity-font-definition: var(--nxl-font-head); margin-top: 10px; -unity-text-align: middle-center; }
+.nxl-dtx-tier { flex-direction: row; align-items: center; justify-content: center; margin-top: 6px; }
+.nxl-dtx-tiername { font-size: 16px; color: var(--nxl-text-2); margin-left: 6px; -unity-font-definition: var(--nxl-font-head); }
+.nxl-dtx-heroline { font-size: 16px; color: var(--nxl-text-2); -unity-text-align: middle-center; margin-top: 4px; }
+.nxl-dtx-badges { flex-direction: row; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.nxl-dtx-oppdelta { font-size: 18px; -unity-font-definition: var(--nxl-font-head); -unity-text-align: middle-center; margin-top: 10px; }
+
+.nxl-dtx-ladder { margin-top: 10px; }
+.nxl-dtx-ladcap { font-size: 14px; color: var(--nxl-text-2); -unity-text-align: middle-center; }
+.nxl-dtx-ladtrack { height: 12px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.08); overflow: hidden; margin-top: 4px; }
+.nxl-dtx-ladfill { height: 100%; width: 0; background-color: var(--nx-team-ally); transition-property: width; transition-duration: 0.8s; }
+.nxl-dtx-laddelta { font-size: 16px; -unity-font-definition: var(--nxl-font-head); -unity-text-align: middle-center; margin-top: 4px; }
+.nxl-dtx-tierup { color: var(--nxl-gold); font-size: 18px; -unity-font-definition: var(--nxl-font-title); -unity-text-align: middle-center; margin-top: 4px; letter-spacing: 1px; }
+
+.nxl-dtx-tabs { flex-direction: row; justify-content: center; margin-bottom: 12px; }
+.nxl-dtx-tab { font-size: 16px; -unity-font-definition: var(--nxl-font-head); color: var(--nxl-text-2); padding-left: 16px; padding-right: 16px; padding-top: 6px; padding-bottom: 6px; }
+.nxl-dtx-tab--active { color: var(--nxl-text); border-bottom-width: 2px; border-bottom-color: var(--nxl-cyan); }  /* cyan = aktif/fokus */
+
+.nxl-dtx-trow { margin-bottom: 10px; }
+.nxl-dtx-tlabel { font-size: 16px; -unity-font-definition: var(--nxl-font-body); color: var(--nxl-text-2); -unity-text-align: middle-center; margin-bottom: 4px; }
+.nxl-dtx-tbarline { flex-direction: row; align-items: center; height: 28px; }
+.nxl-dtx-tval { width: 70px; font-size: 22px; -unity-font-definition: var(--nxl-font-title); color: var(--nxl-text); }
+.nxl-dtx-tval--you { -unity-text-align: middle-left; }
+.nxl-dtx-tval--opp { -unity-text-align: middle-right; }
+.nxl-dtx-tval--big { -unity-font-style: bold; }
+.nxl-dtx-tbar { flex-grow: 1; flex-direction: row; height: 14px; border-radius: 7px; overflow: hidden; background-color: rgba(255, 255, 255, 0.06); margin-left: 12px; margin-right: 12px; }
+.nxl-dtx-tbar-you { background-color: var(--nx-team-ally); }
+.nxl-dtx-tbar-opp { flex-grow: 1; background-color: var(--nx-team-enemy); }
+.nxl-dtx-tneutral { flex-grow: 1; background-color: var(--nx-result-loss-dim); }  /* 0–0 / tak terdefinisi = abu netral */
+
+.nxl-dtx-foot { flex-direction: row; align-items: center; margin-top: 14px; }
+
 /* --- Onboarding faksi (docs/35) --- */
 .nxl-faccard {
     width: 300px; min-height: 360px; margin-left: 16px; margin-right: 16px;
