@@ -13,6 +13,7 @@ public sealed record GuestLoginRequest(string? DeviceId, string? DisplayName, bo
 public sealed record RegisterRequest(string? Username, string? Password, string? DisplayName, bool? IsTest = null);
 public sealed record LoginRequest(string? Username, string? Password);
 public sealed record FactionRequest(int Faction);
+public sealed record AdminFactionRequest(Guid PlayerId, int Faction);
 public sealed record ReportResultRequest(string? GameId, int Slot, int ScoreLeft, int ScoreRight, int Kills = 0, int Deaths = 0, int Assists = 0, int HeroId = 0, string? Mode = null, int DurationSec = 0, int PartySize = 1, List<ReportPlayer>? Players = null);
 public sealed record JoinQueueRequest(string? Region, string? BuildVersion = null, string? SimVersion = null);
 
@@ -39,6 +40,11 @@ public static class ApiEndpoints
 
         api.MapGet("/leaderboard", Leaderboard);
         api.MapGet("/factions", GetFactions); // populasi + "Butuh Pejuang" (publik: layar onboarding)
+
+        // Admin/dev (header X-Admin-Secret = Admin:Secret). Belum ada sistem season → reset faksi manual.
+        var admin = api.MapGroup("/admin").AddEndpointFilter(RequireAdminSecret);
+        admin.MapPost("/faction", AdminSetFaction);
+
         secured.MapStats(api); // /me/stats (auth) + /players/{id}/stats (anon)
     }
 
@@ -125,6 +131,28 @@ public static class ApiEndpoints
     {
         var s = await factions.GetAsync(ct);
         return Results.Ok(new { orde = s.Orde, legion = s.Legion, needsWarriors = s.NeedsWarriors, bonusPercent = s.BonusPercent });
+    }
+
+    // Gerbang admin: header X-Admin-Secret harus cocok Admin:Secret (kosong = selalu tolak → admin nonaktif).
+    private static async ValueTask<object?> RequireAdminSecret(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+    {
+        var expected = ctx.HttpContext.RequestServices.GetRequiredService<IOptions<AdminOptions>>().Value.Secret;
+        var given = ctx.HttpContext.Request.Headers["X-Admin-Secret"].ToString();
+        if (!PhotonEndpoints.SecretsEqual(expected, given))
+            return Results.Json(new { error = "admin unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+        return await next(ctx);
+    }
+
+    // Admin/dev: set/reset faksi pemain (LEWATI kunci season). faction 0 = reset (pemain diminta pilih lagi).
+    private static async Task<IResult> AdminSetFaction(AdminFactionRequest req, AppDbContext db, FactionService factions, CancellationToken ct)
+    {
+        if (req.Faction is < 0 or > 2) return Results.BadRequest(new { error = "faction 0 (reset), 1 (ORDE), atau 2 (LEGION)." });
+        var p = await db.Players.FirstOrDefaultAsync(x => x.Id == req.PlayerId, ct);
+        if (p is null) return Results.NotFound();
+        p.Faction = req.Faction;
+        await db.SaveChangesAsync(ct);
+        factions.Invalidate();
+        return Results.Ok(new { playerId = p.Id, faction = p.Faction });
     }
 
     private static object Serialize(MatchmakingResult r) => r.Assignment is { } a

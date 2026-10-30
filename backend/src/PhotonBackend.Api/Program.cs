@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Section));
 builder.Services.Configure<PhotonOptions>(builder.Configuration.GetSection(PhotonOptions.Section));
 builder.Services.Configure<GameOptions>(builder.Configuration.GetSection(GameOptions.Section));
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.Section));
 
 var jwt = builder.Configuration.GetSection(JwtOptions.Section).Get<JwtOptions>() ?? new JwtOptions();
 if (jwt.Secret.Length < 32)

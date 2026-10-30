@@ -227,14 +227,16 @@
                     <ui:Label text="BUTUH PEJUANG" name="fac-orde-need" class="nxl-fac-need nxl-hidden" />
                     <ui:VisualElement name="fac-orde-crest" class="nxl-fac-crest nxl-fac-crest--orde" />
                     <ui:Label text="ORDE" class="nxl-fac-name" />
-                    <ui:Label text="Tatanan &amp; disiplin. Garda penjaga keseimbangan Nexus." class="nxl-fac-desc" />
+                    <ui:Label text="AEGIS DIRECTORATE" class="nxl-fac-sub" />
+                    <ui:Label text="Korporasi militer taktis — menertibkan Relic demi stabilitas kota. Techwear presisi." class="nxl-fac-desc" />
                 </ui:VisualElement>
 
                 <ui:VisualElement name="fac-legion" class="nxl-faccard nxl-faccard--legion">
                     <ui:Label text="BUTUH PEJUANG" name="fac-legion-need" class="nxl-fac-need nxl-hidden" />
                     <ui:VisualElement name="fac-legion-crest" class="nxl-fac-crest nxl-fac-crest--legion" />
                     <ui:Label text="LEGION" class="nxl-fac-name" />
-                    <ui:Label text="Kehendak &amp; kekuatan. Pendobrak tatanan demi perubahan." class="nxl-fac-desc" />
+                    <ui:Label text="VANGUARD SYNDICATE" class="nxl-fac-sub" />
+                    <ui:Label text="Sindikat kru jalanan — overclock Exo-Gear demi kebebasan distrik. Glitch &amp; neon." class="nxl-fac-desc" />
                 </ui:VisualElement>
             </ui:VisualElement>
 

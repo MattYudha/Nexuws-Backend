@@ -368,6 +368,29 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task AdminSetFaction_BypassesLock_RequiresSecret()
+    {
+        var (client, login) = await factory.LoginAsync("device-admin-fac", "AdminFac");
+        await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 }); // terkunci ke ORDE
+
+        // Tanpa header admin → 401.
+        var noSecret = factory.CreateClient();
+        var r401 = await noSecret.PostAsJsonAsync("/api/admin/faction", new { playerId = login.PlayerId, faction = 0 });
+        Assert.Equal(HttpStatusCode.Unauthorized, r401.StatusCode);
+
+        // Dengan header admin → reset faksi ke 0 (lewati kunci).
+        var adminC = factory.CreateClient();
+        adminC.DefaultRequestHeaders.Add("X-Admin-Secret", ApiFactory.AdminSecret);
+        var rOk = await adminC.PostAsJsonAsync("/api/admin/faction", new { playerId = login.PlayerId, faction = 0 });
+        Assert.Equal(HttpStatusCode.OK, rOk.StatusCode);
+
+        // Pemain kini bisa memilih lagi (kunci lepas).
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
+        var me = await client.GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(2, me.GetProperty("faction").GetInt32());
+    }
+
+    [Fact]
     public async Task Factions_ReportsPopulation()
     {
         var client = await RegisterAsync("faction_pop", "secret123");

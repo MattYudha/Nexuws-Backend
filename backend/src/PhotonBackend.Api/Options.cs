@@ -20,6 +20,13 @@ public sealed class PhotonOptions
     public string AuthSecret { get; set; } = "";
 }
 
+/// <summary>Akses admin/dev (mis. reset faksi). Kosong = semua endpoint admin nonaktif.</summary>
+public sealed class AdminOptions
+{
+    public const string Section = "Admin";
+    public string Secret { get; set; } = ""; // dikirim di header X-Admin-Secret
+}
+
 public sealed class GameOptions
 {
     public const string Section = "Game";

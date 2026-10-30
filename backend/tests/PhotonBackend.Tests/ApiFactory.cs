@@ -13,6 +13,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 {
     public const string WebhookSecret = "test-webhook-secret";
     public const string AuthSecret = "test-auth-secret";
+    public const string AdminSecret = "test-admin-secret";
 
     private readonly string _dbName = Guid.NewGuid().ToString();
 
@@ -24,6 +25,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Photon:WebhookSecret", WebhookSecret);
         builder.UseSetting("Photon:AuthSecret", AuthSecret);
         builder.UseSetting("Game:AllowTestAccounts", "true"); // izinkan flag IsTest di lingkungan tes
+        builder.UseSetting("Admin:Secret", AdminSecret);      // aktifkan endpoint admin di tes
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<AppDbContext>>();

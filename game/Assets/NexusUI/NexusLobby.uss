@@ -553,29 +553,31 @@
     background-color: rgba(255,255,255,0.03);
     transition-property: border-color, background-color, scale; transition-duration: 0.12s;
 }
+/* PALET 4 "Terang vs Gelap" — ORDE ivory/platinum (shield), LEGION onyx/volt (chevron).
+   Emas TIDAK dipakai di token faksi (eksklusif rank). Ilustrasi kartu boleh glow lore (cyan/crimson). */
 .nxl-faccard:hover { scale: 1.03 1.03; border-color: rgba(255,255,255,0.28); }
-.nxl-faccard--orde:hover { border-color: rgb(79, 162, 255); }
-.nxl-faccard--legion:hover { border-color: rgb(240, 90, 90); }
+.nxl-faccard--orde:hover { border-color: rgb(174, 185, 201); }         /* platinum-baja */
+.nxl-faccard--legion:hover { border-color: rgb(198, 240, 0); }          /* volt */
 .nxl-faccard--sel { background-color: rgba(255,255,255,0.07); }
-.nxl-faccard--orde.nxl-faccard--sel { border-color: rgb(79, 162, 255); background-color: rgba(79,162,255,0.12); }
-.nxl-faccard--legion.nxl-faccard--sel { border-color: rgb(240, 90, 90); background-color: rgba(240,90,90,0.12); }
-.nxl-fac-crest { width: 112px; height: 112px; border-radius: 56px; margin-top: 8px; margin-bottom: 14px; }
-.nxl-fac-crest--orde { background-color: rgb(79, 162, 255); }
-.nxl-fac-crest--legion { background-color: rgb(240, 90, 90); }
+.nxl-faccard--orde.nxl-faccard--sel { border-color: rgb(245, 243, 236); background-color: rgba(245,243,236,0.10); }  /* ivory */
+.nxl-faccard--legion.nxl-faccard--sel { border-color: rgb(198, 240, 0); background-color: rgba(198,240,0,0.08); }
+.nxl-fac-crest { width: 132px; height: 132px; margin-top: 6px; margin-bottom: 12px; -unity-background-scale-mode: scale-to-fit; }
+.nxl-fac-crest--orde { background-image: url("Sprites/fac_orde.png"); }     /* perisai, glow cyan (lore) */
+.nxl-fac-crest--legion { background-image: url("Sprites/fac_legion.png"); } /* chevron/taring, glow crimson (lore) */
 .nxl-fac-name { font-size: 30px; -unity-font-style: bold; -unity-font-definition: var(--nxl-font-head); letter-spacing: 2px; color: var(--nxl-text-1); }
-.nxl-fac-desc { font-size: 14px; color: var(--nxl-text-2); white-space: normal; -unity-text-align: middle-center; margin-top: 10px; }
+.nxl-fac-sub { font-size: 14px; -unity-font-style: bold; color: var(--nxl-text-2); letter-spacing: 1px; margin-top: 2px; }
+.nxl-fac-desc { font-size: 16px; color: var(--nxl-text-2); white-space: normal; -unity-text-align: middle-center; margin-top: 10px; }
 .nxl-fac-need {
-    font-size: 12px; -unity-font-style: bold; color: rgb(18,18,22); background-color: var(--nxl-gold);
+    font-size: 12px; -unity-font-style: bold; color: rgb(10,20,44); background-color: rgb(245, 243, 236); /* ivory chip, bukan emas */
     padding: 3px 10px; border-radius: 10px; letter-spacing: 1px; align-self: center; margin-bottom: 6px;
 }
 
-/* --- Badge faksi (konsisten di semua layar) --- */
+/* --- Badge faksi konsisten (PALET 4; beda lewat BENTUK/teks, bukan hanya warna) --- */
 .nxl-facbadge {
     font-size: 11px; -unity-font-style: bold; -unity-font-definition: var(--nxl-font-head);
-    letter-spacing: 1px; color: var(--nxl-text-1);
-    padding: 1px 8px; border-radius: 8px; border-width: 1px; border-color: rgba(255,255,255,0.18);
+    letter-spacing: 1px; padding: 1px 8px; border-radius: 8px; border-width: 1px;
     -unity-text-align: middle-center;
 }
-.nxl-facbadge--orde { color: rgb(120, 190, 255); border-color: rgba(79,162,255,0.55); background-color: rgba(79,162,255,0.14); }
-.nxl-facbadge--legion { color: rgb(255, 130, 130); border-color: rgba(240,90,90,0.55); background-color: rgba(240,90,90,0.14); }
+.nxl-facbadge--orde   { color: rgb(21,21,26); background-color: rgb(245,243,236); border-color: rgb(174,185,201); }  /* ivory + platinum */
+.nxl-facbadge--legion { color: rgb(198,240,0); background-color: rgb(21,21,26); border-color: rgb(198,240,0); }       /* onyx + volt */
 .nxl-facbadge--none { display: none; }
