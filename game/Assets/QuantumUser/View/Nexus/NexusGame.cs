@@ -388,10 +388,12 @@ namespace Nexus
                                                           endReason, winnerSlot, koTimeline);
             await _backend.RefreshMeAsync();
             await _backend.LeaveQueueAsync(); // bersihkan assignment agar bisa rematch
-            string why = endReason == "time" ? "WAKTU HABIS — " : endReason == "forfeit" ? "MENANG WO (AFK) — " : "";
+            string why = endReason == "time" ? "WAKTU HABIS — " : endReason == "forfeit" ? "WO (AFK) — " : "";
             string head = winnerSlot < 0 ? $"{why}SERI {scoreLeft}-{scoreRight}"
                         : $"{why}{(winnerSlot == 0 ? "TIM BIRU" : "TIM ORANYE")} MENANG {scoreLeft}-{scoreRight}";
-            _resultText = $"{head}\nKamu: {kills} Kill / {deaths} Death\nRating: {_backend.Rating} ({_backend.RankTier})";
+            // Q43: semua retry gagal → katakan terus terang, jangan tampil seolah tercatat.
+            string note = status == null ? "\n⚠ Hasil BELUM tercatat — server tidak terjangkau." : "";
+            _resultText = $"{head}\nKamu: {kills} Kill / {deaths} Death\nRating: {_backend.Rating} ({_backend.RankTier}){note}";
         }
 
         private async Task ConnectSafe(string roomName)

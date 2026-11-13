@@ -108,7 +108,7 @@ public class MatchmakingServiceTests
         new(Options.Create(new GameOptions
         {
             MatchmakingWindowStart = 400, MatchmakingWindowGrowthPerSec = 0, MatchmakingMaxWaitSeconds = 100_000,
-            MatchmakingWaiterStaleSeconds = 10, MatchmakingAssignmentTtlSeconds = 60,
+            MatchmakingWaiterStaleSeconds = 10, MatchmakingAssignmentTtlSeconds = 60, // tes memakai 60 eksplisit
         })) { Clock = clock };
 
     [Fact]

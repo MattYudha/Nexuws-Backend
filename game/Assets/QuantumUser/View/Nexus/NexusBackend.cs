@@ -168,8 +168,18 @@ namespace Nexus
         {
             var body = JsonUtility.ToJson(new ResultReq { gameId = gameId, slot = slot, scoreLeft = scoreLeft, scoreRight = scoreRight, kills = kills, deaths = deaths, assists = assists, heroId = heroId, mode = mode, durationSec = durationSec, partySize = partySize, players = players,
                                                           endReason = endReason, winnerSlot = winnerSlot, koTimeline = koTimeline });
-            var res = await PostAsync("/api/matches/result", body, auth: true);
-            return res == null ? null : JsonUtility.FromJson<StatusRes>(res)?.status;
+            // Retry hanya bila tak ada jawaban pasti (jaringan putus/timeout, 5xx, 408, 429). Laporan idempoten di backend:
+            // laporan ulang dari pemain yang sama menimpa miliknya; match yang sudah final menjawab 409 (= selesai).
+            int[] backoffMs = { 1000, 2000, 4000, 8000 };
+            for (int attempt = 0; ; attempt++)
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Post, "/api/matches/result") { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+                var (code, res) = await SendRawAsync(req, auth: true);
+                bool transient = code == 0 || code >= 500 || code == 408 || code == 429;
+                if (!transient || attempt >= backoffMs.Length)
+                    return string.IsNullOrEmpty(res) ? null : JsonUtility.FromJson<StatusRes>(res)?.status;
+                await Task.Delay(backoffMs[attempt]);
+            }
         }
 
         /// <summary>Ambil papan peringkat (top rating). Endpoint anonim — tak butuh login.</summary>
@@ -230,6 +240,13 @@ namespace Nexus
 
         private async Task<string> SendAsync(HttpRequestMessage req, bool auth)
         {
+            var (code, body) = await SendRawAsync(req, auth);
+            return code >= 200 && code < 300 ? body : null;
+        }
+
+        // code 0 = gagal jaringan/timeout (tanpa respons). Body tetap dikembalikan untuk status non-2xx.
+        private async Task<(int code, string body)> SendRawAsync(HttpRequestMessage req, bool auth)
+        {
             if (auth && Token.Length > 0)
                 req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
             try
@@ -237,16 +254,13 @@ namespace Nexus
                 using var res = await _http.SendAsync(req);
                 var body = await res.Content.ReadAsStringAsync();
                 if (!res.IsSuccessStatusCode)
-                {
                     Debug.LogWarning($"[NexusBackend] {req.Method} {req.RequestUri} -> {(int)res.StatusCode}: {body}");
-                    return null;
-                }
-                return body;
+                return ((int)res.StatusCode, body);
             }
             catch (Exception e)
             {
                 Debug.LogWarning($"[NexusBackend] {req.Method} {req.RequestUri} gagal: {e.Message}");
-                return null;
+                return (0, null);
             }
         }
     }

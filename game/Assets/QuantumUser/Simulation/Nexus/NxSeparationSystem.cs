@@ -22,6 +22,7 @@ namespace Quantum
                 foreach (var (otherE, other) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
                 {
                     if (otherE == selfE) continue;
+                    if (other->HitPause > 0) continue;              // Q44: pasangan yang salah satunya hitstop = beku berdua
                     FPVector3 d = other->Pos - self->Pos; d.Y = 0;
                     FP dist = d.Magnitude;
                     if (dist >= MinDist) continue;
