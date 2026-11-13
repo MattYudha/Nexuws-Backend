@@ -346,25 +346,54 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task SetFaction_LockedAfterChosen_RejectsSwitchAndInvalid()
+    public async Task SetFaction_OneFreeSwitch_ThenLocked_RejectsInvalid()
     {
         var client = await RegisterAsync("faction_lock", "secret123");
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
+        var first = await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 });
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        var st = await first.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(st.GetProperty("switchAvailable").GetBoolean());   // placement 0 → jatah pindah masih ada
 
-        // Pindah ke faksi lain → DITOLAK (terkunci satu season).
-        var switchRes = await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 });
-        Assert.Equal(HttpStatusCode.Conflict, switchRes.StatusCode);
+        // Pindah PERTAMA (placement <5) → GRATIS, diterima; jatah habis.
+        var sw = await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 });
+        Assert.Equal(HttpStatusCode.OK, sw.StatusCode);
+        Assert.True((await sw.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("locked").GetBoolean());
+
+        // Pindah KEDUA → DITOLAK (jatah gratis sudah dipakai).
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
 
         // Pilih faksi yang SAMA → idempoten OK.
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 })).StatusCode);
 
         // 0 (batal) / di luar 1-2 → 400.
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 0 })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 3 })).StatusCode);
 
-        // Faksi tetap 2.
         var me = await client.GetFromJsonAsync<JsonElement>("/api/me");
-        Assert.Equal(2, me.GetProperty("faction").GetInt32());
+        Assert.Equal(1, me.GetProperty("faction").GetInt32());
+    }
+
+    [Fact]
+    public async Task SetFaction_SwitchLocked_AfterFivePlacementMatches()
+    {
+        var (client, login) = await factory.LoginAsync("device-fac-placed", "FacPlaced");
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 })).StatusCode);
+
+        await factory.SeedFinishedRankedAsync(login.PlayerId, 5);   // placement selesai (= syarat leaderboard)
+
+        // Jatah gratis BELUM dipakai, tapi placement selesai → tetap terkunci.
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
+        var me = await client.GetFromJsonAsync<JsonElement>("/api/me");
+        Assert.Equal(1, me.GetProperty("faction").GetInt32());
+    }
+
+    [Fact]
+    public async Task SetFaction_FourPlacementMatches_SwitchStillFree()
+    {
+        var (client, login) = await factory.LoginAsync("device-fac-four", "FacFour");
+        await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 });
+        await factory.SeedFinishedRankedAsync(login.PlayerId, 4);   // batas: 4 < 5 → masih boleh
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
     }
 
     [Fact]
@@ -395,6 +424,22 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
         var me = await client.GetFromJsonAsync<JsonElement>("/api/me");
         Assert.Equal(2, me.GetProperty("faction").GetInt32());
+    }
+
+    [Fact]
+    public async Task AdminSetFaction_RestoresFreeSwitch()
+    {
+        var (client, login) = await factory.LoginAsync("device-admin-sw", "AdminSw");
+        await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 });
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode); // pakai jatah
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 })).StatusCode);
+
+        var adminC = factory.CreateClient();
+        adminC.DefaultRequestHeaders.Add("X-Admin-Secret", ApiFactory.AdminSecret);
+        Assert.Equal(HttpStatusCode.OK, (await adminC.PostAsJsonAsync("/api/admin/faction", new { playerId = login.PlayerId, faction = 2 })).StatusCode);
+
+        // Jatah pindah gratis dikembalikan oleh reset admin.
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/me/faction", new { faction = 1 })).StatusCode);
     }
 
     [Fact]

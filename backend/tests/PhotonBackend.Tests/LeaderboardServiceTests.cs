@@ -8,7 +8,8 @@ namespace PhotonBackend.Tests;
 
 /// <summary>
 /// KONSISTENSI TIER (docs/33 §2): tier yang DITAMPILKAN di leaderboard = tier dari RATING ASLI
-/// (sama dengan profil/lobby/riwayat). Conservative rating (rating − 2·RD) HANYA untuk URUTAN POSISI.
+/// (sama dengan profil/lobby/riwayat). Urutan posisi: TIER TAMPIL dulu (turun), lalu conservative rating
+/// (rating − 2·RD) DI DALAM tier, tiebreak WR → match (T3).
 /// </summary>
 public class LeaderboardServiceTests
 {
@@ -76,6 +77,23 @@ public class LeaderboardServiceTests
         Assert.Equal(2, board[1].Rank);
         // Namun tier keduanya tetap dari rating asli (sama-sama Rival).
         Assert.Equal("Rival", board[0].Tier);
+        Assert.Equal("Rival", board[1].Tier);
+    }
+
+    [Fact]
+    public async Task Position_TierFirst_HighRdGladiatorNotBelowRival()
+    {
+        var (svc, db) = New();
+        // Gladiator RD tinggi: cons = 1650 − 2·300 = 1050. Rival stabil: cons = 1550 − 2·40 = 1470.
+        // Urut conservative murni → Rival di atas Gladiator (tier terbalik di papan). T3: TIER DULU.
+        SeedPlaced(db, "WildGlad", rating: 1650, rd: 300);
+        SeedPlaced(db, "SteadyRival", rating: 1550, rd: 40);
+        await db.SaveChangesAsync();
+
+        var board = await svc.GetAsync(default);
+        Assert.Equal("WildGlad", board[0].DisplayName);
+        Assert.Equal("Gladiator", board[0].Tier);
+        Assert.Equal("SteadyRival", board[1].DisplayName);
         Assert.Equal("Rival", board[1].Tier);
     }
 }

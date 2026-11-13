@@ -272,6 +272,9 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<int>("Faction")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("FactionSwitchUsed")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsTestAccount")
                         .HasColumnType("boolean");
 

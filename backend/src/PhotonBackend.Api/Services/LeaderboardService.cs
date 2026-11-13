@@ -62,7 +62,7 @@ public sealed class LeaderboardService(IServiceScopeFactory scopes)
             .Select(p => new { p.Id, p.DisplayName, p.Rating, p.Rd, p.Wins, p.Losses, p.TierFloorOrder, p.TierFloorLeft })
             .ToListAsync(ct);
 
-        var rows = new List<(string Tier, int Pts, double Wr, int Matches, Guid Id, string Name, int W, int L, double Cons)>();
+        var rows = new List<(string Tier, int Order, int Pts, double Wr, int Matches, Guid Id, string Name, int W, int L, double Cons)>();
         foreach (var p in players)
         {
             int rm = rankedCount.TryGetValue(p.Id, out var c) ? c : 0;
@@ -77,12 +77,14 @@ public sealed class LeaderboardService(IServiceScopeFactory scopes)
             double cons = p.Rating - 2 * p.Rd;
             int total = p.Wins + p.Losses;
             double wr = total > 0 ? Math.Round(100.0 * p.Wins / total, 1) : 0;
-            rows.Add((tier, pts, wr, total, p.Id, p.DisplayName, p.Wins, p.Losses, cons));
+            rows.Add((tier, dispOrder, pts, wr, total, p.Id, p.DisplayName, p.Wins, p.Losses, cons));
         }
 
-        // Posisi diurutkan MURNI dari conservative rating (kontinu → tanpa masalah tepi band), tiebreak WR lalu match.
+        // Urutan posisi (docs/33, T3): TIER TAMPIL dulu (turun) → tier di papan tak pernah terbalik
+        // (Gladiator RD tinggi tak jatuh di bawah Rival); lalu conservative rating DI DALAM tier, tiebreak WR lalu match.
         rows.Sort((a, b) =>
         {
+            int to = b.Order.CompareTo(a.Order); if (to != 0) return to;
             int cc = b.Cons.CompareTo(a.Cons); if (cc != 0) return cc;
             int wr = b.Wr.CompareTo(a.Wr); if (wr != 0) return wr;
             return b.Matches.CompareTo(a.Matches);

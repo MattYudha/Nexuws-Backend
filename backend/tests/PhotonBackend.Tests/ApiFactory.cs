@@ -54,6 +54,20 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         return p?.IsTestAccount ?? false;
     }
 
+    /// <summary>Seed N match ranked SELESAI untuk pemain (uji jendela placement).</summary>
+    public async Task SeedFinishedRankedAsync(Guid playerId, int count)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        for (int i = 0; i < count; i++)
+        {
+            var m = new Match { GameId = "seed-" + Guid.NewGuid().ToString("N"), Mode = "ranked", Status = MatchStatus.Finished };
+            m.Players.Add(new MatchPlayer { PlayerId = playerId, Slot = 0 });
+            db.Matches.Add(m);
+        }
+        await db.SaveChangesAsync();
+    }
+
     /// <summary>Jejak audit perubahan faksi oleh admin untuk pemain ini (urut waktu).</summary>
     public async Task<List<FactionAdminAudit>> FactionAuditsAsync(Guid playerId)
     {

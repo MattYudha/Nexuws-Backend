@@ -61,7 +61,7 @@ public sealed class GameOptions
     public int DemotionGraceMatches { get; set; } = 0;   // setelah naik tier: tier TAMPIL tak turun sekian match ranked
 
     // --- Faksi ORDE/LEGION (docs/35) ---
-    public bool FactionLocked { get; set; } = true;          // true: faksi terkunci setelah dipilih (satu season)
+    // Kunci: pilihan pertama bebas; PINDAH gratis 1× selama placement <5 ranked (LeaderboardService.PlacementMatches), lalu terkunci.
     public int FactionMinPopulation { get; set; } = 2;       // di bawah ini: tak ada "Butuh Pejuang" (hindari noise awal)
     public double FactionImbalanceThreshold { get; set; } = 0.45; // share minoritas < ini → "Butuh Pejuang"
     public int FactionJoinBonusPercent { get; set; } = 15;   // bonus XP utk pemain faksi minoritas (insentif seimbang)

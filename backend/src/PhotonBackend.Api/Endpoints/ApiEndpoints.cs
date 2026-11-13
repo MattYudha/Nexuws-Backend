@@ -105,26 +105,52 @@ public static class ApiEndpoints
         return Results.Ok(AuthPayload(player, tokens));
     }
 
-    // Pilih faksi (docs/35): 1 ORDE / 2 LEGION. Guest ikut memilih. TERKUNCI setelah dipilih (satu season).
+    // Pilih faksi (docs/35): 1 ORDE / 2 LEGION. Guest ikut memilih. Pilihan pertama selalu boleh.
+    // PINDAH faksi: GRATIS 1× selama placement ranked belum selesai (<5, sama dgn syarat leaderboard); setelah itu terkunci.
     private static async Task<IResult> SetFaction(
-        FactionRequest req, ClaimsPrincipal user, AppDbContext db, FactionService factions,
-        IOptions<GameOptions> game, CancellationToken ct)
+        FactionRequest req, ClaimsPrincipal user, AppDbContext db, FactionService factions, CancellationToken ct)
     {
         if (req.Faction is < 1 or > 2)
             return Results.BadRequest(new { error = "faction harus 1 (ORDE) atau 2 (LEGION)." });
-        var p = await db.Players.FirstOrDefaultAsync(x => x.Id == PlayerId(user), ct);
+        var id = PlayerId(user);
+        var p = await db.Players.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null) return Results.NotFound();
 
+        int rm = await RankedMatchesAsync(db, id, ct);
         if (p.Faction == req.Faction)                       // idempoten
-            return Results.Ok(new { faction = p.Faction, locked = game.Value.FactionLocked });
-        if (p.Faction != 0 && game.Value.FactionLocked)      // sudah pilih → terkunci musim ini
-            return Results.Conflict(new { error = "Faksi terkunci musim ini — tak bisa berpindah.", faction = p.Faction });
+            return Results.Ok(FactionState(p, rm));
+
+        if (p.Faction != 0)                                  // sudah pilih → ini PINDAH
+        {
+            if (!SwitchAvailable(p, rm))
+                return Results.Conflict(new
+                {
+                    error = p.FactionSwitchUsed
+                        ? "Pindah faksi gratis sudah dipakai — faksi terkunci."
+                        : "Placement ranked sudah selesai — faksi terkunci.",
+                    faction = p.Faction,
+                });
+            p.FactionSwitchUsed = true;                      // jatah gratis terpakai
+        }
 
         p.Faction = req.Faction;
         await db.SaveChangesAsync(ct);
         factions.Invalidate();                               // populasi berubah → hitung ulang "Butuh Pejuang"
-        return Results.Ok(new { faction = p.Faction, locked = game.Value.FactionLocked });
+        return Results.Ok(FactionState(p, rm));
     }
+
+    private static Task<int> RankedMatchesAsync(AppDbContext db, Guid id, CancellationToken ct) =>
+        db.MatchPlayers.CountAsync(mp => mp.PlayerId == id && mp.Match.Mode == "ranked" && mp.Match.Status == MatchStatus.Finished, ct);
+
+    private static bool SwitchAvailable(Player p, int rankedMatches) =>
+        !p.FactionSwitchUsed && rankedMatches < LeaderboardService.PlacementMatches;
+
+    private static object FactionState(Player p, int rm) => new
+    {
+        faction = p.Faction,
+        switchAvailable = p.Faction != 0 && SwitchAvailable(p, rm),
+        locked = p.Faction != 0 && !SwitchAvailable(p, rm),
+    };
 
     // Status populasi faksi + faksi yang "Butuh Pejuang" (minoritas) + bonus. Server-authoritative.
     private static async Task<IResult> GetFactions(FactionService factions, CancellationToken ct)
@@ -159,7 +185,7 @@ public static class ApiEndpoints
         if (source.Length > 160) source = source[..160];
 
         p.Faction = req.Faction;
-        // TODO(Tugas 3): bila field pindah-gratis (FactionSwitchUsed) sudah ada, reset juga di sini agar pemain dapat jatah pindah lagi.
+        p.FactionSwitchUsed = false;                         // reset admin = jatah pindah gratis dikembalikan
         db.FactionAdminAudits.Add(new FactionAdminAudit
         {
             PlayerId = p.Id, OldFaction = old, NewFaction = req.Faction, AdminSource = source,
