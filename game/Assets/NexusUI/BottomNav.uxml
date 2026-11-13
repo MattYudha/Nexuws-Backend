@@ -22,9 +22,9 @@
             <ui:VisualElement class="nxl-nav-ic"><ui:Label text="E" /></ui:VisualElement>
             <ui:Label text="Event" class="nxl-nav-lbl" />
         </ui:Button>
-        <ui:Button class="nxl-navitem" name="nav-guild">
-            <ui:VisualElement class="nxl-nav-ic"><ui:Label text="G" /></ui:VisualElement>
-            <ui:Label text="Guild" class="nxl-nav-lbl" />
+        <ui:Button class="nxl-navitem" name="nav-squad">
+            <ui:VisualElement class="nxl-nav-ic"><ui:Label text="S" /></ui:VisualElement>
+            <ui:Label text="Squad" class="nxl-nav-lbl" />
         </ui:Button>
     </ui:VisualElement>
 </ui:UXML>

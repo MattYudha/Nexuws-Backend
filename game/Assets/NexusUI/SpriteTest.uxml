@@ -46,7 +46,7 @@
         <ui:VisualElement class="nxl-row">
             <ui:Label text="LOBBY" class="nxl-tab nxl-tab--active" style="width: 120px; height: 40px;" />
             <ui:Label text="BUDDY" class="nxl-tab" style="width: 120px; height: 40px;" />
-            <ui:Label text="GUILD" class="nxl-tab" style="width: 120px; height: 40px;" />
+            <ui:Label text="SQUAD" class="nxl-tab" style="width: 120px; height: 40px;" />
         </ui:VisualElement>
 
         <!-- PANEL 400x300 -->
