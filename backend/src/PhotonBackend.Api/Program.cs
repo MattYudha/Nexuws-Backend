@@ -36,6 +36,7 @@ builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<MatchmakingService>();
 builder.Services.AddSingleton<LeaderboardService>();
 builder.Services.AddSingleton<FactionService>();
+builder.Services.AddSingleton<AuthGuard>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.PasswordHasher<PhotonBackend.Api.Data.Player>>();
 builder.Services.AddScoped<MatchService>();
 
@@ -47,6 +48,18 @@ builder.Services
         o.TokenValidationParameters = new TokenService(Options.Create(jwt)).ValidationParameters;
     });
 builder.Services.AddAuthorization();
+
+// Q80: di belakang reverse proxy/Cloudflare, rate limit per IP harus memakai IP asli pemain. Hanya proxy yang
+// terdaftar di ForwardedHeaders:KnownProxies (koma) yang dipercaya; kosong = header diabaikan (aman, default).
+var knownProxies = (builder.Configuration["ForwardedHeaders:KnownProxies"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear(); o.KnownProxies.Clear();
+    foreach (var ip in knownProxies)
+        if (System.Net.IPAddress.TryParse(ip, out var addr)) o.KnownProxies.Add(addr);
+});
 
 // Q61: rate limit per IP. "auth" = login/register/upgrade (anti brute force), "guest" = pembuatan guest (anti flood DB).
 var authPerMin = builder.Configuration.GetValue("RateLimit:AuthPerMinute", 15);   // D15: 15/menit (ruang untuk warnet)
@@ -63,6 +76,10 @@ builder.Services.AddRateLimiter(o =>
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
 
 var app = builder.Build();
+
+// Q79: salah konfigurasi harus terlihat. (Secret kosong TIDAK membuka akses — SecretsEqual menolak — tapi Photon auth/webhook mati.)
+if (string.IsNullOrEmpty(app.Configuration["Photon:AuthSecret"]) || string.IsNullOrEmpty(app.Configuration["Photon:WebhookSecret"]))
+    app.Logger.LogWarning("Photon:AuthSecret / Photon:WebhookSecret kosong → custom auth & webhook Photon akan selalu DITOLAK.");
 
 if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 {
@@ -105,6 +122,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
     }
 }
 
+if (knownProxies.Length > 0) app.UseForwardedHeaders(); // Q80: sebelum rate limiter
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();

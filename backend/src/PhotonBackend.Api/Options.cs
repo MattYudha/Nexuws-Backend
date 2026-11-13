@@ -47,6 +47,9 @@ public sealed class GameOptions
     public int MatchmakingWindowGrowthPerSec { get; set; } = 40;  // pelebaran per detik menunggu
     public int MatchmakingMaxWaitSeconds { get; set; } = 75;      // setelah ini: terima lawan mana pun (region+versi sama)
     public bool MatchmakingIgnoreRating { get; set; } = false;    // DEBUG dev: abaikan rentang rating (dua akun uji selalu bertemu)
+    public int LoginMaxFailures { get; set; } = 10;           // Q81: login gagal per username dalam jendela → kunci sementara
+    public int LoginLockMinutes { get; set; } = 15;           // Q81: panjang jendela/kunci
+    public int GuestCreatePerMinuteGlobal { get; set; } = 300; // Q83: guest BARU per menit (semua IP) — anti flood DB
     public int MatchmakingWaiterStaleSeconds { get; set; } = 10;  // penunggu tanpa poll (klien ~1 dtk) selama ini → dibuang (anti pemain hantu)
     public int MatchmakingAssignmentTtlSeconds { get; set; } = 180; // assignment basi (klien crash sebelum /leave) → dilepas. > pilih hero + match 100 dtk + lapor (Q42)
     public string RequiredSimVersion { get; set; } = "";         // kalau diisi: join wajib simVersion sama (tolak build lama)

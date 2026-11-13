@@ -54,7 +54,10 @@ public static class AnnouncementEndpoints
         db.Announcements.Add(a);
         await db.SaveChangesAsync(ct);
         loggers.CreateLogger("AdminAnnouncement").LogWarning("Announcement {Id} '{Title}' created by {Source}", a.Id, a.Title, a.CreatedBy);
-        return Results.Created($"/api/announcements/{a.Id}", new { id = a.Id });
+        var now = DateTime.UtcNow;
+        int active = await db.Announcements.CountAsync(x => !x.Removed && x.StartsAt <= now && (x.EndsAt == null || x.EndsAt > now), ct);
+        string? warning = active > MaxActive ? $"{active} pengumuman aktif; lobby hanya menampilkan {MaxActive} terbaru." : null;
+        return Results.Created($"/api/announcements/{a.Id}", new { id = a.Id, activeCount = active, warning });
     }
 
     private static async Task<IResult> Remove(Guid id, HttpContext http, AppDbContext db, ILoggerFactory loggers, CancellationToken ct)

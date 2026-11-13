@@ -149,23 +149,31 @@ public static class ApiEndpoints
     }
 
     private static async Task<IResult> Login(
-        LoginRequest req, AppDbContext db, TokenService tokens, PasswordHasher<Player> hasher, CancellationToken ct)
+        LoginRequest req, AppDbContext db, TokenService tokens, PasswordHasher<Player> hasher, AuthGuard guard, CancellationToken ct)
     {
         var username = req.Username?.Trim() ?? "";
         var password = req.Password ?? "";
         if (username.Length == 0 || password.Length == 0)
             return Results.BadRequest(new { error = "username and password are required." });
+        // Q81: brute force terdistribusi (banyak IP) tetap terkunci per username.
+        if (guard.IsLocked(username))
+            return Results.Json(new { error = "terlalu banyak percobaan gagal, coba lagi nanti." }, statusCode: StatusCodes.Status429TooManyRequests);
 
         var player = await db.Players.FirstOrDefaultAsync(p => p.Username == username, ct);
         if (player is null || player.PasswordHash is null)
         {
             hasher.VerifyHashedPassword(new Player(), TimingDummyHash.Value, password); // Q66: samakan waktu → tak bisa enumerasi username
+            guard.RecordFailure(username);
             return Results.Json(new { error = "invalid credentials." }, statusCode: StatusCodes.Status401Unauthorized);
         }
 
         var ok = hasher.VerifyHashedPassword(player, player.PasswordHash, password);
         if (ok == PasswordVerificationResult.Failed)
+        {
+            guard.RecordFailure(username);
             return Results.Json(new { error = "invalid credentials." }, statusCode: StatusCodes.Status401Unauthorized);
+        }
+        guard.RecordSuccess(username);
 
         return Results.Ok(AuthPayload(player, tokens));
     }
@@ -304,7 +312,7 @@ public static class ApiEndpoints
         Guid.Parse(user.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? user.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     private static async Task<IResult> GuestLogin(
-        GuestLoginRequest req, AppDbContext db, TokenService tokens, IOptions<GameOptions> game, CancellationToken ct)
+        GuestLoginRequest req, AppDbContext db, TokenService tokens, IOptions<GameOptions> game, AuthGuard guard, CancellationToken ct)
     {
         var deviceId = req.DeviceId?.Trim() ?? "";
         var name = req.DisplayName?.Trim() ?? "";
@@ -316,6 +324,8 @@ public static class ApiEndpoints
         var player = await db.Players.FirstOrDefaultAsync(p => p.DeviceId == deviceId, ct);
         if (player is null)
         {
+            if (!guard.TryCreateGuest()) // Q83: banjir guest dari banyak IP
+                return Results.Json(new { error = "server sibuk, coba lagi sebentar." }, statusCode: StatusCodes.Status429TooManyRequests);
             name = await FreeGuestNameAsync(db, name, null, ct);
             player = new Player
             {

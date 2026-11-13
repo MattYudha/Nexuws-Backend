@@ -30,6 +30,7 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Admin:Secret", AdminSecret);      // aktifkan endpoint admin di tes
         builder.UseSetting("RateLimit:AuthPerMinute", RateLimitPerMinute.ToString());
         builder.UseSetting("RateLimit:GuestPerMinute", RateLimitPerMinute.ToString());
+        builder.UseSetting("Game:GuestCreatePerMinuteGlobal", "100000"); // suite membuat ratusan guest
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<AppDbContext>>();
