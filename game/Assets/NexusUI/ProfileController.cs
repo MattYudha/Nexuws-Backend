@@ -289,8 +289,9 @@ namespace Nexus
 
             var badges = new VisualElement(); badges.AddToClassList("nxl-badges");
             int loserScore = Mathf.Min(m.scoreLeft, m.scoreRight);
-            if (m.won && loserScore == 0 && KoFinish(m)) badges.Add(Badge("FLAWLESS", "nxl-badge--flawless"));
-            if (m.won && mine != null && mine.maxDeficit >= 3) badges.Add(Badge("COMEBACK", "nxl-badge--comeback"));
+            // D13: badge hanya untuk ranked1v1 + battle (format lama tidak).
+            if (!legacy && m.won && loserScore == 0 && KoFinish(m)) badges.Add(Badge("FLAWLESS", "nxl-badge--flawless"));
+            if (!legacy && m.won && mine != null && mine.maxDeficit >= 3) badges.Add(Badge("COMEBACK", "nxl-badge--comeback"));
             if (mine != null && mine.firstBlood) badges.Add(Badge("FIRST BLOOD", "nxl-badge--firstblood"));
             body.Add(badges);
 
@@ -325,7 +326,7 @@ namespace Nexus
             NexusBackend.MatchPlayerRow opp = null;
             if (m.players != null) foreach (var p in m.players) if (p.slot != m.slot) { opp = p; break; }
             bool r1 = m.format == "ranked1v1";
-            bool flawless = Mathf.Min(m.scoreLeft, m.scoreRight) == 0 && KoFinish(m); // Q53: waktu habis/WO bukan flawless
+            bool flawless = Mathf.Min(m.scoreLeft, m.scoreRight) == 0 && KoFinish(m) && m.format != "legacy5v5"; // Q53 + D13
             int myScore = m.slot == 0 ? m.scoreLeft : m.scoreRight;      // skor KAMU di kiri, apa pun slot-nya
             int oppScore = m.slot == 0 ? m.scoreRight : m.scoreLeft;
 
@@ -391,7 +392,7 @@ namespace Nexus
 
             var badges = new VisualElement(); badges.AddToClassList("nxl-dtx-badges");
             if (thisWon && matchFlawless) badges.Add(Badge("FLAWLESS", "nxl-badge--flawless"));
-            if (thisWon && p != null && p.maxDeficit >= 3) badges.Add(Badge("COMEBACK", "nxl-badge--comeback"));
+            if (thisWon && p != null && p.maxDeficit >= 3 && m.format != "legacy5v5") badges.Add(Badge("COMEBACK", "nxl-badge--comeback")); // D13
             if (p != null && p.firstBlood) badges.Add(Badge("FIRST BLOOD", "nxl-badge--firstblood"));
             col.Add(badges);
 

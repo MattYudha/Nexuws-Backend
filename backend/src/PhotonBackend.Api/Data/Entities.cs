@@ -8,6 +8,7 @@ public sealed class Player
     public string? PasswordHash { get; set; }       // hash (ASP.NET PasswordHasher)
     public string DisplayName { get; set; } = "";
     public int Faction { get; set; }                // 0 none, 1 ORDE, 2 LEGION
+    public DateTime? LastRatedAt { get; set; }     // match ber-rating terakhir → inflasi RD saat pasif (D12). null = belum/legacy (tanpa inflasi)
     public bool FactionSwitchUsed { get; set; }     // jatah pindah faksi GRATIS (1×, selama placement <5 ranked) sudah dipakai (docs/35)
     public int Rating { get; set; }
     public double Rd { get; set; } = 350.0;        // Glicko-2 rating deviation (keyakinan)

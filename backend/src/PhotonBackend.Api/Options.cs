@@ -36,6 +36,9 @@ public sealed class GameOptions
     public int StartRating { get; set; } = 1500;    // konvensi Glicko-2
     public double StartRd { get; set; } = 350.0;    // RD awal (pemain baru = tak pasti)
     public double StartVolatility { get; set; } = 0.06;
+    public double RdMin { get; set; } = 30.0;       // D12: lantai RD → rating−2·RD tetap bermakna
+    public double RdMax { get; set; } = 350.0;      // D12: batas atas inflasi RD (= RD pemain baru)
+    public int RdInactivityPeriodDays { get; set; } = 7; // D12: tiap periode tanpa match ranked → RD naik (Glickman langkah 6)
     public double Tau { get; set; } = 0.5;          // konstanta sistem Glicko-2 (0.3–1.2)
     public int MatchmakingWindow { get; set; } = 400; // (lama; dipakai sbg Start default)
 

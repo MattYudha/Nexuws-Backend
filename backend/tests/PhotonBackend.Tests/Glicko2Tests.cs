@@ -52,4 +52,16 @@ public class Glicko2Tests
         // RD mengecil karena ada informasi game baru.
         Assert.True(aNew.Rd < 200);
     }
+
+    // D12: inflasi RD saat pasif (Glickman langkah 6 diulang per periode), dibatasi maksimum.
+    [Fact]
+    public void Inflate_GrowsRdPerPeriod_CappedAtMax()
+    {
+        var p = new Glicko2Rating(1600, 50, 0.06);
+        Assert.Equal(p, Glicko2.Inflate(p, 0));
+        var three = Glicko2.Inflate(p, 3);
+        Assert.Equal(Math.Sqrt(Math.Pow(50 / 173.7178, 2) + 3 * 0.06 * 0.06) * 173.7178, three.Rd, 6);
+        Assert.Equal(1600, three.Rating);
+        Assert.Equal(350, Glicko2.Inflate(p, 100_000).Rd);
+    }
 }

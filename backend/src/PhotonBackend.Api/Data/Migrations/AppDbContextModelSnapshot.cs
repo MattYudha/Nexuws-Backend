@@ -348,6 +348,9 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<int>("LastRankedTierOrder")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("LastRatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("Losses")
                         .HasColumnType("integer");
 

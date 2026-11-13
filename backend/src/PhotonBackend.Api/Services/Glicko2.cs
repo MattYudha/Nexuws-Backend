@@ -19,6 +19,18 @@ public static class Glicko2
     private const double Scale = 173.7178; // faktor konversi ke skala internal Glicko-2
 
     /// <summary>
+    /// Inflasi RD untuk <paramref name="periods"/> periode tanpa main (Glickman langkah 6, diulang):
+    /// φ* = √(φ² + periods·σ²), dibatasi <paramref name="maxRd"/>. Rating & volatilitas tetap.
+    /// </summary>
+    public static Glicko2Rating Inflate(Glicko2Rating player, int periods, double maxRd = DefaultRd)
+    {
+        if (periods <= 0) return player;
+        double phi = player.Rd / Scale;
+        double phiStar = Math.Sqrt(phi * phi + periods * player.Volatility * player.Volatility);
+        return player with { Rd = Math.Min(phiStar * Scale, maxRd) };
+    }
+
+    /// <summary>
     /// Perbarui rating satu pemain dari game-game pada satu periode.
     /// Tanpa game → hanya RD yang membesar (keyakinan meluruh), dibatasi <see cref="DefaultRd"/>.
     /// </summary>

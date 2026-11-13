@@ -310,8 +310,10 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
         var l = players[loser.PlayerId];
 
         // Glicko-2: hitung kedua pemain dari rating lawan PRA-match (tangkap dulu sebelum menulis balik).
-        var wR = new Glicko2Rating(w.Rating, w.Rd, w.Volatility);
-        var lR = new Glicko2Rating(l.Rating, l.Rd, l.Volatility);
+        // D12: RD naik dulu sesuai lama pasif (per RdInactivityPeriodDays, maks RdMax), baru dihitung match ini.
+        var now = DateTime.UtcNow;
+        var wR = WithInactivity(w, now);
+        var lR = WithInactivity(l, now);
         var wNew = Glicko2.Update(wR, new[] { new Glicko2Game(lR.Rating, lR.Rd, 1.0) }, _game.Tau);
         var lNew = Glicko2.Update(lR, new[] { new Glicko2Game(wR.Rating, wR.Rd, 0.0) }, _game.Tau);
 
@@ -322,15 +324,18 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
 
         // Anti-kolusi: pasangan yang sama bertemu berkali-kali dalam jendela singkat → redam perolehan rating.
         int pairCount = await RecentPairMatchesAsync(winner.PlayerId, loser.PlayerId, ct);
-        if (pairCount >= _game.CollusionThreshold)
+        bool damped = pairCount >= _game.CollusionThreshold;
+        if (damped)
         {
             wDelta = (int)Math.Round(wDelta * _game.CollusionRatingFactor);
             lDelta = (int)Math.Round(lDelta * _game.CollusionRatingFactor);
             logger.LogWarning("Match {GameId} anti-kolusi: pasangan bertemu {Count}x dalam {Min} menit → rating diredam.", match.GameId, pairCount + 1, _game.CollusionWindowMinutes);
         }
 
-        w.Rating = wBefore + wDelta; w.Rd = wNew.Rd; w.Volatility = wNew.Volatility;
-        l.Rating = Math.Max(0, lBefore + lDelta); l.Rd = lNew.Rd; l.Volatility = lNew.Volatility;
+        // D12: RD dilantai RdMin; match yang diredam anti-kolusi TIDAK boleh menurunkan RD (keyakinan tak naik).
+        w.Rating = wBefore + wDelta; w.Rd = FinalRd(wNew.Rd, wR.Rd, damped); w.Volatility = wNew.Volatility;
+        l.Rating = Math.Max(0, lBefore + lDelta); l.Rd = FinalRd(lNew.Rd, lR.Rd, damped); l.Volatility = lNew.Volatility;
+        w.LastRatedAt = now; l.LastRatedAt = now;
         w.Wins++;
         l.Losses++;
 
@@ -366,6 +371,20 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
         match.Status = MatchStatus.Finished;
         match.EndedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+    }
+
+    private Glicko2Rating WithInactivity(Data.Player p, DateTime now)
+    {
+        var r = new Glicko2Rating(p.Rating, p.Rd, p.Volatility);
+        if (p.LastRatedAt is not { } last || _game.RdInactivityPeriodDays <= 0) return r;
+        int periods = (int)((now - last).TotalDays / _game.RdInactivityPeriodDays);
+        return Glicko2.Inflate(r, periods, _game.RdMax);
+    }
+
+    private double FinalRd(double updated, double preMatch, bool damped)
+    {
+        double rd = damped ? Math.Max(updated, preMatch) : updated;
+        return Math.Clamp(rd, _game.RdMin, _game.RdMax);
     }
 
     // Proteksi demosi: hitung ulang state floor pemain dari rating baru (Ranks.StepTierFloor = logika murni).

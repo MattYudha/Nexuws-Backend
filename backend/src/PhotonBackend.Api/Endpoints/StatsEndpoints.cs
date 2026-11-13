@@ -26,7 +26,7 @@ public static class StatsEndpoints
     private sealed record Row(
         DateTime? EndedAt, int ScoreLeft, int ScoreRight, int DurationSec, int Slot, bool Won,
         int Kills, int Deaths, bool Detailed, bool KdValid,
-        int DamageDealt, int DamageTaken, int HitsBlocked, int Dodges, int GuardCrushes, int Criticals, int MaxDeficit, bool FirstBlood, bool IsDraw, bool KoFinish);
+        int DamageDealt, int DamageTaken, int HitsBlocked, int Dodges, int GuardCrushes, int Criticals, int MaxDeficit, bool FirstBlood, bool IsDraw, bool KoFinish, bool BadgeFmt);
 
     private static async Task<object> Compute(AppDbContext db, Guid playerId, string? mode, CancellationToken ct)
     {
@@ -83,7 +83,7 @@ public static class StatsEndpoints
                 mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
                 mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, mp.HasDetailedStats, mp.Match.Format == "ranked1v1",
                 mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
-                mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko"))
+                mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko", mp.Match.Format == "ranked1v1" || mp.Match.Format == "battle"))
             .ToListAsync(ct);
 
     private sealed class Agg
@@ -113,8 +113,9 @@ public static class StatsEndpoints
 
             int diff = Math.Abs(r.ScoreLeft - r.ScoreRight);
             int loserScore = Math.Min(r.ScoreLeft, r.ScoreRight);
-            if (diff <= 2 && !r.IsDraw) { a.CloseMatches++; if (r.Won) a.CloseWins++; }
-            if (r.Won && loserScore == 0 && r.KoFinish) a.Flawless++; // Q53: hanya menang KO (bukan waktu habis/WO)
+            // D13: badge (Close/Flawless/Comeback) dari ranked1v1 + battle; match format lama tidak dihitung.
+            if (r.BadgeFmt && diff <= 2 && !r.IsDraw) { a.CloseMatches++; if (r.Won) a.CloseWins++; }
+            if (r.BadgeFmt && r.Won && loserScore == 0 && r.KoFinish) a.Flawless++; // Q53: hanya menang KO (bukan waktu habis/WO)
 
             if (r.Detailed)
             {
@@ -125,7 +126,7 @@ public static class StatsEndpoints
                 a.DetailedMinutes += r.DurationSec / 60.0;
                 a.DetailedKoReceived += r.Deaths;
                 if (r.FirstBlood) a.FirstBloods++;
-                if (r.Won && r.MaxDeficit >= 3) a.Comebacks++;
+                if (r.BadgeFmt && r.Won && r.MaxDeficit >= 3) a.Comebacks++;
             }
         }
         a.WinRate = a.Wins + a.Losses > 0 ? Math.Round(100.0 * a.Wins / (a.Wins + a.Losses), 1) : 0; // seri tak dihitung (sama dgn leaderboard)
@@ -169,7 +170,7 @@ public static class StatsEndpoints
                 Row = new Row(mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
                     mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, true, mp.Match.Format == "ranked1v1",
                     mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
-                    mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko"),
+                    mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko", mp.Match.Format == "ranked1v1" || mp.Match.Format == "battle"),
             })
             .ToListAsync(ct);
 

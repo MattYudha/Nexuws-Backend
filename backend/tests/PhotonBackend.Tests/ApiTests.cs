@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using PhotonBackend.Api.Data;
 
 namespace PhotonBackend.Tests;
 
@@ -695,5 +698,77 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         object Ko(int slot) => new { gameId = "room-flaw-ko", slot, scoreLeft = 5, scoreRight = 0, durationSec = 60, mode = "ranked", players = k, endReason = "ko", koTimeline = Timeline(0, 0, 0, 0, 0) };
         Assert.Equal("Finished", await ReportBoth(alice, bob, "room-flaw-ko", Ko(0), Ko(1)));
         Assert.Equal(1, (await alice.GetFromJsonAsync<JsonElement>("/api/me/stats")).GetProperty("flawless").GetInt32());
+    }
+
+    // ---- D12: kebijakan RD (lantai 30, inflasi pasif 7 hari, anti-kolusi tak menurunkan RD) ----
+    private async Task SetRdAsync(Guid id, double rd, DateTime? lastRatedAt)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var p = await db.Players.FindAsync(id);
+        p!.Rd = rd; p.LastRatedAt = lastRatedAt;
+        await db.SaveChangesAsync();
+    }
+    private async Task<double> RdAsync(Guid id)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return (await db.Players.AsNoTracking().FirstAsync(x => x.Id == id)).Rd;
+    }
+    private async Task PlayKo(HttpClient a, HttpClient b, string room)
+    {
+        var rows = new[] { RankedRow(0, 5, 2), RankedRow(1, 2, 5) };
+        object Body(int slot) => new { gameId = room, slot, scoreLeft = 5, scoreRight = 2, durationSec = 90, mode = "ranked", players = rows, endReason = "ko" };
+        Assert.Equal("Finished", await ReportBoth(a, b, room, Body(0), Body(1)));
+    }
+
+    [Fact]
+    public async Task Rd_NeverBelowFloor30()
+    {
+        var (a, la) = await factory.LoginAsync("device-rdfloor-a", "RdFloorA");
+        var (b, lb) = await factory.LoginAsync("device-rdfloor-b", "RdFloorB");
+        await SetRdAsync(la.PlayerId, 30.5, DateTime.UtcNow); await SetRdAsync(lb.PlayerId, 30.5, DateTime.UtcNow);
+        await PlayKo(a, b, "room-rdfloor");
+        Assert.True(await RdAsync(la.PlayerId) >= 30.0);
+        Assert.True(await RdAsync(lb.PlayerId) >= 30.0);
+    }
+
+    [Fact]
+    public async Task Rd_InactivePlayerEndsLessCertain()
+    {
+        var (a1, w1) = await factory.LoginAsync("device-rdin-a1", "RdInA1"); var (b1, o1) = await factory.LoginAsync("device-rdin-b1", "RdInB1");
+        var (a2, w2) = await factory.LoginAsync("device-rdin-a2", "RdInA2"); var (b2, o2) = await factory.LoginAsync("device-rdin-b2", "RdInB2");
+        var now = DateTime.UtcNow;
+        await SetRdAsync(w1.PlayerId, 60, now.AddDays(-28)); await SetRdAsync(o1.PlayerId, 60, now); // w1 pasif 4 periode
+        await SetRdAsync(w2.PlayerId, 60, now);              await SetRdAsync(o2.PlayerId, 60, now); // w2 aktif
+        await PlayKo(a1, b1, "room-rdin-1"); await PlayKo(a2, b2, "room-rdin-2");
+        Assert.True(await RdAsync(w1.PlayerId) > await RdAsync(w2.PlayerId), "pemain pasif harus lebih tak pasti");
+    }
+
+    [Fact]
+    public async Task Rd_DampedCollusionMatch_DoesNotLowerRd()
+    {
+        var (a, la) = await factory.LoginAsync("device-rdcol-a", "RdColA");
+        var (b, lb) = await factory.LoginAsync("device-rdcol-b", "RdColB");
+        for (int i = 0; i < 3; i++) await PlayKo(a, b, $"room-rdcol-{i}");   // 3 pertemuan → berikutnya diredam
+        double before = await RdAsync(la.PlayerId);
+        await PlayKo(a, b, "room-rdcol-3");
+        Assert.Equal(before, await RdAsync(la.PlayerId), 6);
+    }
+
+    // D13: badge dari ranked1v1 + battle saja; format lama (legacy5v5 = ranked tanpa payload) tidak dihitung.
+    [Fact]
+    public async Task Badges_IgnoreLegacyFormat()
+    {
+        var (a, _) = await factory.LoginAsync("device-d13-a", "D13A");
+        var (b, _) = await factory.LoginAsync("device-d13-b", "D13B");
+        object Legacy(int slot) => new { gameId = "room-d13-legacy", slot, scoreLeft = 5, scoreRight = 0, durationSec = 60, mode = "ranked" };
+        Assert.Equal("Finished", await ReportBoth(a, b, "room-d13-legacy", Legacy(0), Legacy(1)));
+        Assert.Equal("legacy5v5", (await a.GetFromJsonAsync<JsonElement>("/api/matches"))[0].GetProperty("format").GetString());
+        Assert.Equal(0, (await a.GetFromJsonAsync<JsonElement>("/api/me/stats")).GetProperty("flawless").GetInt32());
+
+        object Battle(int slot) => new { gameId = "room-d13-battle", slot, scoreLeft = 5, scoreRight = 0, durationSec = 60, mode = "battle" };
+        Assert.Equal("Finished", await ReportBoth(a, b, "room-d13-battle", Battle(0), Battle(1)));
+        Assert.Equal(1, (await a.GetFromJsonAsync<JsonElement>("/api/me/stats")).GetProperty("flawless").GetInt32());
     }
 }
