@@ -70,22 +70,43 @@ public static class ApiEndpoints
         var password = req.Password ?? "";
         var name = req.DisplayName?.Trim() is { Length: > 0 } dn ? dn : username;
         if (CredentialError(username, password, name) is { } bad) return bad;
+        if (NameRules.IsReserved(name)) return Results.BadRequest(new { error = "nama tidak diizinkan." });
+        var norm = NameRules.Normalize(name);
+        if (await db.Players.AnyAsync(p => p.NormalizedName == norm, ct))
+            return Results.Conflict(new { error = "nama sudah dipakai." });
 
         if (await db.Players.AnyAsync(p => p.Username == username, ct))
             return Results.Conflict(new { error = "username already taken." });
 
         var player = new Player
         {
-            Username = username, DisplayName = name,
+            Username = username, DisplayName = name, NormalizedName = norm,
             Rating = game.Value.StartRating, Rd = game.Value.StartRd, Volatility = game.Value.StartVolatility,
             IsTestAccount = game.Value.AllowTestAccounts && (req.IsTest ?? false), // eksplisit; default false
         };
         player.PasswordHash = hasher.HashPassword(player, password);
         db.Players.Add(player);
         try { await db.SaveChangesAsync(ct); }
-        catch (DbUpdateException) { return Results.Conflict(new { error = "username already taken." }); }
+        catch (DbUpdateException) { return Results.Conflict(new { error = "username atau nama sudah dipakai." }); }
 
         return Results.Ok(AuthPayload(player, tokens));
+    }
+
+    // D14: nama guest yang diminta dipakai bila bebas & tidak terlarang; selain itu "Guest" + angka acak yang bebas.
+    private static async Task<string> FreeGuestNameAsync(AppDbContext db, string wanted, Guid? self, CancellationToken ct)
+    {
+        async Task<bool> Free(string n)
+        {
+            var norm = NameRules.Normalize(n);
+            return !NameRules.IsReserved(n) && !await db.Players.AnyAsync(p => p.NormalizedName == norm && p.Id != self, ct);
+        }
+        if (await Free(wanted)) return wanted;
+        for (int i = 0; i < 20; i++)
+        {
+            var n = "Guest" + Random.Shared.Next(1000, 1_000_000);
+            if (await Free(n)) return n;
+        }
+        return "Guest" + Guid.NewGuid().ToString("N")[..10];
     }
 
     private static readonly Lazy<string> TimingDummyHash = new(() => new PasswordHasher<Player>().HashPassword(new Player(), "timing-dummy-password"));
@@ -295,17 +316,21 @@ public static class ApiEndpoints
         var player = await db.Players.FirstOrDefaultAsync(p => p.DeviceId == deviceId, ct);
         if (player is null)
         {
+            name = await FreeGuestNameAsync(db, name, null, ct);
             player = new Player
             {
-                DeviceId = deviceId, DisplayName = name,
+                DeviceId = deviceId, DisplayName = name, NormalizedName = NameRules.Normalize(name),
                 Rating = game.Value.StartRating, Rd = game.Value.StartRd, Volatility = game.Value.StartVolatility,
                 IsTestAccount = game.Value.AllowTestAccounts && (req.IsTest ?? false), // eksplisit; default false
             };
             db.Players.Add(player);
         }
-        else
+        else if (!string.Equals(NameRules.Normalize(name), player.NormalizedName, StringComparison.Ordinal))
         {
-            player.DisplayName = name;
+            // Ganti nama hanya bila bebas & tidak terlarang; selain itu pertahankan nama lama.
+            var norm = NameRules.Normalize(name);
+            if (!NameRules.IsReserved(name) && !await db.Players.AnyAsync(p => p.NormalizedName == norm && p.Id != player.Id, ct))
+            { player.DisplayName = name; player.NormalizedName = norm; }
         }
 
         try

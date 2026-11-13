@@ -17,6 +17,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             e.HasIndex(x => x.DeviceId).IsUnique();   // nullable: Postgres izinkan banyak NULL (akun username)
             e.HasIndex(x => x.Username).IsUnique();
+            e.HasIndex(x => x.NormalizedName).IsUnique();   // D14
+            e.Property(x => x.NormalizedName).HasMaxLength(24);
             e.HasIndex(x => x.Rating);
             e.Property(x => x.DeviceId).HasMaxLength(128);
             e.Property(x => x.Username).HasMaxLength(24);

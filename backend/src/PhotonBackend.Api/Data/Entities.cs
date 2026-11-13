@@ -7,6 +7,7 @@ public sealed class Player
     public string? Username { get; set; }           // akun terdaftar; null untuk guest
     public string? PasswordHash { get; set; }       // hash (ASP.NET PasswordHasher)
     public string DisplayName { get; set; } = "";
+    public string NormalizedName { get; set; } = "";  // D14: lower(trim(DisplayName)) — index UNIK (nama tak boleh kembar, case-insensitive)
     public int Faction { get; set; }                // 0 none, 1 ORDE, 2 LEGION
     public DateTime? LastRatedAt { get; set; }     // match ber-rating terakhir → inflasi RD saat pasif (D12). null = belum/legacy (tanpa inflasi)
     public bool FactionSwitchUsed { get; set; }     // jatah pindah faksi GRATIS (1×, selama placement <5 ranked) sudah dipakai (docs/35)

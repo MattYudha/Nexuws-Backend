@@ -228,7 +228,7 @@ namespace Nexus
                 : await _backend.LoginAsync(u, p);
             _authBusy = false;
             if (ok) { _fPass = ""; _authMsg = ""; _screen = Page.Menu; }
-            else _authMsg = _authRegister ? "Gagal daftar — username sudah dipakai atau server tak terhubung." : "Username atau password salah, atau server tak terhubung.";
+            else _authMsg = _authRegister ? "Gagal daftar — username/nama sudah dipakai, nama tidak diizinkan, atau server tak terhubung." : "Username atau password salah, atau server tak terhubung.";
         }
 
         private async void DoGuest()
@@ -237,6 +237,8 @@ namespace Nexus
             _authBusy = true; _authMsg = "Masuk sebagai guest...";
             bool ok = await _backend.GuestLoginAsync(DeviceId(), GuestName());
             _authBusy = false;
+            // D14: server bisa memberi nama lain (nama diminta sudah dipakai/terlarang) → simpan nama dari server.
+            if (ok && !string.IsNullOrEmpty(_backend.DisplayName)) { PlayerPrefs.SetString(ProfileKey() + ".name", _backend.DisplayName); PlayerPrefs.Save(); }
             if (ok) { _authMsg = ""; _screen = Page.Menu; }
             else _authMsg = "Server tidak dapat dihubungi (" + BackendUrl + ").";
         }

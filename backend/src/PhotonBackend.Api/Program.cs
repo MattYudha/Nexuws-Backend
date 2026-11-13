@@ -49,8 +49,8 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // Q61: rate limit per IP. "auth" = login/register/upgrade (anti brute force), "guest" = pembuatan guest (anti flood DB).
-var authPerMin = builder.Configuration.GetValue("RateLimit:AuthPerMinute", 10);
-var guestPerMin = builder.Configuration.GetValue("RateLimit:GuestPerMinute", 10);
+var authPerMin = builder.Configuration.GetValue("RateLimit:AuthPerMinute", 15);   // D15: 15/menit (ruang untuk warnet)
+var guestPerMin = builder.Configuration.GetValue("RateLimit:GuestPerMinute", 15);
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

@@ -787,4 +787,21 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("AsliNama", (await ok.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("displayName").GetString());
     }
 
+
+    // D14: nama unik case-insensitive + terlarang saat daftar; guest tidak pernah gagal karena nama.
+    [Fact]
+    public async Task DisplayName_UniqueCaseInsensitive_AndReserved()
+    {
+        var c = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.OK, (await c.PostAsJsonAsync("/api/auth/register", new { username = "d14_first", password = "secret123", displayName = "PendekarRio" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await c.PostAsJsonAsync("/api/auth/register", new { username = "d14_second", password = "secret123", displayName = "pendekarRIO" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.PostAsJsonAsync("/api/auth/register", new { username = "d14_third", password = "secret123", displayName = "GM_Rio" })).StatusCode);
+
+        // Guest meminta nama yang sudah dipakai / terlarang → tetap masuk, dengan nama lain.
+        var (_, g1) = await factory.LoginAsync("device-d14-guest-1", "PENDEKARRIO");
+        Assert.NotEqual("pendekarrio", g1.DisplayName.ToLowerInvariant());
+        var (_, g2) = await factory.LoginAsync("device-d14-guest-2", "Admin");
+        Assert.NotEqual("admin", g2.DisplayName.ToLowerInvariant());
+        Assert.StartsWith("Guest", g2.DisplayName);
+    }
 }

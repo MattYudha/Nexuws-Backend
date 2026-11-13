@@ -354,6 +354,11 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<int>("Losses")
                         .HasColumnType("integer");
 
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
@@ -382,6 +387,9 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DeviceId")
+                        .IsUnique();
+
+                    b.HasIndex("NormalizedName")
                         .IsUnique();
 
                     b.HasIndex("Rating");
