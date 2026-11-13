@@ -63,7 +63,8 @@ public static class StatsEndpoints
     private sealed record Row(
         DateTime? EndedAt, int ScoreLeft, int ScoreRight, int DurationSec, int Slot, bool Won,
         int Kills, int Deaths, bool Detailed, bool KdValid,
-        int DamageDealt, int DamageTaken, int HitsBlocked, int Dodges, int GuardCrushes, int Criticals, int MaxDeficit, bool FirstBlood, bool IsDraw, bool KoFinish, bool BadgeFmt);
+        int DamageDealt, int DamageTaken, int HitsBlocked, int Dodges, int GuardCrushes, int Criticals, int MaxDeficit, bool FirstBlood, bool IsDraw, bool KoFinish, bool BadgeFmt,
+        int SkillsUsed, int SkillsHit, int GearDrops);
 
     private static async Task<object> Compute(AppDbContext db, Guid playerId, string? mode, CancellationToken ct)
     {
@@ -101,6 +102,10 @@ public static class StatsEndpoints
             dodges = a.Dodges,
             guardCrushes = a.GuardCrushes,
             criticals = a.Criticals,
+            gearDrops = a.GearDrops,
+            skillsUsed = a.SkillsUsed,
+            skillsHit = a.SkillsHit,
+            accuracy = a.SkillsUsed > 0 ? Math.Round(100.0 * a.SkillsHit / a.SkillsUsed, 1) : (double?)null, // NX-20; null → UI "–"
             firstBloods = a.FirstBloods,
             flawless = a.Flawless,
             comebacks = a.Comebacks,
@@ -120,7 +125,8 @@ public static class StatsEndpoints
                 mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
                 mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, mp.HasDetailedStats, mp.Match.Format == "ranked1v1",
                 mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
-                mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko", mp.Match.Format == "ranked1v1" || mp.Match.Format == "battle"))
+                mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko", mp.Match.Format == "ranked1v1" || mp.Match.Format == "battle",
+                mp.SkillsUsed, mp.SkillsHit, mp.GearDrops))
             .ToListAsync(ct);
 
     private sealed class Agg
@@ -128,7 +134,7 @@ public static class StatsEndpoints
         public int Matches, Wins, Losses, Draws, Kills, Deaths, MaxKill, WinStreakBest, AvgDurationSec;
         public int KdMatches; // match dgn K/D valid (format ranked1v1) → kalau 0, K/D tampil "–"
         public double WinRate, Kda;
-        public int Detailed, DamageDealt, DamageTaken, HitsBlocked, Dodges, GuardCrushes, Criticals;
+        public int Detailed, DamageDealt, DamageTaken, HitsBlocked, Dodges, GuardCrushes, Criticals, SkillsUsed, SkillsHit, GearDrops; // NX-20: + akurasi & gear drop
         public int FirstBloods, Flawless, Comebacks, CloseWins, CloseMatches;
         public double DetailedMinutes, DetailedKoReceived;
     }
@@ -160,6 +166,7 @@ public static class StatsEndpoints
                 a.DamageDealt += r.DamageDealt; a.DamageTaken += r.DamageTaken;
                 a.HitsBlocked += r.HitsBlocked; a.Dodges += r.Dodges;
                 a.GuardCrushes += r.GuardCrushes; a.Criticals += r.Criticals;
+                a.SkillsUsed += r.SkillsUsed; a.SkillsHit += r.SkillsHit; a.GearDrops += r.GearDrops;
                 a.DetailedMinutes += r.DurationSec / 60.0;
                 a.DetailedKoReceived += r.Deaths;
                 if (r.FirstBlood) a.FirstBloods++;
@@ -179,7 +186,7 @@ public static class StatsEndpoints
         double serangan = a.DamageDealt / min;
         double pertahanan = (a.HitsBlocked + a.Dodges) / min;
         double tekanan = (a.GuardCrushes + a.Criticals) / min;
-        double ketahanan = a.DamageTaken / Math.Max(1.0, a.DetailedKoReceived);
+        double ketahanan = a.DamageTaken / (a.DetailedKoReceived + 1.0); // Q58: +1 → pemain 0 KO diterima tak otomatis teratas
         double closeWinRate = a.CloseMatches > 0 ? (double)a.CloseWins / a.CloseMatches : 0;
         double clutch = a.Comebacks + closeWinRate;
         return new[] { serangan, pertahanan, tekanan, ketahanan, clutch };
@@ -192,31 +199,14 @@ public static class StatsEndpoints
         if (mineAgg.Detailed < RadarMinMatches)
             return new { ready = false, reason = $"Radar muncul setelah {RadarMinMatches} pertandingan berdetail.", labels };
 
-        // Kandidat tier sama (populasi kecil → muat semua pemain, filter tier di memori).
-        var players = await db.Players.AsNoTracking().Select(p => new { p.Id, p.Rating }).ToListAsync(ct);
-        var tierIds = players.Where(p => Ranks.TierFor(p.Rating) == tier).Select(p => p.Id).ToHashSet();
-        tierIds.Add(playerId);
-
-        // Populasi: tiap pemain tier (dengan >=10 match berdetail) → satu vektor 5 sumbu.
-        var byPlayer = await db.MatchPlayers.AsNoTracking()
-            .Where(mp => tierIds.Contains(mp.PlayerId) && mp.HasDetailedStats
-                         && mp.Match.Status == MatchStatus.Finished && (mode == null || mp.Match.Mode == mode))
-            .Select(mp => new
-            {
-                mp.PlayerId,
-                Row = new Row(mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
-                    mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, true, mp.Match.Format == "ranked1v1",
-                    mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
-                    mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko", mp.Match.Format == "ranked1v1" || mp.Match.Format == "battle"),
-            })
-            .ToListAsync(ct);
-
-        var axisVectors = byPlayer
-            .GroupBy(x => x.PlayerId)
-            .Select(g => g.Select(x => x.Row).ToList())
-            .Where(list => list.Count >= RadarMinMatches)
-            .Select(list => RadarAxes(Aggregate(list)))
-            .ToList();
+        // Q56: vektor populasi (pemain tier sama, ≥10 match berdetail) di-cache per (tier, mode) selama RadarCacheMinutes.
+        var key = (tier, mode ?? "all");
+        if (!RadarCache.TryGetValue(key, out var cached) || (DateTime.UtcNow - cached.At).TotalMinutes >= RadarCacheMinutes)
+        {
+            cached = (DateTime.UtcNow, await RadarPopulationAsync(db, tier, mode, ct));
+            RadarCache[key] = cached;
+        }
+        var axisVectors = cached.Vectors;
 
         if (axisVectors.Count < RadarMinPopulation)
             return new { ready = false, reason = "Radar muncul setelah cukup pembanding di tier ini.", labels };
@@ -229,6 +219,38 @@ public static class StatsEndpoints
             values[ax] = Math.Round(100.0 * leq / axisVectors.Count, 0); // persentil 0..100
         }
         return new { ready = true, labels, values };
+    }
+
+    private const int RadarCacheMinutes = 5;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(string Tier, string Mode), (DateTime At, List<double[]> Vectors)> RadarCache = new();
+
+    private static async Task<List<double[]>> RadarPopulationAsync(AppDbContext db, string tier, string? mode, CancellationToken ct)
+    {
+        // Kandidat tier sama (populasi kecil → muat semua pemain, filter tier di memori).
+        var players = await db.Players.AsNoTracking().Select(p => new { p.Id, p.Rating }).ToListAsync(ct);
+        var tierIds = players.Where(p => Ranks.TierFor(p.Rating) == tier).Select(p => p.Id).ToHashSet();
+
+        // Populasi: tiap pemain tier (dengan >=10 match berdetail) → satu vektor 5 sumbu.
+        var byPlayer = await db.MatchPlayers.AsNoTracking()
+            .Where(mp => tierIds.Contains(mp.PlayerId) && mp.HasDetailedStats
+                         && mp.Match.Status == MatchStatus.Finished && (mode == null || mp.Match.Mode == mode))
+            .Select(mp => new
+            {
+                mp.PlayerId,
+                Row = new Row(mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
+                    mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, true, mp.Match.Format == "ranked1v1",
+                    mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
+                    mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko", mp.Match.Format == "ranked1v1" || mp.Match.Format == "battle",
+                    mp.SkillsUsed, mp.SkillsHit, mp.GearDrops),
+            })
+            .ToListAsync(ct);
+
+        return byPlayer
+            .GroupBy(x => x.PlayerId)
+            .Select(g => g.Select(x => x.Row).ToList())
+            .Where(list => list.Count >= RadarMinMatches)
+            .Select(list => RadarAxes(Aggregate(list)))
+            .ToList();
     }
 
     private static Guid PlayerId(ClaimsPrincipal user) =>

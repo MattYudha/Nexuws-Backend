@@ -850,4 +850,22 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(1, heroes[1].GetProperty("losses").GetInt32());
         Assert.Equal(2.0, heroes[0].GetProperty("playMinutes").GetDouble(), 1); // 2 × 3600 tick @60 = 2 menit
     }
+
+    // NX-20: agregat Tab Statistik memuat akurasi skill & gear drop (null bila skill tak pernah dipakai).
+    [Fact]
+    public async Task Stats_IncludeAccuracyAndGearDrops()
+    {
+        var (a, _) = await factory.LoginAsync("device-nx20-a", "Nx20A");
+        var (b, _) = await factory.LoginAsync("device-nx20-b", "Nx20B");
+        object Row(int slot, int kills, int deaths, int used, int hit, int gear) => new { slot, kills, botKills = 0, deaths, heroId = 0, damageDealt = 50, damageTaken = 40, skillsUsed = used, skillsHit = hit, hitsBlocked = 0, dodges = 0, guardCrushes = 0, criticals = 0, gearDrops = gear, firstBlood = false, maxKillStreak = 0, maxDeficit = 0, heroSwitches = 0, heroes = new object[0] };
+        var p = new[] { Row(0, 5, 2, 8, 6, 7), Row(1, 2, 5, 0, 0, 3) };
+        object Body(int slot) => new { gameId = "room-nx20", slot, scoreLeft = 5, scoreRight = 2, durationSec = 90, mode = "ranked", players = p, endReason = "ko" };
+        Assert.Equal("Finished", await ReportBoth(a, b, "room-nx20", Body(0), Body(1)));
+
+        var sa = await a.GetFromJsonAsync<JsonElement>("/api/me/stats");
+        Assert.Equal(75.0, sa.GetProperty("accuracy").GetDouble());
+        Assert.Equal(7, sa.GetProperty("gearDrops").GetInt32());
+        var sb = await b.GetFromJsonAsync<JsonElement>("/api/me/stats");
+        Assert.Equal(JsonValueKind.Null, sb.GetProperty("accuracy").ValueKind);   // tak pernah pakai skill → "–"
+    }
 }
