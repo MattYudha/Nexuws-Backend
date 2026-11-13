@@ -12,6 +12,7 @@ namespace PhotonBackend.Api.Endpoints;
 public sealed record GuestLoginRequest(string? DeviceId, string? DisplayName, bool? IsTest = null);
 public sealed record RegisterRequest(string? Username, string? Password, string? DisplayName, bool? IsTest = null);
 public sealed record LoginRequest(string? Username, string? Password);
+public sealed record UpgradeRequest(string? Username, string? Password, string? DisplayName); // K-10: guest → akun
 public sealed record FactionRequest(int Faction);
 public sealed record AdminFactionRequest(Guid PlayerId, int Faction, string? AdminSource = null);
 public sealed record ReportResultRequest(string? GameId, int Slot, int ScoreLeft, int ScoreRight, int Kills = 0, int Deaths = 0, int Assists = 0, int HeroId = 0, string? Mode = null, int DurationSec = 0, int PartySize = 1, List<ReportPlayer>? Players = null,
@@ -31,6 +32,7 @@ public static class ApiEndpoints
 
         var secured = api.MapGroup("").RequireAuthorization();
         secured.MapGet("/me", Me);
+        secured.MapPost("/auth/upgrade", UpgradeGuest); // K-10: guest → akun, progres terbawa
         secured.MapPost("/me/faction", SetFaction);
         secured.MapGet("/matches", MyMatches);
         secured.MapGet("/me/rank", MyRank);
@@ -67,9 +69,7 @@ public static class ApiEndpoints
         var username = req.Username?.Trim() ?? "";
         var password = req.Password ?? "";
         var name = req.DisplayName?.Trim() is { Length: > 0 } dn ? dn : username;
-        if (username.Length is < 3 or > 24) return Results.BadRequest(new { error = "username must be 3-24 characters." });
-        if (password.Length is < 6 or > 128) return Results.BadRequest(new { error = "password must be 6-128 characters." });
-        if (name.Length is < 1 or > 24) return Results.BadRequest(new { error = "displayName must be 1-24 characters." });
+        if (CredentialError(username, password, name) is { } bad) return bad;
 
         if (await db.Players.AnyAsync(p => p.Username == username, ct))
             return Results.Conflict(new { error = "username already taken." });
@@ -86,6 +86,40 @@ public static class ApiEndpoints
         catch (DbUpdateException) { return Results.Conflict(new { error = "username already taken." }); }
 
         return Results.Ok(AuthPayload(player, tokens));
+    }
+
+    private static IResult? CredentialError(string username, string password, string name)
+    {
+        if (username.Length is < 3 or > 24) return Results.BadRequest(new { error = "username must be 3-24 characters." });
+        if (password.Length is < 6 or > 128) return Results.BadRequest(new { error = "password must be 6-128 characters." });
+        if (name.Length is < 1 or > 24) return Results.BadRequest(new { error = "displayName must be 1-24 characters." });
+        return null;
+    }
+
+    // K-10 (docs/00-ROADMAP): guest → akun pada Player YANG SAMA → faksi, rating, riwayat, statistik ikut terbawa.
+    // DeviceId dilepas: setelah punya password, akun tak boleh lagi dimasuki hanya dengan deviceId (login pakai username).
+    private static async Task<IResult> UpgradeGuest(
+        UpgradeRequest req, ClaimsPrincipal user, AppDbContext db, TokenService tokens, PasswordHasher<Player> hasher, CancellationToken ct)
+    {
+        var p = await db.Players.FirstOrDefaultAsync(x => x.Id == PlayerId(user), ct);
+        if (p is null) return Results.NotFound();
+        if (p.Username is not null) return Results.Conflict(new { error = "akun ini sudah terdaftar." });
+
+        var username = req.Username?.Trim() ?? "";
+        var password = req.Password ?? "";
+        var name = req.DisplayName?.Trim() is { Length: > 0 } dn ? dn : p.DisplayName;
+        if (CredentialError(username, password, name) is { } bad) return bad;
+        if (await db.Players.AnyAsync(x => x.Username == username, ct))
+            return Results.Conflict(new { error = "username already taken." });
+
+        p.Username = username;
+        p.PasswordHash = hasher.HashPassword(p, password);
+        p.DisplayName = name;
+        p.DeviceId = null;
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException) { return Results.Conflict(new { error = "username already taken." }); }
+
+        return Results.Ok(AuthPayload(p, tokens));
     }
 
     private static async Task<IResult> Login(

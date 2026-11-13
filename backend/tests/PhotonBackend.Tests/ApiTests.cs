@@ -639,4 +639,44 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         list = await anon.GetFromJsonAsync<JsonElement>("/api/announcements");
         Assert.DoesNotContain("Ann-Live", list.EnumerateArray().Select(x => x.GetProperty("title").GetString()));
     }
+
+    // ---- K-10: guest → akun, progres terbawa ----
+    [Fact]
+    public async Task UpgradeGuest_KeepsFactionRatingHistory_AndLocksDeviceLogin()
+    {
+        var (guest, g) = await factory.LoginAsync("device-upgrade-guest-01", "UpGuest");
+        Assert.Equal(HttpStatusCode.OK, (await guest.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
+        await factory.SeedFinishedRankedAsync(g.PlayerId, 2);
+
+        var up = await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "upgraded_user", password = "secret123" });
+        Assert.Equal(HttpStatusCode.OK, up.StatusCode);
+        var body = await up.Content.ReadFromJsonAsync<JsonElement>(Web);
+        Assert.Equal(g.PlayerId, body.GetProperty("playerId").GetGuid());   // Player SAMA
+        Assert.Equal(2, body.GetProperty("faction").GetInt32());            // faksi terbawa
+        Assert.Equal("UpGuest", body.GetProperty("displayName").GetString());
+
+        // Login username → akun yang sama, riwayat tetap.
+        var login = await factory.CreateClient().PostAsJsonAsync("/api/auth/login", new { username = "upgraded_user", password = "secret123" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        Assert.Equal(g.PlayerId, (await login.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("playerId").GetGuid());
+        var rank = await guest.GetFromJsonAsync<JsonElement>("/api/me/rank");
+        Assert.Equal(2, rank.GetProperty("rankedMatches").GetInt32());
+
+        // Upgrade kedua ditolak; deviceId lama tak lagi membuka akun berpassword.
+        Assert.Equal(HttpStatusCode.Conflict, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "other_name", password = "secret123" })).StatusCode);
+        var (_, again) = await factory.LoginAsync("device-upgrade-guest-01", "UpGuest");
+        Assert.NotEqual(g.PlayerId, again.PlayerId);
+    }
+
+    [Fact]
+    public async Task UpgradeGuest_RejectsTakenUsername_AndBadInput()
+    {
+        var reg = await factory.CreateClient().PostAsJsonAsync("/api/auth/register", new { username = "taken_name", password = "secret123" });
+        Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
+        var (guest, _) = await factory.LoginAsync("device-upgrade-guest-02", "UpGuest2");
+        Assert.Equal(HttpStatusCode.Conflict, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "taken_name", password = "secret123" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "ab", password = "secret123" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "valid_name", password = "123" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsJsonAsync("/api/auth/upgrade", new { username = "x_name", password = "secret123" })).StatusCode);
+    }
 }
