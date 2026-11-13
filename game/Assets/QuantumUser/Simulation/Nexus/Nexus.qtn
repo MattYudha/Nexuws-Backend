@@ -1,5 +1,6 @@
 // Nexus Saga — Quantum 3 combat data contract (SPIKE v1: brawler mini).
 // Gerak 8 arah + lompat + dash, Guard 180 + crush/faint, Critical 3 Break Stock + Gear Drop, knockback.
+// C4 (T2): KO HANYA lewat 3 Break Stock (tanpa bleed-out). Angka di NxTuning.cs; akhir match di NxMatch.cs.
 // Deterministik: semua FP, tanpa float, tanpa RNG non-seeded.
 
 #pragma max_players 10
@@ -45,12 +46,14 @@ component NxCombat
     byte       Picked;       // 0 belum pilih hero, 1 sudah (layar select)
     ushort     SkillCd;      // cooldown skill (K)
     ushort     ShotCd;       // cooldown tembakan dasar PULSE (J)
-    ushort     CritTimer;    // hitung maju saat Critical → auto-KO/respawn bila tak tertolong (bleed-out)
     ushort     Kills;        // KO terhadap MANUSIA (statistik ranked/K/D). Kos = deaths.
     ushort     BotKills;     // KO terhadap BOT (dipisah; TIDAK dihitung di ranked/leaderboard)
-    player_ref LastHitByPlayer; // penyerang terakhir yang mengenai korban (kredit KO bleed-out)
-    byte       LastHitByTeam;   // tim penyerang terakhir (skor bleed-out)
-    byte       LastHitValid;    // 1 bila LastHitBy* terisi
+
+    // --- T2 (2026-11-13): hanya field yang DIPAKAI sistem ---
+    ushort     IdleTicks;      // AFK: reset oleh gerak/lompat/guard/dash/serang/skill
+    ushort     OverloadCharge; // tick sejak damage terakhir saat Critical (ambang 480)
+    byte       OverloadLock;   // >0 = terkunci karena Overload (90 tick), bukan KO
+    ushort     GearsLost;      // gear yang rontok dari pemain ini sepanjang match (tie-break waktu habis)
 
     // --- Statistik akumulator per match (deterministik; docs/32 Lapisan 1) ---
     FP         DamageDealt;  // total damage diberikan
@@ -89,6 +92,13 @@ component NxProjectile
     byte       IsSkill;      // 1 = charged shot (skill) → untuk statistik skillsHit
 }
 
+// Satu KO di "Jalannya Match" (tab Detail Match). Tick relatif dari awal match.
+struct NxKoEvent
+{
+    int  Tick;
+    byte KillerSlot;   // tim pencetak (0/1) = slot laporan
+}
+
 global
 {
     byte State;          // 0 Waiting, 1 Playing, 2 Over
@@ -98,4 +108,12 @@ global
     byte ScoreA;         // KO oleh pemain (spike)
     byte ScoreB;
     byte FirstBloodTaken; // 0 sampai KO pertama match terjadi (untuk statistik firstBlood)
+
+    // --- T2: akhir match (NxMatch.cs) ---
+    int  StartTick;       // f.Number saat match mulai (basis tick koTimeline)
+    int  TimeLeftTicks;   // sisa waktu; 0 → waktu habis (NxTuning.MatchTicks)
+    byte EndReason;       // 0 belum, 1 KO target, 2 waktu habis, 3 forfeit (AFK/disconnect)
+    byte WinnerTeam;      // 0/1, 255 = seri. Valid saat State == 2
+    byte KoCount;         // entri terisi di KoLog
+    array<NxKoEvent>[9] KoLog; // NxTuning.KoLogCapacity; deterministik, dibandingkan antar-klien
 }

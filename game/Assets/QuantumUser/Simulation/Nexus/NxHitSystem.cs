@@ -17,9 +17,12 @@ namespace Quantum
         public override void Update(Frame f)
         {
             if (f.Global->State != 1) return;
+            NxMatch.TickTimer(f);                 // T2: batas waktu 100 dtk (sekali per tick)
+            if (f.Global->State != 1) return;     // waktu habis → tak ada hit lagi
 
             foreach (var (attE, att) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
             {
+                if (f.Global->State != 1) break;  // KO target tercapai di ayunan sebelumnya
                 if (att->AttackTime <= 0) continue;
                 FPVector3 fwd = new FPVector3(FPMath.Sin(att->Yaw), 0, FPMath.Cos(att->Yaw));
                 FPVector3 center = att->Pos + fwd * HitRange;
@@ -43,10 +46,7 @@ namespace Quantum
                 }
             }
 
-            // Win-condition: tim pertama capai KoTarget KO → match selesai. Selalu ada lawan
-            // (ranked = 2 manusia; practice = 1 manusia + 1 bot; battle = tim isi bot), jadi tak berujung-mati.
-            if (f.Global->ScoreA >= NxCombatSystem.KoTarget || f.Global->ScoreB >= NxCombatSystem.KoTarget)
-                f.Global->State = 2; // Over
+            // Win-condition KO target kini di NxMatch.OnKo (dipanggil NxDamage.Ko) → selalu bersama sebab & pemenang.
         }
     }
 }

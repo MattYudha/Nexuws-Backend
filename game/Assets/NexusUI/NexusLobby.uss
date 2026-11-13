@@ -476,13 +476,17 @@
 .nxl-hist-card:hover { translate: 0 -6px; border-color: var(--nxl-cyan); }
 .nxl-hist-card--win  { border-color: var(--nxl-gold); }
 .nxl-hist-card--loss { border-color: var(--nx-result-loss); }
+.nxl-hist-card--draw { border-color: var(--nx-result-draw); }
 
 .nxl-hist-head { height: 44px; flex-direction: row; align-items: center; padding-left: 12px; padding-right: 12px; }
 .nxl-hist-head--win  { background-color: rgba(214, 170, 60, 0.32); }
 .nxl-hist-head--loss { background-color: rgba(110, 122, 140, 0.28); } /* abu-baja tint, bukan merah */
+.nxl-hist-head--draw { background-color: rgba(226, 232, 240, 0.12); } /* seri: netral */
 .nxl-hist-res { font-size: 22px; -unity-font-definition: var(--nxl-font-title); }
 .nxl-hist-res--win  { color: var(--nxl-gold); }
 .nxl-hist-res--loss { color: var(--nx-result-loss); }
+.nxl-hist-res--draw { color: var(--nx-result-draw); }
+.nxl-hist-end { font-size: 16px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); margin-top: 2px; } /* sebab akhir: waktu habis / WO */
 .nxl-hist-mode { font-size: 12px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); }
 
 .nxl-hist-art { height: 260px; overflow: hidden; background-color: var(--nx-hero-neutral); } /* bidang netral di balik sprite hero */
@@ -557,6 +561,7 @@
 .nxl-dtx-res { font-size: 56px; margin-left: 28px; margin-right: 28px; -unity-font-definition: var(--nxl-font-title); letter-spacing: 2px; }
 .nxl-dtx-res--win { color: var(--nx-result-win); }    /* MENANG = emas */
 .nxl-dtx-res--loss { color: var(--nx-result-loss); }  /* KALAH = abu-baja */
+.nxl-dtx-res--draw { color: var(--nx-result-draw); }  /* SERI = netral terang */
 .nxl-dtx-meta { font-size: 16px; color: var(--nxl-text-2); margin-top: 8px; -unity-font-definition: var(--nxl-font-head); }
 
 .nxl-dtx-body { flex-direction: row; flex-grow: 1; margin-top: 16px; }
@@ -585,6 +590,14 @@
 .nxl-dtx-tabs { flex-direction: row; justify-content: center; margin-bottom: 12px; }
 .nxl-dtx-tab { font-size: 16px; -unity-font-definition: var(--nxl-font-head); color: var(--nxl-text-2); padding-left: 16px; padding-right: 16px; padding-top: 6px; padding-bottom: 6px; }
 .nxl-dtx-tab--active { color: var(--nxl-text); border-bottom-width: 2px; border-bottom-color: var(--nxl-cyan); }  /* cyan = aktif/fokus */
+.nxl-dtx-tab--click:hover { color: var(--nxl-text); }
+
+/* Tab "Jalannya Match" (T2 koTimeline): satu baris per KO, kronologis. Kamu = biru, lawan = merah. */
+.nxl-dtx-ko { flex-direction: row; align-items: center; height: 40px; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.06); padding-left: 8px; padding-right: 8px; }
+.nxl-dtx-ko-time { width: 72px; font-size: 16px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-head); }
+.nxl-dtx-ko-who { flex-grow: 1; font-size: 18px; -unity-font-definition: var(--nxl-font-head); }
+.nxl-dtx-ko-score { width: 80px; font-size: 22px; color: var(--nxl-text); -unity-text-align: middle-right; -unity-font-definition: var(--nxl-font-title); }
+.nxl-dtx-ko-end { margin-top: 12px; font-size: 16px; color: var(--nxl-text-2); -unity-text-align: middle-center; }
 
 .nxl-dtx-trow { margin-bottom: 10px; }
 .nxl-dtx-tlabel { font-size: 16px; -unity-font-definition: var(--nxl-font-body); color: var(--nxl-text-2); -unity-text-align: middle-center; margin-bottom: 4px; }

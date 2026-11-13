@@ -47,6 +47,8 @@ namespace Quantum
             if (vic->Guarding == 1 && InFrontArc(vic, fromPos))
             {
                 vic->HitsBlocked++;
+                // T2: guard = keterlibatan aktif → Overload tidak boleh terpicu karena lawan menahan guard.
+                vic->OverloadCharge = 0; vic->OverloadLock = 0;
                 if (vic->GuardGauge <= GuardCostPerHit)
                 {
                     // Guard Crush → Faint (terbuka).
@@ -62,9 +64,9 @@ namespace Quantum
             }
 
             // ---- Kena ----
-            // Catat penyerang terakhir → kredit KO (termasuk bleed-out) ke dia.
-            vic->LastHitByPlayer = attackerPlayer; vic->LastHitByTeam = attackerTeam; vic->LastHitValid = 1;
             vic->HitPause = HitPauseTicks;
+            // T2: kena pukul mereset Overload (timer & lock) — Overload hanya untuk lawan yang mendiamkan.
+            vic->OverloadCharge = 0; vic->OverloadLock = 0;
             FPVector3 push = vic->Pos - fromPos; push.Y = 0;
             push = push.SqrMagnitude > FP._0_01 ? push.Normalized : new FPVector3(0, 0, 1);
 
@@ -77,7 +79,8 @@ namespace Quantum
                 if (atk != null) { atk->DamageDealt += damage; if (atk->HeroId == 0) atk->H0Dmg += damage; else atk->H1Dmg += damage; if (isSkill) atk->SkillsHit++; }
                 if (vic->Hp <= 0)
                 {
-                    vic->Hp = 0; vic->Critical = 1; vic->BreakStock = 3; vic->CritTimer = 0;
+                    vic->Hp = 0; vic->Critical = 1; vic->BreakStock = 3;
+                    vic->OverloadCharge = 0; vic->OverloadLock = 0;   // T2: masuk Critical = mulai bersih
                     vic->HitStun = (ushort)CritKnockdownStun; vic->Invuln = (byte)CritKnockdownStun;
                     vic->Vel = push * knockback + new FPVector3(0, launchUp, 0); vic->Posture = 1;
                     if (atk != null) atk->Criticals++;
@@ -113,9 +116,11 @@ namespace Quantum
         private static void DropOneGear(NxCombat* vic)
         {
             // Urutan: Helm(2) → Trinket(8) → Armor(4). Weapon(1) tidak rontok sebelum KO.
+            byte before = vic->GearMask;
             if ((vic->GearMask & 2) != 0) vic->GearMask &= unchecked((byte)~2);
             else if ((vic->GearMask & 8) != 0) vic->GearMask &= unchecked((byte)~8);
             else if ((vic->GearMask & 4) != 0) vic->GearMask &= unchecked((byte)~4);
+            if (vic->GearMask != before && vic->GearsLost < ushort.MaxValue) vic->GearsLost++; // tie-break waktu habis
             // (Spike: dropped-gear entity + pickup menyusul.)
         }
 
@@ -137,13 +142,17 @@ namespace Quantum
                         break;
                     }
             Respawn(f, vic);
+            NxMatch.OnKo(f, killerTeam); // koTimeline + KO target → State 2 (T2)
         }
 
         /// <summary>Respawn penuh di sisi tim sendiri, posisi disebar (anti-numpuk) + i-frame sebentar.</summary>
         public static void Respawn(Frame f, NxCombat* vic)
         {
             vic->Hp = NxCombatSystem.MaxHp; vic->Critical = 0; vic->BreakStock = 0; vic->GearMask = 0xF;
-            vic->GuardGauge = 100; vic->HitStun = 40; vic->Invuln = 40; vic->Faint = 0; vic->CritTimer = 0;
+            vic->GuardGauge = 100; vic->HitStun = 40; vic->Invuln = 40; vic->Faint = 0;
+            // T2: respawn membersihkan status tekanan. IdleTicks SENGAJA tidak direset:
+            // pemain AFK yang terus di-KO tetap harus kena forfeit 20 dtk.
+            vic->OverloadCharge = 0; vic->OverloadLock = 0;
             FP x = vic->Team == 0 ? -6 : 6;
             FP z = ((vic->Kos % 5) - 2) * 2; // sebar di sumbu Z berdasar jumlah KO (deterministik)
             vic->Pos = new FPVector3(x, 0, z); vic->Vel = default; vic->Posture = 0;

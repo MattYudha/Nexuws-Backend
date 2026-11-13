@@ -23,6 +23,7 @@ namespace Quantum
             var dead = new List<EntityRef>();
             foreach (var (e, p) in f.Unsafe.GetComponentBlockIterator<NxProjectile>())
             {
+                if (f.Global->State != 1) break;   // T2: match berakhir di tick ini → hentikan hit lain
                 p->Pos += p->Vel * f.DeltaTime;
 
                 bool hit = false;

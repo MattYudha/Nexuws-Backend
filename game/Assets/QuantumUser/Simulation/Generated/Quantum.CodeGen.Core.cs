@@ -557,8 +557,30 @@ namespace Quantum {
     }
   }
   [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct NxKoEvent {
+    public const Int32 SIZE = 8;
+    public const Int32 ALIGNMENT = 4;
+    [FieldOffset(4)]
+    public Int32 Tick;
+    [FieldOffset(0)]
+    public Byte KillerSlot;
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 2467;
+        hash = hash * 31 + Tick.GetHashCode();
+        hash = hash * 31 + KillerSlot.GetHashCode();
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (NxKoEvent*)ptr;
+        serializer.Stream.Serialize(&p->KillerSlot);
+        serializer.Stream.Serialize(&p->Tick);
+    }
+  }
+  [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct _globals_ {
-    public const Int32 SIZE = 832;
+    public const Int32 SIZE = 912;
     public const Int32 ALIGNMENT = 8;
     [FieldOffset(0)]
     public AssetRef<Map> Map;
@@ -585,37 +607,55 @@ namespace Quantum {
     private fixed Byte _input_[120];
     [FieldOffset(744)]
     public BitSet10 PlayerLastConnectionState;
-    [FieldOffset(753)]
-    public Byte Mode;
-    [FieldOffset(754)]
-    public Byte ScoreA;
     [FieldOffset(755)]
-    public Byte ScoreB;
-    [FieldOffset(752)]
-    public Byte FirstBloodTaken;
-    [FieldOffset(776)]
-    public Int32 State;
+    public Byte Mode;
     [FieldOffset(756)]
-    public Int32 CountdownTicks;
-    [FieldOffset(764)]
-    public Int32 ScoreLeft;
-    [FieldOffset(768)]
-    public Int32 ScoreRight;
-    [FieldOffset(760)]
-    public Int32 JoinedMask;
-    [FieldOffset(772)]
-    public Int32 ServeDirection;
+    public Byte ScoreA;
+    [FieldOffset(757)]
+    public Byte ScoreB;
+    [FieldOffset(753)]
+    public Byte FirstBloodTaken;
+    [FieldOffset(780)]
+    public Int32 StartTick;
+    [FieldOffset(788)]
+    public Int32 TimeLeftTicks;
+    [FieldOffset(752)]
+    public Byte EndReason;
+    [FieldOffset(758)]
+    public Byte WinnerTeam;
+    [FieldOffset(754)]
+    public Byte KoCount;
+    [FieldOffset(808)]
+    [FramePrinter.FixedArrayAttribute(typeof(NxKoEvent), 9)]
+    private fixed Byte _KoLog_[72];
     [FieldOffset(784)]
-    public FP LeftY;
+    public Int32 State;
+    [FieldOffset(760)]
+    public Int32 CountdownTicks;
+    [FieldOffset(768)]
+    public Int32 ScoreLeft;
+    [FieldOffset(772)]
+    public Int32 ScoreRight;
+    [FieldOffset(764)]
+    public Int32 JoinedMask;
+    [FieldOffset(776)]
+    public Int32 ServeDirection;
     [FieldOffset(792)]
-    public FP RightY;
+    public FP LeftY;
     [FieldOffset(800)]
+    public FP RightY;
+    [FieldOffset(880)]
     public FPVector2 BallPosition;
-    [FieldOffset(816)]
+    [FieldOffset(896)]
     public FPVector2 BallVelocity;
     public readonly FixedArray<Input> input {
       get {
         fixed (byte* p = _input_) { return new FixedArray<Input>(p, 12, 10); }
+      }
+    }
+    public readonly FixedArray<NxKoEvent> KoLog {
+      get {
+        fixed (byte* p = _KoLog_) { return new FixedArray<NxKoEvent>(p, 8, 9); }
       }
     }
     public override readonly Int32 GetHashCode() {
@@ -637,6 +677,12 @@ namespace Quantum {
         hash = hash * 31 + ScoreA.GetHashCode();
         hash = hash * 31 + ScoreB.GetHashCode();
         hash = hash * 31 + FirstBloodTaken.GetHashCode();
+        hash = hash * 31 + StartTick.GetHashCode();
+        hash = hash * 31 + TimeLeftTicks.GetHashCode();
+        hash = hash * 31 + EndReason.GetHashCode();
+        hash = hash * 31 + WinnerTeam.GetHashCode();
+        hash = hash * 31 + KoCount.GetHashCode();
+        hash = hash * 31 + HashCodeUtils.GetArrayHashCode(KoLog);
         hash = hash * 31 + State.GetHashCode();
         hash = hash * 31 + CountdownTicks.GetHashCode();
         hash = hash * 31 + ScoreLeft.GetHashCode();
@@ -664,18 +710,24 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->PlayerConnectedCount);
         FixedArray.Serialize(p->input, serializer, Statics.SerializeInput);
         Quantum.BitSet10.Serialize(&p->PlayerLastConnectionState, serializer);
+        serializer.Stream.Serialize(&p->EndReason);
         serializer.Stream.Serialize(&p->FirstBloodTaken);
+        serializer.Stream.Serialize(&p->KoCount);
         serializer.Stream.Serialize(&p->Mode);
         serializer.Stream.Serialize(&p->ScoreA);
         serializer.Stream.Serialize(&p->ScoreB);
+        serializer.Stream.Serialize(&p->WinnerTeam);
         serializer.Stream.Serialize(&p->CountdownTicks);
         serializer.Stream.Serialize(&p->JoinedMask);
         serializer.Stream.Serialize(&p->ScoreLeft);
         serializer.Stream.Serialize(&p->ScoreRight);
         serializer.Stream.Serialize(&p->ServeDirection);
+        serializer.Stream.Serialize(&p->StartTick);
         serializer.Stream.Serialize(&p->State);
+        serializer.Stream.Serialize(&p->TimeLeftTicks);
         FP.Serialize(&p->LeftY, serializer);
         FP.Serialize(&p->RightY, serializer);
+        FixedArray.Serialize(p->KoLog, serializer, Statics.SerializeNxKoEvent);
         FPVector2.Serialize(&p->BallPosition, serializer);
         FPVector2.Serialize(&p->BallVelocity, serializer);
     }
@@ -686,9 +738,9 @@ namespace Quantum {
     public const Int32 ALIGNMENT = 8;
     [FieldOffset(76)]
     public PlayerRef Player;
-    [FieldOffset(17)]
+    [FieldOffset(16)]
     public Byte Team;
-    [FieldOffset(15)]
+    [FieldOffset(14)]
     public Byte Posture;
     [FieldOffset(136)]
     public FPVector3 Pos;
@@ -710,11 +762,11 @@ namespace Quantum {
     public UInt16 HitPause;
     [FieldOffset(20)]
     public UInt16 AttackTime;
-    [FieldOffset(36)]
+    [FieldOffset(34)]
     public UInt16 Faint;
-    [FieldOffset(32)]
-    public UInt16 DashTime;
     [FieldOffset(30)]
+    public UInt16 DashTime;
+    [FieldOffset(28)]
     public UInt16 DashCd;
     [FieldOffset(9)]
     public Byte Invuln;
@@ -730,57 +782,57 @@ namespace Quantum {
     public Byte Kos;
     [FieldOffset(8)]
     public Byte HeroId;
-    [FieldOffset(14)]
+    [FieldOffset(13)]
     public Byte Picked;
-    [FieldOffset(56)]
+    [FieldOffset(60)]
     public UInt16 SkillCd;
-    [FieldOffset(54)]
+    [FieldOffset(58)]
     public UInt16 ShotCd;
-    [FieldOffset(24)]
-    public UInt16 CritTimer;
-    [FieldOffset(50)]
+    [FieldOffset(52)]
     public UInt16 Kills;
     [FieldOffset(22)]
     public UInt16 BotKills;
-    [FieldOffset(72)]
-    public PlayerRef LastHitByPlayer;
-    [FieldOffset(11)]
-    public Byte LastHitByTeam;
+    [FieldOffset(50)]
+    public UInt16 IdleTicks;
+    [FieldOffset(56)]
+    public UInt16 OverloadCharge;
     [FieldOffset(12)]
-    public Byte LastHitValid;
+    public Byte OverloadLock;
+    [FieldOffset(38)]
+    public UInt16 GearsLost;
     [FieldOffset(80)]
     public FP DamageDealt;
     [FieldOffset(88)]
     public FP DamageTaken;
-    [FieldOffset(60)]
+    [FieldOffset(64)]
     public UInt16 SkillsUsed;
-    [FieldOffset(58)]
+    [FieldOffset(62)]
     public UInt16 SkillsHit;
     [FieldOffset(48)]
     public UInt16 HitsBlocked;
-    [FieldOffset(34)]
+    [FieldOffset(32)]
     public UInt16 Dodges;
     [FieldOffset(40)]
     public UInt16 GuardCrushes;
-    [FieldOffset(26)]
+    [FieldOffset(24)]
     public UInt16 Criticals;
-    [FieldOffset(38)]
+    [FieldOffset(36)]
     public UInt16 GearDrops;
     [FieldOffset(2)]
     public Byte FirstBlood;
-    [FieldOffset(28)]
+    [FieldOffset(26)]
     public UInt16 CurStreak;
-    [FieldOffset(52)]
+    [FieldOffset(54)]
     public UInt16 MaxStreak;
-    [FieldOffset(13)]
+    [FieldOffset(11)]
     public Byte MaxDeficit;
-    [FieldOffset(16)]
+    [FieldOffset(15)]
     public Byte SkillSwing;
     [FieldOffset(42)]
     public UInt16 HeroSwitches;
-    [FieldOffset(64)]
-    public Int32 H0Ticks;
     [FieldOffset(68)]
+    public Int32 H0Ticks;
+    [FieldOffset(72)]
     public Int32 H1Ticks;
     [FieldOffset(6)]
     public Byte H0Kills;
@@ -819,12 +871,12 @@ namespace Quantum {
         hash = hash * 31 + Picked.GetHashCode();
         hash = hash * 31 + SkillCd.GetHashCode();
         hash = hash * 31 + ShotCd.GetHashCode();
-        hash = hash * 31 + CritTimer.GetHashCode();
         hash = hash * 31 + Kills.GetHashCode();
         hash = hash * 31 + BotKills.GetHashCode();
-        hash = hash * 31 + LastHitByPlayer.GetHashCode();
-        hash = hash * 31 + LastHitByTeam.GetHashCode();
-        hash = hash * 31 + LastHitValid.GetHashCode();
+        hash = hash * 31 + IdleTicks.GetHashCode();
+        hash = hash * 31 + OverloadCharge.GetHashCode();
+        hash = hash * 31 + OverloadLock.GetHashCode();
+        hash = hash * 31 + GearsLost.GetHashCode();
         hash = hash * 31 + DamageDealt.GetHashCode();
         hash = hash * 31 + DamageTaken.GetHashCode();
         hash = hash * 31 + SkillsUsed.GetHashCode();
@@ -862,9 +914,8 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->HeroId);
         serializer.Stream.Serialize(&p->Invuln);
         serializer.Stream.Serialize(&p->Kos);
-        serializer.Stream.Serialize(&p->LastHitByTeam);
-        serializer.Stream.Serialize(&p->LastHitValid);
         serializer.Stream.Serialize(&p->MaxDeficit);
+        serializer.Stream.Serialize(&p->OverloadLock);
         serializer.Stream.Serialize(&p->Picked);
         serializer.Stream.Serialize(&p->Posture);
         serializer.Stream.Serialize(&p->SkillSwing);
@@ -872,7 +923,6 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->AiTimer);
         serializer.Stream.Serialize(&p->AttackTime);
         serializer.Stream.Serialize(&p->BotKills);
-        serializer.Stream.Serialize(&p->CritTimer);
         serializer.Stream.Serialize(&p->Criticals);
         serializer.Stream.Serialize(&p->CurStreak);
         serializer.Stream.Serialize(&p->DashCd);
@@ -880,20 +930,22 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->Dodges);
         serializer.Stream.Serialize(&p->Faint);
         serializer.Stream.Serialize(&p->GearDrops);
+        serializer.Stream.Serialize(&p->GearsLost);
         serializer.Stream.Serialize(&p->GuardCrushes);
         serializer.Stream.Serialize(&p->HeroSwitches);
         serializer.Stream.Serialize(&p->HitPause);
         serializer.Stream.Serialize(&p->HitStun);
         serializer.Stream.Serialize(&p->HitsBlocked);
+        serializer.Stream.Serialize(&p->IdleTicks);
         serializer.Stream.Serialize(&p->Kills);
         serializer.Stream.Serialize(&p->MaxStreak);
+        serializer.Stream.Serialize(&p->OverloadCharge);
         serializer.Stream.Serialize(&p->ShotCd);
         serializer.Stream.Serialize(&p->SkillCd);
         serializer.Stream.Serialize(&p->SkillsHit);
         serializer.Stream.Serialize(&p->SkillsUsed);
         serializer.Stream.Serialize(&p->H0Ticks);
         serializer.Stream.Serialize(&p->H1Ticks);
-        PlayerRef.Serialize(&p->LastHitByPlayer, serializer);
         PlayerRef.Serialize(&p->Player, serializer);
         FP.Serialize(&p->DamageDealt, serializer);
         FP.Serialize(&p->DamageTaken, serializer);
@@ -1031,8 +1083,10 @@ namespace Quantum {
     }
   }
   public unsafe partial class Statics {
+    public static FrameSerializer.Delegate SerializeNxKoEvent;
     public static FrameSerializer.Delegate SerializeInput;
     static partial void InitStaticDelegatesGen() {
+      SerializeNxKoEvent = Quantum.NxKoEvent.Serialize;
       SerializeInput = Quantum.Input.Serialize;
     }
     static partial void RegisterSimulationTypesGen(TypeRegistry typeRegistry) {
@@ -1093,6 +1147,7 @@ namespace Quantum {
       typeRegistry.Register(typeof(NullableFPVector3), NullableFPVector3.SIZE);
       typeRegistry.Register(typeof(NullableNonNegativeFP), NullableNonNegativeFP.SIZE);
       typeRegistry.Register(typeof(Quantum.NxCombat), Quantum.NxCombat.SIZE);
+      typeRegistry.Register(typeof(Quantum.NxKoEvent), Quantum.NxKoEvent.SIZE);
       typeRegistry.Register(typeof(Quantum.NxProjectile), Quantum.NxProjectile.SIZE);
       typeRegistry.Register(typeof(PhysicsBody2D), PhysicsBody2D.SIZE);
       typeRegistry.Register(typeof(PhysicsBody3D), PhysicsBody3D.SIZE);

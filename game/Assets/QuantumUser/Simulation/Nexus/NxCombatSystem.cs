@@ -35,7 +35,7 @@ namespace Quantum
         private const int SkillCooldown = 48;          // TITAN lunge cd
         private const int PulseHeavyCd = 72;           // charged shot cd (lebih lama karena burst)
         private const int TeamSize = 5;                // 5v5 = 10 fighter (uji skala rollback + bandwidth)
-        private const int CritBleedTicks = 240;        // 4 dtk di Critical tanpa tertolong → auto-KO/respawn
+        // T2: bleed-out DIHAPUS. Nilai T2 ada di NxTuning.cs (satu tempat).
         public const int KoTarget = 5;                 // tim pertama capai KO ini → match selesai (ranked). Samakan dgn backend Game:WinScore.
 
         public override void OnInit(Frame f)
@@ -78,6 +78,7 @@ namespace Quantum
             for (int i = h1; i < perTeam; i++) SpawnBot(f, 1, i);
 
             f.Global->State = 1;
+            NxMatch.Begin(f); // T2: timer 100 dtk + koTimeline kosong
         }
 
         private static void SpawnBot(Frame f, byte team, int index)
@@ -102,25 +103,20 @@ namespace Quantum
             int deficit = c->Team == 0 ? f.Global->ScoreB - f.Global->ScoreA : f.Global->ScoreA - f.Global->ScoreB;
             if (deficit > c->MaxDeficit) c->MaxDeficit = (byte)deficit;
 
+            // T2: AFK (hanya pemain manusia). Guard/serang/dash juga dihitung "aktif".
+            TrackActivity(f, c);
+            if (f.Global->State != 1) return;   // forfeit bisa mengakhiri match di sini
+
             if (c->HitPause > 0) { c->HitPause--; return; }   // hitpause membekukan semua
 
-            // Bleed-out: kalau nyangkut di Critical tanpa dihabisi, auto-KO → respawn (jadi SELALU balik).
-            if (c->Critical != 0)
+            // T2: Critical hanya selesai lewat 3 Break Stock. Bleed-out DIHAPUS.
+            UpdateCriticalPressure(c);
+
+            // Overload: terkunci 1,5 dtk, tidak bisa bergerak/bertindak, BUKAN KO.
+            if (c->OverloadLock > 0)
             {
-                c->CritTimer++;
-                if (c->CritTimer >= CritBleedTicks)
-                {
-                    // Bleed-out = KO oleh penyerang TERAKHIR (beri kill + skor), bukan "mati tanpa pembunuh".
-                    if (c->LastHitValid != 0)
-                        NxDamage.Ko(f, c->LastHitByTeam, c->LastHitByPlayer, filter.Entity, c);
-                    else
-                    {
-                        c->Kos++; c->CurStreak = 0;
-                        if (c->Team == 0) f.Global->ScoreB++; else f.Global->ScoreA++;
-                        NxDamage.Respawn(f, c);
-                    }
-                    return;
-                }
+                c->OverloadLock--; c->Vel.X = 0; c->Vel.Z = 0;
+                Physics(f, c); Timers(c); return;
             }
 
             if (c->Faint > 0) { c->Faint--; c->Vel.X = 0; c->Vel.Z = 0; Physics(f, c); return; }
@@ -139,6 +135,47 @@ namespace Quantum
 
             Physics(f, c);
             Timers(c);
+        }
+
+        /// <summary>T2: AFK. Reset oleh gerak/lompat/guard/dash/serang/skill. Mouse tidak dihitung.
+        /// Ambang (NxTuning): 10 dtk peringatan — View membaca IdleTicks; 20 dtk berturut-turut kalah WO.
+        /// Disconnect = input kosong → jalur yang sama.</summary>
+        private static void TrackActivity(Frame f, NxCombat* c)
+        {
+            if (c->Player == PlayerRef.None) return;              // bot tidak pernah AFK
+            var input = f.GetPlayerInput((int)c->Player);
+            bool acted = input != null && (input->MoveDir != 0 || (input->Buttons & NxTuning.ActionButtons) != 0);
+            if (acted) { c->IdleTicks = 0; return; }
+            if (c->IdleTicks < ushort.MaxValue) c->IdleTicks++;
+            if (c->IdleTicks < NxTuning.AfkForfeitTicks) return;
+
+            // WO: lawan menang, skor TIDAK diubah (backend memvalidasi kills = skor).
+            NxMatch.End(f, NxMatch.ReasonForfeit, (byte)(c->Team ^ 1));
+        }
+
+        /// <summary>T2: tekanan saat Critical. Tidak ada damage tambahan — hanya lock (Overload).
+        /// Dipanggil setiap tick; timer di-reset oleh NxDamage saat korban kena pukul.</summary>
+        private static void UpdateCriticalPressure(NxCombat* c)
+        {
+            if (c->Critical == 0) { c->OverloadCharge = 0; c->OverloadLock = 0; return; }
+            if (c->OverloadLock > 0) return;                       // decrement dilakukan di Update
+            if (c->OverloadCharge < ushort.MaxValue) c->OverloadCharge++;
+            if (c->OverloadCharge >= NxTuning.OverloadTriggerTicks)
+            {
+                c->OverloadCharge = 0;
+                c->OverloadLock = (byte)NxTuning.OverloadLockTicks;
+                c->Guarding = 0; // terkunci = rentan: guard ikut lepas
+            }
+        }
+
+        /// <summary>T2/C4: 70% sejak masuk Critical, 50% di stock 2, 35% di stock 1.</summary>
+        public static FP CritSpeedMul(NxCombat* c)
+        {
+            if (c->Critical == 0) return FP._1;
+            int pm = c->BreakStock >= 3 ? NxTuning.CritSpeedPermilleStock3
+                   : c->BreakStock == 2 ? NxTuning.CritSpeedPermilleStock2
+                   : NxTuning.CritSpeedPermilleStock1;
+            return (FP)pm / 1000;
         }
 
         // Layar Pilih Hero: pemain kirim pilihan via input (PickHero). Match mulai saat SEMUA pemain sudah pilih.
@@ -186,8 +223,8 @@ namespace Quantum
                 return;
             }
 
-            // Skill (K) — hero-spesifik.
-            if ((input->Buttons & 2) != 0 && c->SkillCd == 0 && c->Posture == 0)
+            // Skill (K) — hero-spesifik. T2/C4: lunge TITAN = dash → ikut dikunci saat Critical.
+            if ((input->Buttons & 2) != 0 && c->SkillCd == 0 && c->Posture == 0 && (c->HeroId == 1 || c->Critical == 0))
             {
                 c->SkillsUsed++;
                 if (c->HeroId == 1)
@@ -206,8 +243,8 @@ namespace Quantum
                 return;
             }
 
-            // Dash (i-frame) — ke arah hadap.
-            if ((input->Buttons & 8) != 0 && c->DashCd == 0 && c->Posture == 0)
+            // Dash (i-frame) — ke arah hadap. T2: dikunci selama Critical (C4).
+            if ((input->Buttons & 8) != 0 && c->DashCd == 0 && c->Posture == 0 && c->Critical == 0)
             {
                 c->DashTime = DashTicks; c->DashCd = DashCooldown; c->Invuln = DashTicks;
                 return;
@@ -251,40 +288,53 @@ namespace Quantum
         private static void DummyAi(Frame f, NxCombat* c, bool controllable)
         {
             if (!controllable) return;
-            FPVector3 tgt; bool found = NearestEnemyPos(f, c, out tgt);
+            FPVector3 tgt; bool found = BestTarget(f, c, out tgt);
             if (!found) return;
 
             FPVector3 to = tgt - c->Pos; to.Y = 0;
             if (to.SqrMagnitude > FP._0_01) c->Yaw = FPMath.Atan2(to.X, to.Z);
             FP range2 = to.SqrMagnitude;
+            FP mul = CritSpeedMul(c);                       // T2/C4: bot juga kena penalti
             c->AiTimer++;
 
             if (c->HeroId == 1)
             {
                 // Zoner: jaga jarak menengah, tembak berkala.
                 FPVector3 n = to.SqrMagnitude > FP._0_01 ? to.Normalized : new FPVector3(0, 0, 1);
-                if (range2 < 12) { c->Vel.X = -n.X * MoveSpeed / 2; c->Vel.Z = -n.Z * MoveSpeed / 2; }        // hanya mundur kalau SANGAT dekat
-                else if (range2 > 52) { c->Vel.X = n.X * MoveSpeed / 2; c->Vel.Z = n.Z * MoveSpeed / 2; }     // terlalu jauh → maju
+                if (range2 < 12) { c->Vel.X = -n.X * MoveSpeed * mul / 2; c->Vel.Z = -n.Z * MoveSpeed * mul / 2; }        // hanya mundur kalau SANGAT dekat
+                else if (range2 > 52) { c->Vel.X = n.X * MoveSpeed * mul / 2; c->Vel.Z = n.Z * MoveSpeed * mul / 2; }     // terlalu jauh → maju
                 else { c->Vel.X = 0; c->Vel.Z = 0; }
                 if (c->AiTimer > 40 && c->ShotCd == 0) { FireProjectile(f, c, PulseShotSpeed, PulseShotDmg, PulseShotLife, 0); c->ShotCd = (ushort)PulseShotCd; c->AiTimer = 0; }
             }
             else
             {
                 // Grappler: mendekat lalu melee.
-                if (range2 > 4) { FPVector3 n = to.Normalized; c->Vel.X = n.X * MoveSpeed / 2; c->Vel.Z = n.Z * MoveSpeed / 2; }
+                if (range2 > 4) { FPVector3 n = to.Normalized; c->Vel.X = n.X * MoveSpeed * mul / 2; c->Vel.Z = n.Z * MoveSpeed * mul / 2; }
                 else { c->Vel.X = 0; c->Vel.Z = 0; }
                 if (range2 < 6 && c->AiTimer > 90) { c->AttackTime = (ushort)AttackActiveTicks; c->SkillSwing = 0; c->AiTimer = 0; }
             }
         }
 
-        private static bool NearestEnemyPos(Frame f, NxCombat* self, out FPVector3 pos)
+        /// <summary>T2: bot memilih skor terendah = jarak^2 − bonus Critical (−40) / Overload (−80)
+        /// + penalti penumpukan (+30 per kawan yang sudah dekat target). Seri → EntityRef.Index terkecil.</summary>
+        private static bool BestTarget(Frame f, NxCombat* self, out FPVector3 pos)
         {
-            pos = default; FP best = FP.UseableMax; bool ok = false;
+            pos = default; FP best = FP.UseableMax; int bestIdx = int.MaxValue; bool ok = false;
+            FP crowdR2 = (FP)NxTuning.BotCrowdRadius * NxTuning.BotCrowdRadius;
             foreach (var (e, o) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
             {
-                if (o->Team == self->Team) continue;
-                FP d = (o->Pos - self->Pos).SqrMagnitude;
-                if (d < best) { best = d; pos = o->Pos; ok = true; }
+                if (o == self || o->Team == self->Team) continue;
+                FP score = (o->Pos - self->Pos).SqrMagnitude;
+                if (o->Critical != 0) score -= NxTuning.BotCriticalBonus;
+                if (o->OverloadLock > 0) score -= NxTuning.BotOverloadBonus;
+                int crowd = 0;
+                foreach (var (e2, o2) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
+                {
+                    if (o2 == o || o2 == self || o2->Team != self->Team) continue; // kawan LAIN di dekat target
+                    if ((o2->Pos - o->Pos).SqrMagnitude < crowdR2) crowd++;
+                }
+                score += crowd * NxTuning.BotCrowdPenalty;
+                if (score < best || (score == best && e.Index < bestIdx)) { best = score; bestIdx = e.Index; pos = o->Pos; ok = true; }
             }
             return ok;
         }
@@ -293,7 +343,8 @@ namespace Quantum
         {
             if (dir == 0) { c->Vel.X = 0; c->Vel.Z = 0; return; }
             FPVector2 d = Dir8(dir);
-            c->Vel.X = d.X * MoveSpeed; c->Vel.Z = d.Y * MoveSpeed;
+            FP mul = CritSpeedMul(c);                       // T2/C4: 70/50/35% saat Critical
+            c->Vel.X = d.X * MoveSpeed * mul; c->Vel.Z = d.Y * MoveSpeed * mul;
             c->Yaw = FPMath.Atan2(d.X, d.Y);
         }
 

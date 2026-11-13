@@ -329,7 +329,18 @@ namespace Nexus
             try { payload = BuildStatsPayload(frame); }
             catch (Exception ex) { Debug.LogWarning("Payload statistik gagal, lapor hasil dasar saja: " + ex.Message); }
 
-            _ = ReportAsync(frame.Global->ScoreA, frame.Global->ScoreB, myKills, myDeaths, myHero, payload);
+            // T2: sebab akhir + pemenang (hasil tie-break sim) + koTimeline — deterministik, identik di kedua klien.
+            byte reason = frame.Global->EndReason;
+            string endReason = reason == NxMatch.ReasonTime ? "time" : reason == NxMatch.ReasonForfeit ? "forfeit" : "ko";
+            int winnerSlot = frame.Global->WinnerTeam == NxMatch.Draw ? -1 : frame.Global->WinnerTeam;
+            var timeline = new NexusBackend.KoEventRow[frame.Global->KoCount];
+            for (int i = 0; i < timeline.Length; i++)
+            {
+                var ev = frame.Global->KoLog.GetPointer(i);
+                timeline[i] = new NexusBackend.KoEventRow { tick = ev->Tick, killerSlot = ev->KillerSlot };
+            }
+
+            _ = ReportAsync(frame.Global->ScoreA, frame.Global->ScoreB, myKills, myDeaths, myHero, payload, endReason, winnerSlot, timeline);
         }
 
         // Kumpulkan statistik akumulator SEMUA pemain manusia dari frame deterministik.
@@ -365,19 +376,19 @@ namespace Nexus
         private static readonly string _deviceId = "nx-" + System.Guid.NewGuid().ToString("N");
         private static string DeviceId() => _deviceId;
 
-        private async Task ReportAsync(int scoreLeft, int scoreRight, int kills, int deaths, int heroId, NexusBackend.PlayerStatRow[] players)
+        private async Task ReportAsync(int scoreLeft, int scoreRight, int kills, int deaths, int heroId, NexusBackend.PlayerStatRow[] players,
+                                       string endReason, int winnerSlot, NexusBackend.KoEventRow[] koTimeline)
         {
-            // Normalisasi ke hasil legal (pemenang = KoTarget, kalah < KoTarget). Deterministik → kedua klien sama.
-            int t = NxCombatSystem.KoTarget;
-            if (scoreLeft >= scoreRight) { scoreLeft = t; scoreRight = Mathf.Min(scoreRight, t - 1); }
-            else { scoreRight = t; scoreLeft = Mathf.Min(scoreLeft, t - 1); }
-
+            // T2: skor dilaporkan APA ADANYA (tak lagi dinormalkan ke 5) — waktu habis/forfeit bisa berakhir 2-1, 0-0, dst.
             int dur = Mathf.Max(0, (int)(Time.realtimeSinceStartup - _matchStart));
-            var status = await _backend.ReportResultAsync(_gameId, _mySlot, scoreLeft, scoreRight, kills, deaths, 0, heroId, _matchMode, dur, 1, players);
+            var status = await _backend.ReportResultAsync(_gameId, _mySlot, scoreLeft, scoreRight, kills, deaths, 0, heroId, _matchMode, dur, 1, players,
+                                                          endReason, winnerSlot, koTimeline);
             await _backend.RefreshMeAsync();
             await _backend.LeaveQueueAsync(); // bersihkan assignment agar bisa rematch
-            string winner = scoreLeft > scoreRight ? "TIM BIRU" : "TIM ORANYE";
-            _resultText = $"{winner} MENANG {scoreLeft}-{scoreRight}\nKamu: {kills} Kill / {deaths} Death\nRating: {_backend.Rating} ({_backend.RankTier})";
+            string why = endReason == "time" ? "WAKTU HABIS — " : endReason == "forfeit" ? "MENANG WO (AFK) — " : "";
+            string head = winnerSlot < 0 ? $"{why}SERI {scoreLeft}-{scoreRight}"
+                        : $"{why}{(winnerSlot == 0 ? "TIM BIRU" : "TIM ORANYE")} MENANG {scoreLeft}-{scoreRight}";
+            _resultText = $"{head}\nKamu: {kills} Kill / {deaths} Death\nRating: {_backend.Rating} ({_backend.RankTier})";
         }
 
         private async Task ConnectSafe(string roomName)

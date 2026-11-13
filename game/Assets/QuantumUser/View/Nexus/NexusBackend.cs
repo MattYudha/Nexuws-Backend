@@ -64,7 +64,9 @@ namespace Nexus
             public int kills; public int deaths; public int assists; public int heroId;
             public string mode; public int durationSec; public int partySize;
             public PlayerStatRow[] players;
+            public string endReason; public int winnerSlot; public KoEventRow[] koTimeline; // T2: ko|time|forfeit, -1 = seri
         }
+        [Serializable] public sealed class KoEventRow { public int tick; public int killerSlot; }
         [Serializable] private sealed class StatusRes { public string status; public string message; }
         [Serializable] private sealed class MeRes { public string playerId; public string username; public string displayName; public int faction; public int rating; public string rankTier; public int accountLevel; public string accountRank; public int accountXp; public int wins; public int losses; public int matchesPlayed; public float winRate; public int kills; public int deaths; public int assists; public float kda; }
         [Serializable] public sealed class LeaderRow { public int rank; public string displayName; public string tier; public int ladderPoints; public int wins; public int losses; public float winRate; public int matches; }
@@ -78,7 +80,7 @@ namespace Nexus
             public int skillsUsed; public int skillsHit; public bool firstBlood; public int maxKillStreak; public int maxDeficit; public int heroSwitches;
             public MatchHeroRow[] heroes;
         }
-        [Serializable] public sealed class MatchRow { public string gameId; public string endedAt; public string mode; public string format; public int durationSec; public int slot; public int scoreLeft; public int scoreRight; public bool won; public int ratingDelta; public int ratingBefore; public int heroId; public int partySize; public MatchPlayerRow[] players; }
+        [Serializable] public sealed class MatchRow { public string gameId; public string endedAt; public string mode; public string format; public int durationSec; public int slot; public int scoreLeft; public int scoreRight; public bool won; public bool isDraw; public string endReason; public string koTimeline; public int ratingDelta; public int ratingBefore; public int heroId; public int partySize; public MatchPlayerRow[] players; }
         [Serializable] private sealed class MatchWrap { public MatchRow[] items; }
 
         // ---------- Auth ----------
@@ -161,9 +163,11 @@ namespace Nexus
 
         // ---------- Result ----------
         /// <summary>Lapor hasil 1v1. slot = slot pemain ini (dari identitas in-game), scoreLeft/Right absolut (sim deterministik → identik di kedua klien).</summary>
-        public async Task<string> ReportResultAsync(string gameId, int slot, int scoreLeft, int scoreRight, int kills, int deaths, int assists, int heroId, string mode, int durationSec, int partySize, PlayerStatRow[] players = null)
+        public async Task<string> ReportResultAsync(string gameId, int slot, int scoreLeft, int scoreRight, int kills, int deaths, int assists, int heroId, string mode, int durationSec, int partySize, PlayerStatRow[] players,
+                                                    string endReason, int winnerSlot, KoEventRow[] koTimeline)
         {
-            var body = JsonUtility.ToJson(new ResultReq { gameId = gameId, slot = slot, scoreLeft = scoreLeft, scoreRight = scoreRight, kills = kills, deaths = deaths, assists = assists, heroId = heroId, mode = mode, durationSec = durationSec, partySize = partySize, players = players });
+            var body = JsonUtility.ToJson(new ResultReq { gameId = gameId, slot = slot, scoreLeft = scoreLeft, scoreRight = scoreRight, kills = kills, deaths = deaths, assists = assists, heroId = heroId, mode = mode, durationSec = durationSec, partySize = partySize, players = players,
+                                                          endReason = endReason, winnerSlot = winnerSlot, koTimeline = koTimeline });
             var res = await PostAsync("/api/matches/result", body, auth: true);
             return res == null ? null : JsonUtility.FromJson<StatusRes>(res)?.status;
         }

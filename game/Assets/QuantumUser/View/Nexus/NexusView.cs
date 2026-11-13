@@ -184,11 +184,64 @@ namespace Nexus
             {
                 float sw = UnityEngine.Screen.width;
                 var big = new GUIStyle(GUI.skin.label) { fontSize = 24, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-                string winner = frame.Global->ScoreA > frame.Global->ScoreB ? "TIM BIRU" : "TIM ORANYE";
-                GUI.Box(new Rect(sw / 2 - 220, 70, 440, 70), "");
-                GUI.Label(new Rect(sw / 2 - 220, 80, 440, 50),
-                    $"MATCH SELESAI — {winner} MENANG {frame.Global->ScoreA}-{frame.Global->ScoreB}", big);
+                // T2: pemenang dari sim (tie-break waktu habis / forfeit), bukan tebakan dari skor.
+                byte wt = frame.Global->WinnerTeam;
+                string why = frame.Global->EndReason == NxMatch.ReasonTime ? "WAKTU HABIS" : frame.Global->EndReason == NxMatch.ReasonForfeit ? "AFK — WO" : "MATCH SELESAI";
+                string res = wt == NxMatch.Draw ? "SERI" : (wt == 0 ? "TIM BIRU" : "TIM ORANYE") + " MENANG";
+                GUI.Box(new Rect(sw / 2 - 260, 70, 520, 70), "");
+                GUI.Label(new Rect(sw / 2 - 260, 80, 520, 50),
+                    $"{why} — {res} {frame.Global->ScoreA}-{frame.Global->ScoreB}", big);
                 return;
+            }
+
+            // ---- T2: timer, peringatan AFK, indikator Critical lawan ----
+            NxCombat* me = null;
+            var runner = QuantumRunner.Default;
+            var locals = runner != null && runner.Game != null ? runner.Game.GetLocalPlayers() : null;
+            if (locals != null && locals.Count > 0)
+                foreach (var (e, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())
+                    if (c->Player == locals[0]) { me = c; break; }
+
+            {
+                float sw = UnityEngine.Screen.width;
+                int secs = (frame.Global->TimeLeftTicks + NxTuning.TickRate - 1) / NxTuning.TickRate;
+                var timer = new GUIStyle(GUI.skin.label) { fontSize = 28, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+                timer.normal.textColor = secs <= 10 ? new Color(1f, 0.85f, 0.3f) : Color.white;
+                GUI.Label(new Rect(sw / 2 - 60, 8, 120, 36), $"{secs / 60}:{secs % 60:00}", timer);
+
+                if (me != null && me->IdleTicks >= NxTuning.AfkWarnTicks)
+                {
+                    int left = (NxTuning.AfkForfeitTicks - me->IdleTicks + NxTuning.TickRate - 1) / NxTuning.TickRate;
+                    var warn = new GUIStyle(GUI.skin.box) { fontSize = 20, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+                    warn.normal.textColor = new Color(1f, 0.85f, 0.3f);
+                    GUI.Box(new Rect(sw / 2 - 230, 50, 460, 40), $"TIDAK ADA INPUT — kalah WO dalam {Mathf.Max(0, left)} dtk", warn);
+                }
+            }
+
+            if (me != null && _camera != null)
+            {
+                // Lawan di Critical: penanda di atas kepala, atau panah di tepi layar bila di luar pandangan (merah = lawan).
+                var mark = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+                mark.normal.textColor = new Color(0.94f, 0.43f, 0.43f);
+                float sw = UnityEngine.Screen.width, sh = UnityEngine.Screen.height;
+                foreach (var (e, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())
+                {
+                    if (c->Team == me->Team || c->Critical == 0) continue;
+                    string tag = c->OverloadLock > 0 ? $"OVERLOAD · CRIT {c->BreakStock}" : $"CRITICAL {c->BreakStock}";
+                    Vector3 sp = _camera.WorldToScreenPoint(new Vector3(c->Pos.X.AsFloat, c->Pos.Y.AsFloat + 2.6f, c->Pos.Z.AsFloat));
+                    bool behind = sp.z < 0;
+                    float mx = sp.x, my = sh - sp.y;
+                    if (behind) { mx = sw - mx; my = sh - my; }
+                    bool off = behind || mx < 0 || mx > sw || my < 0 || my > sh;
+                    if (off)
+                    {
+                        mx = Mathf.Clamp(mx, 40, sw - 40); my = Mathf.Clamp(my, 40, sh - 40);
+                        string arrow = mx <= 40 ? "◄ " : mx >= sw - 40 ? " ►" : my <= 40 ? "▲ " : "▼ ";
+                        tag = mx >= sw - 40 ? tag + arrow : arrow + tag;
+                    }
+                    else tag = "▼ " + tag;
+                    GUI.Label(new Rect(mx - 110, my - 14, 220, 28), tag, mark);
+                }
             }
 
             GUI.Label(new Rect(10, 10, 900, 24), "SPIKE Nexus 5v5 — WASD gerak · J pukul/tembak · K skill · Space lompat · Shift dash · L guard · H ganti hero.");
@@ -202,7 +255,7 @@ namespace Nexus
                 string who = c->Player != PlayerRef.None ? "YOU  " : (c->Team == 0 ? "ALLY " : "ENEMY");
                 string hero = c->HeroId == 0 ? "TITAN-01" : "PULSE-X ";
                 string st = c->Critical != 0 ? $"CRIT s={c->BreakStock}" : $"HP {c->Hp.AsFloat:0}";
-                string extra = c->Faint > 0 ? " FAINT" : (c->Guarding != 0 ? " GUARD" : "");
+                string extra = c->OverloadLock > 0 ? " OVERLOAD" : c->Faint > 0 ? " FAINT" : (c->Guarding != 0 ? " GUARD" : "");
                 GUI.Label(new Rect(10, y, 520, 18), $"{who} [{hero}]  {st}{extra}");
                 y += 18;
             }

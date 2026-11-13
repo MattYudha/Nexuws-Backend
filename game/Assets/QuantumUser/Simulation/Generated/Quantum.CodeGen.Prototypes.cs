@@ -96,12 +96,12 @@ namespace Quantum.Prototypes {
     public Byte Picked;
     public UInt16 SkillCd;
     public UInt16 ShotCd;
-    public UInt16 CritTimer;
     public UInt16 Kills;
     public UInt16 BotKills;
-    public PlayerRef LastHitByPlayer;
-    public Byte LastHitByTeam;
-    public Byte LastHitValid;
+    public UInt16 IdleTicks;
+    public UInt16 OverloadCharge;
+    public Byte OverloadLock;
+    public UInt16 GearsLost;
     public FP DamageDealt;
     public FP DamageTaken;
     public UInt16 SkillsUsed;
@@ -156,12 +156,12 @@ namespace Quantum.Prototypes {
         result.Picked = this.Picked;
         result.SkillCd = this.SkillCd;
         result.ShotCd = this.ShotCd;
-        result.CritTimer = this.CritTimer;
         result.Kills = this.Kills;
         result.BotKills = this.BotKills;
-        result.LastHitByPlayer = this.LastHitByPlayer;
-        result.LastHitByTeam = this.LastHitByTeam;
-        result.LastHitValid = this.LastHitValid;
+        result.IdleTicks = this.IdleTicks;
+        result.OverloadCharge = this.OverloadCharge;
+        result.OverloadLock = this.OverloadLock;
+        result.GearsLost = this.GearsLost;
         result.DamageDealt = this.DamageDealt;
         result.DamageTaken = this.DamageTaken;
         result.SkillsUsed = this.SkillsUsed;
@@ -183,6 +183,18 @@ namespace Quantum.Prototypes {
         result.H1Kills = this.H1Kills;
         result.H0Dmg = this.H0Dmg;
         result.H1Dmg = this.H1Dmg;
+        MaterializeUser(frame, ref result, in context);
+    }
+  }
+  [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.NxKoEvent))]
+  public unsafe partial class NxKoEventPrototype : StructPrototype {
+    public Int32 Tick;
+    public Byte KillerSlot;
+    partial void MaterializeUser(Frame frame, ref Quantum.NxKoEvent result, in PrototypeMaterializationContext context);
+    public void Materialize(Frame frame, ref Quantum.NxKoEvent result, in PrototypeMaterializationContext context = default) {
+        result.Tick = this.Tick;
+        result.KillerSlot = this.KillerSlot;
         MaterializeUser(frame, ref result, in context);
     }
   }
