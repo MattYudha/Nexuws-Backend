@@ -679,4 +679,21 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.BadRequest, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "valid_name", password = "123" })).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsJsonAsync("/api/auth/upgrade", new { username = "x_name", password = "secret123" })).StatusCode);
     }
+
+    // Q53: FLAWLESS hanya untuk menang KO dengan lawan 0 — menang waktu habis 1-0 / WO bukan flawless.
+    [Fact]
+    public async Task Flawless_OnlyForKoWins()
+    {
+        var (alice, _) = await factory.LoginAsync("device-flaw-a", "FlawA");
+        var (bob, _) = await factory.LoginAsync("device-flaw-b", "FlawB");
+        var t = new[] { RankedRow(0, 1, 0), RankedRow(1, 0, 1) };
+        object Time(int slot) => new { gameId = "room-flaw-time", slot, scoreLeft = 1, scoreRight = 0, durationSec = 100, mode = "ranked", players = t, endReason = "time", winnerSlot = 0, koTimeline = Timeline(0) };
+        Assert.Equal("Finished", await ReportBoth(alice, bob, "room-flaw-time", Time(0), Time(1)));
+        Assert.Equal(0, (await alice.GetFromJsonAsync<JsonElement>("/api/me/stats")).GetProperty("flawless").GetInt32());
+
+        var k = new[] { RankedRow(0, 5, 0), RankedRow(1, 0, 5) };
+        object Ko(int slot) => new { gameId = "room-flaw-ko", slot, scoreLeft = 5, scoreRight = 0, durationSec = 60, mode = "ranked", players = k, endReason = "ko", koTimeline = Timeline(0, 0, 0, 0, 0) };
+        Assert.Equal("Finished", await ReportBoth(alice, bob, "room-flaw-ko", Ko(0), Ko(1)));
+        Assert.Equal(1, (await alice.GetFromJsonAsync<JsonElement>("/api/me/stats")).GetProperty("flawless").GetInt32());
+    }
 }

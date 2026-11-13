@@ -289,7 +289,7 @@ namespace Nexus
 
             var badges = new VisualElement(); badges.AddToClassList("nxl-badges");
             int loserScore = Mathf.Min(m.scoreLeft, m.scoreRight);
-            if (m.won && loserScore == 0) badges.Add(Badge("FLAWLESS", "nxl-badge--flawless"));
+            if (m.won && loserScore == 0 && KoFinish(m)) badges.Add(Badge("FLAWLESS", "nxl-badge--flawless"));
             if (m.won && mine != null && mine.maxDeficit >= 3) badges.Add(Badge("COMEBACK", "nxl-badge--comeback"));
             if (mine != null && mine.firstBlood) badges.Add(Badge("FIRST BLOOD", "nxl-badge--firstblood"));
             body.Add(badges);
@@ -325,7 +325,7 @@ namespace Nexus
             NexusBackend.MatchPlayerRow opp = null;
             if (m.players != null) foreach (var p in m.players) if (p.slot != m.slot) { opp = p; break; }
             bool r1 = m.format == "ranked1v1";
-            bool flawless = Mathf.Min(m.scoreLeft, m.scoreRight) == 0;
+            bool flawless = Mathf.Min(m.scoreLeft, m.scoreRight) == 0 && KoFinish(m); // Q53: waktu habis/WO bukan flawless
             int myScore = m.slot == 0 ? m.scoreLeft : m.scoreRight;      // skor KAMU di kiri, apa pun slot-nya
             int oppScore = m.slot == 0 ? m.scoreRight : m.scoreLeft;
 
@@ -469,6 +469,7 @@ namespace Nexus
         }
 
         // ---- T2: hasil (menang/kalah/seri), sebab akhir, jalannya match ----
+        private static bool KoFinish(NexusBackend.MatchRow m) => string.IsNullOrEmpty(m.endReason) || m.endReason == "ko"; // match lama = KO
         private static string ResultKey(NexusBackend.MatchRow m) => m.isDraw ? "draw" : m.won ? "win" : "loss";
         private static string ResultText(NexusBackend.MatchRow m) => m.isDraw ? "SERI" : m.won ? "MENANG" : "KALAH";
         private static string EndText(NexusBackend.MatchRow m) =>

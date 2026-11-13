@@ -26,7 +26,7 @@ public static class StatsEndpoints
     private sealed record Row(
         DateTime? EndedAt, int ScoreLeft, int ScoreRight, int DurationSec, int Slot, bool Won,
         int Kills, int Deaths, bool Detailed, bool KdValid,
-        int DamageDealt, int DamageTaken, int HitsBlocked, int Dodges, int GuardCrushes, int Criticals, int MaxDeficit, bool FirstBlood, bool IsDraw);
+        int DamageDealt, int DamageTaken, int HitsBlocked, int Dodges, int GuardCrushes, int Criticals, int MaxDeficit, bool FirstBlood, bool IsDraw, bool KoFinish);
 
     private static async Task<object> Compute(AppDbContext db, Guid playerId, string? mode, CancellationToken ct)
     {
@@ -83,7 +83,7 @@ public static class StatsEndpoints
                 mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
                 mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, mp.HasDetailedStats, mp.Match.Format == "ranked1v1",
                 mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
-                mp.Match.IsDraw))
+                mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko"))
             .ToListAsync(ct);
 
     private sealed class Agg
@@ -114,7 +114,7 @@ public static class StatsEndpoints
             int diff = Math.Abs(r.ScoreLeft - r.ScoreRight);
             int loserScore = Math.Min(r.ScoreLeft, r.ScoreRight);
             if (diff <= 2 && !r.IsDraw) { a.CloseMatches++; if (r.Won) a.CloseWins++; }
-            if (r.Won && loserScore == 0) a.Flawless++;
+            if (r.Won && loserScore == 0 && r.KoFinish) a.Flawless++; // Q53: hanya menang KO (bukan waktu habis/WO)
 
             if (r.Detailed)
             {
@@ -169,7 +169,7 @@ public static class StatsEndpoints
                 Row = new Row(mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
                     mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, true, mp.Match.Format == "ranked1v1",
                     mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
-                    mp.Match.IsDraw),
+                    mp.Match.IsDraw, mp.Match.EndReason == "" || mp.Match.EndReason == "ko"),
             })
             .ToListAsync(ct);
 
