@@ -16,6 +16,9 @@ namespace Quantum
         /// <summary>Dipanggil sekali saat State 0 → 1.</summary>
         public static void Begin(Frame f)
         {
+            // Semua ambang NxTuning dalam tick @TickRate. Sesi dengan UpdateFPS lain → durasi bergeser: peringatkan.
+            if (f.UpdateRate != NxTuning.TickRate)
+                Log.Warn($"NxTuning.TickRate={NxTuning.TickRate} tapi UpdateFPS sesi={f.UpdateRate}: timer/AFK/Overload tidak sesuai detik.");
             f.Global->StartTick = f.Number;
             f.Global->TimeLeftTicks = NxTuning.MatchTicks;
             f.Global->EndReason = 0;

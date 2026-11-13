@@ -102,4 +102,53 @@ public class MatchmakingServiceTests
         mm.Leave(a);
         Assert.Equal(MatchmakingState.Idle, mm.Status(a).State);
     }
+
+    // ---- Q36/Q37 (laporan bug 2026-11-13): penunggu basi & assignment kedaluwarsa ----
+    private static MatchmakingService NewAt(Func<DateTime> clock) =>
+        new(Options.Create(new GameOptions
+        {
+            MatchmakingWindowStart = 400, MatchmakingWindowGrowthPerSec = 0, MatchmakingMaxWaitSeconds = 100_000,
+            MatchmakingWaiterStaleSeconds = 10, MatchmakingAssignmentTtlSeconds = 60,
+        })) { Clock = clock };
+
+    [Fact]
+    public void StaleWaiter_WhoStoppedPolling_IsNotMatched()
+    {
+        var now = new DateTime(2026, 11, 13, 12, 0, 0, DateTimeKind.Utc);
+        var mm = NewAt(() => now);
+        var ghost = Guid.NewGuid(); var b = Guid.NewGuid();
+        mm.Join(ghost, 1500, "asia");           // lalu klien crash: tak pernah polling lagi
+        now = now.AddSeconds(11);
+        var rb = mm.Join(b, 1500, "asia");
+        Assert.Equal(MatchmakingState.Searching, rb.State); // tak dipasangkan dengan hantu
+        Assert.Equal(MatchmakingState.Idle, mm.Status(ghost).State);
+    }
+
+    [Fact]
+    public void PollingWaiter_StaysAlive_AndIsMatched()
+    {
+        var now = new DateTime(2026, 11, 13, 12, 0, 0, DateTimeKind.Utc);
+        var mm = NewAt(() => now);
+        var a = Guid.NewGuid(); var b = Guid.NewGuid();
+        mm.Join(a, 1500, "asia");
+        for (int i = 0; i < 5; i++) { now = now.AddSeconds(5); Assert.Equal(MatchmakingState.Searching, mm.Status(a).State); }
+        Assert.Equal(MatchmakingState.Matched, mm.Join(b, 1500, "asia").State);
+    }
+
+    [Fact]
+    public void ExpiredAssignment_AfterCrash_LetsPlayerQueueAgain()
+    {
+        var now = new DateTime(2026, 11, 13, 12, 0, 0, DateTimeKind.Utc);
+        var mm = NewAt(() => now);
+        var a = Guid.NewGuid(); var b = Guid.NewGuid();
+        mm.Join(a, 1500, "asia");
+        var first = mm.Join(b, 1500, "asia");
+        Assert.Equal(MatchmakingState.Matched, first.State);
+        // b crash tanpa /leave. Dalam TTL: match lama dikembalikan (reconnect). Setelah TTL: antre baru.
+        now = now.AddSeconds(30);
+        Assert.Equal(first.Assignment!.GameId, mm.Join(b, 1500, "asia").Assignment!.GameId);
+        now = now.AddSeconds(31);
+        var again = mm.Join(b, 1500, "asia");
+        Assert.Equal(MatchmakingState.Searching, again.State);
+    }
 }

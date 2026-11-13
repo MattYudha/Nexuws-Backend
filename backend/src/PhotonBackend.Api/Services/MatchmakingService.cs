@@ -18,24 +18,39 @@ public sealed record MatchmakingResult(MatchmakingState State, MatchAssignment? 
 /// </summary>
 public sealed class MatchmakingService(IOptions<GameOptions> options)
 {
-    private sealed record Waiter(int Rating, string Region, DateTime At, string Build, string Sim);
+    // LastSeen = poll terakhir (Join/Status). Penunggu yang berhenti polling (klien crash/tutup) dibuang.
+    private sealed record Waiter(int Rating, string Region, DateTime At, string Build, string Sim, DateTime LastSeen);
 
     private readonly object _lock = new();
     private readonly Dictionary<Guid, Waiter> _waiting = new();
-    private readonly Dictionary<Guid, MatchAssignment> _assignments = new();
+    private readonly Dictionary<Guid, (MatchAssignment A, DateTime At)> _assignments = new();
     private readonly GameOptions _o = options.Value;
+
+    /// <summary>Jam (UTC). Bisa diganti di tes.</summary>
+    public Func<DateTime> Clock { get; init; } = () => DateTime.UtcNow;
+
+    // Buang penunggu basi (tak polling) + assignment kedaluwarsa (klien crash sebelum /leave). Dipanggil di dalam _lock.
+    private void Prune(DateTime now)
+    {
+        foreach (var id in _waiting.Where(kv => (now - kv.Value.LastSeen).TotalSeconds > _o.MatchmakingWaiterStaleSeconds).Select(kv => kv.Key).ToList())
+            _waiting.Remove(id);
+        foreach (var id in _assignments.Where(kv => (now - kv.Value.At).TotalSeconds > _o.MatchmakingAssignmentTtlSeconds).Select(kv => kv.Key).ToList())
+            _assignments.Remove(id);
+    }
 
     public MatchmakingResult Join(Guid playerId, int rating, string region, string build = "", string sim = "")
     {
         lock (_lock)
         {
+            var now = Clock();
+            Prune(now);
             if (_assignments.TryGetValue(playerId, out var already))
-                return new MatchmakingResult(MatchmakingState.Matched, already);
+                return new MatchmakingResult(MatchmakingState.Matched, already.A);
 
             // Upsert: PERTAHANKAN waktu masuk antre lama agar pelebaran rentang terus berjalan.
-            var at = _waiting.TryGetValue(playerId, out var ex) ? ex.At : DateTime.UtcNow;
-            _waiting[playerId] = new Waiter(rating, region, at, build ?? "", sim ?? "");
-            return TryMatch(playerId);
+            var at = _waiting.TryGetValue(playerId, out var ex) ? ex.At : now;
+            _waiting[playerId] = new Waiter(rating, region, at, build ?? "", sim ?? "", now);
+            return TryMatch(playerId, now);
         }
     }
 
@@ -43,20 +58,25 @@ public sealed class MatchmakingService(IOptions<GameOptions> options)
     {
         lock (_lock)
         {
-            if (_assignments.TryGetValue(playerId, out var a)) return new MatchmakingResult(MatchmakingState.Matched, a);
-            if (_waiting.ContainsKey(playerId)) return TryMatch(playerId); // re-evaluasi: rentang mungkin sudah melebar
+            var now = Clock();
+            Prune(now);
+            if (_assignments.TryGetValue(playerId, out var a)) return new MatchmakingResult(MatchmakingState.Matched, a.A);
+            if (_waiting.TryGetValue(playerId, out var w))
+            {
+                _waiting[playerId] = w with { LastSeen = now };   // masih polling → masih hidup
+                return TryMatch(playerId, now);                    // re-evaluasi: rentang mungkin sudah melebar
+            }
             return new MatchmakingResult(MatchmakingState.Idle, null);
         }
     }
 
     // Dipanggil di dalam _lock; playerId dijamin ada di _waiting (atau sudah ter-assign).
-    private MatchmakingResult TryMatch(Guid playerId)
+    private MatchmakingResult TryMatch(Guid playerId, DateTime now)
     {
         if (_assignments.TryGetValue(playerId, out var already))
-            return new MatchmakingResult(MatchmakingState.Matched, already);
+            return new MatchmakingResult(MatchmakingState.Matched, already.A);
 
         var me = _waiting[playerId];
-        var now = DateTime.UtcNow;
         int myWin = Window((now - me.At).TotalSeconds);
 
         // Lawan terbaik: region + VERSI sama, selisih terkecil dalam rentang efektif (maks dari kedua penunggu).
@@ -76,9 +96,9 @@ public sealed class MatchmakingService(IOptions<GameOptions> options)
         _waiting.Remove(bestId);
         _waiting.Remove(playerId);
         var gameId = "mm-" + Guid.NewGuid().ToString("N")[..12];
-        _assignments[bestId] = new MatchAssignment(gameId, 0, me.Region, playerId);   // yang menunggu lebih dulu = slot 0
-        _assignments[playerId] = new MatchAssignment(gameId, 1, me.Region, bestId);   // pendatang = slot 1
-        return new MatchmakingResult(MatchmakingState.Matched, _assignments[playerId]);
+        _assignments[bestId] = (new MatchAssignment(gameId, 0, me.Region, playerId), now);   // lawan yang sudah ada di antrean = slot 0
+        _assignments[playerId] = (new MatchAssignment(gameId, 1, me.Region, bestId), now);   // pemicu pasangan (Join/Status ini) = slot 1
+        return new MatchmakingResult(MatchmakingState.Matched, _assignments[playerId].A);
     }
 
     // Rentang rating efektif: melebar per detik, lalu tak terbatas setelah MaxWait (selalu dapat lawan).

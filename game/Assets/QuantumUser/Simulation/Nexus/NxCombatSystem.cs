@@ -41,6 +41,7 @@ namespace Quantum
         public override void OnInit(Frame f)
         {
             f.Global->State = 0; // 0 = layar Pilih Hero. Bot di-spawn saat match MULAI (tahu jumlah manusia & mode).
+            f.Global->WinnerTeam = NxMatch.Draw; // belum ada pemenang (bukan "tim 0")
         }
 
         public void OnPlayerAdded(Frame f, PlayerRef player, bool firstTime)

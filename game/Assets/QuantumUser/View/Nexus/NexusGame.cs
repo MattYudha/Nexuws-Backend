@@ -340,7 +340,10 @@ namespace Nexus
                 timeline[i] = new NexusBackend.KoEventRow { tick = ev->Tick, killerSlot = ev->KillerSlot };
             }
 
-            _ = ReportAsync(frame.Global->ScoreA, frame.Global->ScoreB, myKills, myDeaths, myHero, payload, endReason, winnerSlot, timeline);
+            // Durasi dari tick simulasi (deterministik, sama di kedua klien), bukan jam dinding.
+            int durSec = (frame.Number - frame.Global->StartTick) / frame.UpdateRate;
+
+            _ = ReportAsync(frame.Global->ScoreA, frame.Global->ScoreB, myKills, myDeaths, myHero, payload, endReason, winnerSlot, timeline, durSec);
         }
 
         // Kumpulkan statistik akumulator SEMUA pemain manusia dari frame deterministik.
@@ -377,10 +380,10 @@ namespace Nexus
         private static string DeviceId() => _deviceId;
 
         private async Task ReportAsync(int scoreLeft, int scoreRight, int kills, int deaths, int heroId, NexusBackend.PlayerStatRow[] players,
-                                       string endReason, int winnerSlot, NexusBackend.KoEventRow[] koTimeline)
+                                       string endReason, int winnerSlot, NexusBackend.KoEventRow[] koTimeline, int durSec)
         {
             // T2: skor dilaporkan APA ADANYA (tak lagi dinormalkan ke 5) — waktu habis/forfeit bisa berakhir 2-1, 0-0, dst.
-            int dur = Mathf.Max(0, (int)(Time.realtimeSinceStartup - _matchStart));
+            int dur = Mathf.Max(0, durSec);
             var status = await _backend.ReportResultAsync(_gameId, _mySlot, scoreLeft, scoreRight, kills, deaths, 0, heroId, _matchMode, dur, 1, players,
                                                           endReason, winnerSlot, koTimeline);
             await _backend.RefreshMeAsync();

@@ -18,13 +18,18 @@ namespace Quantum
 
             foreach (var (selfE, self) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
             {
+                if (self->HitPause > 0) continue;                       // hitstop: badan beku, jangan digeser keluar hitbox
                 foreach (var (otherE, other) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
                 {
                     if (otherE == selfE) continue;
                     FPVector3 d = other->Pos - self->Pos; d.Y = 0;
                     FP dist = d.Magnitude;
-                    if (dist <= FP._0_10 || dist >= MinDist) continue; // 0 → lewati (hindari bagi nol)
-                    FPVector3 n = d.Normalized;                         // arah dari self ke other
+                    if (dist >= MinDist) continue;
+                    // Titik (hampir) sama: arah tak terdefinisi → dorong di sumbu X menurut indeks entity (deterministik,
+                    // kedua pihak ke arah berlawanan) agar tidak menumpuk permanen.
+                    FPVector3 n = dist <= FP._0_10
+                        ? new FPVector3(selfE.Index < otherE.Index ? 1 : -1, 0, 0)
+                        : d.Normalized;                                  // arah dari self ke other
                     FP overlap = MinDist - dist;
                     self->Pos -= n * (overlap * FP._0_50);              // self menjauh setengah tumpang-tindih
                 }

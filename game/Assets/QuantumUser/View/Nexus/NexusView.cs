@@ -78,7 +78,7 @@ namespace Nexus
 
                 var pos = new Vector3(c->Pos.X.AsFloat, c->Pos.Y.AsFloat + 1f, c->Pos.Z.AsFloat);
                 go.transform.position = pos;
-                go.transform.rotation = Quaternion.Euler(0, -c->Yaw.AsFloat * Mathf.Rad2Deg, 0);
+                go.transform.rotation = Quaternion.Euler(0, c->Yaw.AsFloat * Mathf.Rad2Deg, 0); // sim: hadap = (sin yaw, cos yaw) = konvensi Unity
 
                 // Warna status: Critical=ungu, hitstun/hit=merah, faint=kuning, guard=hijau, normal=team.
                 var r = go.GetComponent<Renderer>();
