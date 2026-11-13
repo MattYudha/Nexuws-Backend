@@ -9,8 +9,10 @@ using PhotonBackend.Api.Data;
 
 namespace PhotonBackend.Tests;
 
-public sealed class ApiFactory : WebApplicationFactory<Program>
+public class ApiFactory : WebApplicationFactory<Program>
 {
+    protected virtual int RateLimitPerMinute => 100_000; // suite biasa: praktis tanpa batas
+
     public const string WebhookSecret = "test-webhook-secret";
     public const string AuthSecret = "test-auth-secret";
     public const string AdminSecret = "test-admin-secret";
@@ -26,6 +28,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Photon:AuthSecret", AuthSecret);
         builder.UseSetting("Game:AllowTestAccounts", "true"); // izinkan flag IsTest di lingkungan tes
         builder.UseSetting("Admin:Secret", AdminSecret);      // aktifkan endpoint admin di tes
+        builder.UseSetting("RateLimit:AuthPerMinute", RateLimitPerMinute.ToString());
+        builder.UseSetting("RateLimit:GuestPerMinute", RateLimitPerMinute.ToString());
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<AppDbContext>>();
@@ -78,4 +82,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             .OrderBy(a => a.At)
             .ToListAsync();
     }
+}
+
+/// <summary>Q61: factory dengan batas rate limit kecil untuk menguji 429.</summary>
+public sealed class RateLimitedFactory : ApiFactory
+{
+    protected override int RateLimitPerMinute => 3;
 }

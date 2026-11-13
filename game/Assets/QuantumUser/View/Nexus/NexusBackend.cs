@@ -34,6 +34,8 @@ namespace Nexus
         public int AccountXp { get; private set; }
         public string AccountRank { get; private set; } = "";
         public bool LoggedIn => Token.Length > 0;
+        /// <summary>deviceId guest yang dipakai login (Q62: wajib dikirim saat upgrade).</summary>
+        public string GuestDeviceId { get; private set; } = "";
 
         public NexusBackend(string baseUrl)
         {
@@ -94,6 +96,7 @@ namespace Nexus
             PlayerId = dto.playerId ?? "";
             DisplayName = dto.displayName ?? "";
             Rating = dto.rating;
+            GuestDeviceId = deviceId;
             return LoggedIn;
         }
 
@@ -121,7 +124,7 @@ namespace Nexus
             return LoggedIn;
         }
 
-        [Serializable] private sealed class UpgradeReq { public string username; public string password; public string displayName; }
+        [Serializable] private sealed class UpgradeReq { public string username; public string password; public string deviceId; }
         [Serializable] private sealed class ErrorRes { public string error; }
 
         /// <summary>
@@ -131,12 +134,14 @@ namespace Nexus
         public async Task<string> UpgradeAccountAsync(string username, string password)
         {
             using var req = new HttpRequestMessage(HttpMethod.Post, "/api/auth/upgrade")
-            { Content = new StringContent(JsonUtility.ToJson(new UpgradeReq { username = username, password = password }), Encoding.UTF8, "application/json") };
+            { Content = new StringContent(JsonUtility.ToJson(new UpgradeReq { username = username, password = password, deviceId = GuestDeviceId }), Encoding.UTF8, "application/json") };
             var (code, res) = await SendRawAsync(req, auth: true);
             if (code >= 200 && code < 300) { await ConsumeAuth(res); return null; }
             if (code == 0) return "Server tidak terjangkau.";
             string err = null;
             try { err = string.IsNullOrEmpty(res) ? null : JsonUtility.FromJson<ErrorRes>(res)?.error; } catch { }
+            if (code == 429) return "Terlalu banyak percobaan. Coba lagi sebentar.";
+            if (code == 403) return "Perangkat tidak cocok dengan akun guest ini.";
             return code == 409 ? "Username sudah dipakai." : (err ?? "Gagal mendaftarkan akun.");
         }
 

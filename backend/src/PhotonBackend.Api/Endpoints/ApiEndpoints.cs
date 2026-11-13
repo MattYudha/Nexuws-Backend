@@ -12,7 +12,7 @@ namespace PhotonBackend.Api.Endpoints;
 public sealed record GuestLoginRequest(string? DeviceId, string? DisplayName, bool? IsTest = null);
 public sealed record RegisterRequest(string? Username, string? Password, string? DisplayName, bool? IsTest = null);
 public sealed record LoginRequest(string? Username, string? Password);
-public sealed record UpgradeRequest(string? Username, string? Password, string? DisplayName); // K-10: guest → akun
+public sealed record UpgradeRequest(string? Username, string? Password, string? DeviceId); // K-10: guest → akun (Q62: deviceId wajib cocok)
 public sealed record FactionRequest(int Faction);
 public sealed record AdminFactionRequest(Guid PlayerId, int Faction, string? AdminSource = null);
 public sealed record ReportResultRequest(string? GameId, int Slot, int ScoreLeft, int ScoreRight, int Kills = 0, int Deaths = 0, int Assists = 0, int HeroId = 0, string? Mode = null, int DurationSec = 0, int PartySize = 1, List<ReportPlayer>? Players = null,
@@ -26,13 +26,13 @@ public static class ApiEndpoints
     {
         var api = app.MapGroup("/api");
 
-        api.MapPost("/auth/guest", GuestLogin);
-        api.MapPost("/auth/register", Register);
-        api.MapPost("/auth/login", Login);
+        api.MapPost("/auth/guest", GuestLogin).RequireRateLimiting("guest");   // Q61
+        api.MapPost("/auth/register", Register).RequireRateLimiting("auth");
+        api.MapPost("/auth/login", Login).RequireRateLimiting("auth");
 
         var secured = api.MapGroup("").RequireAuthorization();
         secured.MapGet("/me", Me);
-        secured.MapPost("/auth/upgrade", UpgradeGuest); // K-10: guest → akun, progres terbawa
+        secured.MapPost("/auth/upgrade", UpgradeGuest).RequireRateLimiting("auth"); // K-10: guest → akun, progres terbawa
         secured.MapPost("/me/faction", SetFaction);
         secured.MapGet("/matches", MyMatches);
         secured.MapGet("/me/rank", MyRank);
@@ -88,6 +88,8 @@ public static class ApiEndpoints
         return Results.Ok(AuthPayload(player, tokens));
     }
 
+    private static readonly Lazy<string> TimingDummyHash = new(() => new PasswordHasher<Player>().HashPassword(new Player(), "timing-dummy-password"));
+
     private static IResult? CredentialError(string username, string password, string name)
     {
         if (username.Length is < 3 or > 24) return Results.BadRequest(new { error = "username must be 3-24 characters." });
@@ -104,10 +106,13 @@ public static class ApiEndpoints
         var p = await db.Players.FirstOrDefaultAsync(x => x.Id == PlayerId(user), ct);
         if (p is null) return Results.NotFound();
         if (p.Username is not null) return Results.Conflict(new { error = "akun ini sudah terdaftar." });
+        // Q62: token guest saja tidak cukup — pemanggil harus memegang deviceId guest itu (token bocor ≠ akun terkunci).
+        if (string.IsNullOrEmpty(p.DeviceId) || !PhotonEndpoints.SecretsEqual(p.DeviceId, req.DeviceId?.Trim() ?? ""))
+            return Results.Json(new { error = "perangkat tidak cocok." }, statusCode: StatusCodes.Status403Forbidden);
 
         var username = req.Username?.Trim() ?? "";
         var password = req.Password ?? "";
-        var name = req.DisplayName?.Trim() is { Length: > 0 } dn ? dn : p.DisplayName;
+        var name = p.DisplayName; // Q63: nama tampil tidak diganti lewat upgrade
         if (CredentialError(username, password, name) is { } bad) return bad;
         if (await db.Players.AnyAsync(x => x.Username == username, ct))
             return Results.Conflict(new { error = "username already taken." });
@@ -132,7 +137,10 @@ public static class ApiEndpoints
 
         var player = await db.Players.FirstOrDefaultAsync(p => p.Username == username, ct);
         if (player is null || player.PasswordHash is null)
+        {
+            hasher.VerifyHashedPassword(new Player(), TimingDummyHash.Value, password); // Q66: samakan waktu → tak bisa enumerasi username
             return Results.Json(new { error = "invalid credentials." }, statusCode: StatusCodes.Status401Unauthorized);
+        }
 
         var ok = hasher.VerifyHashedPassword(player, player.PasswordHash, password);
         if (ok == PasswordVerificationResult.Failed)

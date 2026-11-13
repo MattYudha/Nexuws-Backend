@@ -651,7 +651,7 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.OK, (await guest.PostAsJsonAsync("/api/me/faction", new { faction = 2 })).StatusCode);
         await factory.SeedFinishedRankedAsync(g.PlayerId, 2);
 
-        var up = await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "upgraded_user", password = "secret123" });
+        var up = await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "upgraded_user", password = "secret123", deviceId = "device-upgrade-guest-01" });
         Assert.Equal(HttpStatusCode.OK, up.StatusCode);
         var body = await up.Content.ReadFromJsonAsync<JsonElement>(Web);
         Assert.Equal(g.PlayerId, body.GetProperty("playerId").GetGuid());   // Player SAMA
@@ -666,7 +666,7 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(2, rank.GetProperty("rankedMatches").GetInt32());
 
         // Upgrade kedua ditolak; deviceId lama tak lagi membuka akun berpassword.
-        Assert.Equal(HttpStatusCode.Conflict, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "other_name", password = "secret123" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "other_name", password = "secret123", deviceId = "device-upgrade-guest-01" })).StatusCode);
         var (_, again) = await factory.LoginAsync("device-upgrade-guest-01", "UpGuest");
         Assert.NotEqual(g.PlayerId, again.PlayerId);
     }
@@ -677,9 +677,9 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var reg = await factory.CreateClient().PostAsJsonAsync("/api/auth/register", new { username = "taken_name", password = "secret123" });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
         var (guest, _) = await factory.LoginAsync("device-upgrade-guest-02", "UpGuest2");
-        Assert.Equal(HttpStatusCode.Conflict, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "taken_name", password = "secret123" })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "ab", password = "secret123" })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "valid_name", password = "123" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "taken_name", password = "secret123", deviceId = "device-upgrade-guest-02" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "ab", password = "secret123", deviceId = "device-upgrade-guest-02" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "valid_name", password = "123", deviceId = "device-upgrade-guest-02" })).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsJsonAsync("/api/auth/upgrade", new { username = "x_name", password = "secret123" })).StatusCode);
     }
 
@@ -771,4 +771,20 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("Finished", await ReportBoth(a, b, "room-d13-battle", Battle(0), Battle(1)));
         Assert.Equal(1, (await a.GetFromJsonAsync<JsonElement>("/api/me/stats")).GetProperty("flawless").GetInt32());
     }
+
+    // Q62/Q63: upgrade butuh deviceId guest yang cocok; nama tampil tidak ikut diganti.
+    [Fact]
+    public async Task UpgradeGuest_RequiresMatchingDevice_AndKeepsName()
+    {
+        var (guest, g) = await factory.LoginAsync("device-upgrade-guest-03", "AsliNama");
+        var wrong = await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "thief_name", password = "secret123", deviceId = "device-attacker-xx" });
+        Assert.Equal(HttpStatusCode.Forbidden, wrong.StatusCode);
+        var none = await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "thief_name", password = "secret123" });
+        Assert.Equal(HttpStatusCode.Forbidden, none.StatusCode);
+
+        var ok = await guest.PostAsJsonAsync("/api/auth/upgrade", new { username = "owner_name", password = "secret123", deviceId = "device-upgrade-guest-03", displayName = "PemainTerkenal" });
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        Assert.Equal("AsliNama", (await ok.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("displayName").GetString());
+    }
+
 }

@@ -133,6 +133,7 @@ namespace Nexus
         private async void RankedMatch()
         {
             if (_backend == null || !_backend.LoggedIn) { _screen = Page.Auth; return; } // harus login dulu
+            if (_screen != Page.Menu) return; // Q76/Q78: klik ganda / sedang antre / sedang match → abaikan
             _screen = Page.Connecting; LastError = ""; OpponentFound = false; _matchMode = "ranked";
             try
             {
@@ -234,7 +235,7 @@ namespace Nexus
         {
             _backend ??= new NexusBackend(BackendUrl);
             _authBusy = true; _authMsg = "Masuk sebagai guest...";
-            bool ok = await _backend.GuestLoginAsync(DeviceId(), "Guest" + UnityEngine.Random.Range(100, 999));
+            bool ok = await _backend.GuestLoginAsync(DeviceId(), GuestName());
             _authBusy = false;
             if (ok) { _authMsg = ""; _screen = Page.Menu; }
             else _authMsg = "Server tidak dapat dihubungi (" + BackendUrl + ").";
@@ -384,11 +385,34 @@ namespace Nexus
             return list.ToArray();
         }
 
-        // Device id UNIK per-launch: editor, tiap .exe, bahkan 2 .exe di 1 mesin = akun BERBEDA → matchmaking
-        // selalu bisa pasang 2 instance (tak bisa match diri sendiri). Catatan: rating reset tiap launch
-        // (akun baru) — cukup untuk menguji loop ranked. Nanti diganti login akun stabil.
-        private static readonly string _deviceId = "nx-" + System.Guid.NewGuid().ToString("N");
-        private static string DeviceId() => _deviceId;
+        // Q60: device id guest PERSISTEN (PlayerPrefs) → guest yang sama tiap buka game (progres/faksi/rating tetap,
+        // K-10 upgrade tetap bermakna). Profil terpisah agar 2 instance di 1 mesin tetap akun BERBEDA (uji ranked):
+        // editor memakai profil "editor"; build kedua di mesin yang sama jalankan dengan argumen `-nxprofile 2`.
+        private static string ProfileKey()
+        {
+            string profile = Application.isEditor ? "editor" : "main";
+            var args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+                if (args[i] == "-nxprofile" && !string.IsNullOrWhiteSpace(args[i + 1])) profile = args[i + 1].Trim();
+            return "nx.guest." + profile;
+        }
+
+        private static string DeviceId()
+        {
+            string key = ProfileKey() + ".device";
+            string id = PlayerPrefs.GetString(key, "");
+            if (id.Length < 8) { id = "nx-" + System.Guid.NewGuid().ToString("N"); PlayerPrefs.SetString(key, id); PlayerPrefs.Save(); }
+            return id;
+        }
+
+        // Nama guest dibuat SEKALI lalu disimpan (dulu acak tiap login → nama berganti tiap launch).
+        private static string GuestName()
+        {
+            string key = ProfileKey() + ".name";
+            string name = PlayerPrefs.GetString(key, "");
+            if (name.Length == 0) { name = "Guest" + UnityEngine.Random.Range(1000, 9999); PlayerPrefs.SetString(key, name); PlayerPrefs.Save(); }
+            return name;
+        }
 
         private async Task ReportAsync(int scoreLeft, int scoreRight, int kills, int deaths, int heroId, NexusBackend.PlayerStatRow[] players,
                                        string endReason, int winnerSlot, NexusBackend.KoEventRow[] koTimeline, int durSec)
@@ -419,6 +443,7 @@ namespace Nexus
 
         private async Task ConnectSafe(string roomName)
         {
+            if (_screen != Page.Menu) return; // Q76/Q78: klik ganda / sedang antre / sedang match → abaikan
             _screen = Page.Connecting; LastError = ""; _matchMode = "battle";
             _status = roomName == null ? "Mencari lawan..." : "Membuat room " + roomName;
             try { await StartSessionAsync(roomName); }
@@ -446,6 +471,7 @@ namespace Nexus
                 CanOnlyJoin = false,
             };
             _client = await MatchmakingExtensions.ConnectToRoomAsync(connectionArguments);
+            if (_screen != Page.Connecting) { await LeaveAsync(); return; } // Q77: dibatalkan saat menyambung
 
             var sessionRunnerArguments = new SessionRunner.Arguments
             {
@@ -461,6 +487,7 @@ namespace Nexus
             };
 
             var runner = (QuantumRunner)await SessionRunner.StartAsync(sessionRunnerArguments);
+            if (_screen != Page.Connecting) { await LeaveAsync(); return; } // Q77: dibatalkan saat sesi dimulai
             runner.Game.AddPlayer(new RuntimePlayer { PlayerNickname = "Runner" + UnityEngine.Random.Range(10, 99) });
 
             _status = "";

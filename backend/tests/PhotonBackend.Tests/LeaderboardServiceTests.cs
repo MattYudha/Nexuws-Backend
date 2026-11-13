@@ -96,4 +96,17 @@ public class LeaderboardServiceTests
         Assert.Equal("SteadyRival", board[1].DisplayName);
         Assert.Equal("Rival", board[1].Tier);
     }
+
+    // Q71: kolom Matches = jumlah ranked selesai (seri ikut) = basis placement, bukan W+L.
+    [Fact]
+    public async Task Matches_CountsRankedFinished_IncludingDraws()
+    {
+        var (svc, db) = New();
+        SeedPlaced(db, "AllDraws", rating: 1500, rd: 80, wins: 0, losses: 0); // 5 ranked selesai, semuanya seri
+        await db.SaveChangesAsync();
+
+        var e = Assert.Single(await svc.GetAsync(default));
+        Assert.Equal(5, e.Matches);
+        Assert.Equal(0, e.Wins); Assert.Equal(0, e.Losses);
+    }
 }

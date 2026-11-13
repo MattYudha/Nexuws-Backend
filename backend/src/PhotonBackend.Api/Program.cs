@@ -1,4 +1,6 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PhotonBackend.Api;
@@ -45,6 +47,19 @@ builder.Services
         o.TokenValidationParameters = new TokenService(Options.Create(jwt)).ValidationParameters;
     });
 builder.Services.AddAuthorization();
+
+// Q61: rate limit per IP. "auth" = login/register/upgrade (anti brute force), "guest" = pembuatan guest (anti flood DB).
+var authPerMin = builder.Configuration.GetValue("RateLimit:AuthPerMinute", 10);
+var guestPerMin = builder.Configuration.GetValue("RateLimit:GuestPerMinute", 10);
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    RateLimitPartition<string> PerIp(HttpContext ctx, int limit) => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+    o.AddPolicy("auth", ctx => PerIp(ctx, authPerMin));
+    o.AddPolicy("guest", ctx => PerIp(ctx, guestPerMin));
+});
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
 
 var app = builder.Build();
@@ -92,6 +107,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapHealthChecks("/health");
 app.MapApi();

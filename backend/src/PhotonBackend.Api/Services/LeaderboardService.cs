@@ -77,7 +77,7 @@ public sealed class LeaderboardService(IServiceScopeFactory scopes)
             double cons = p.Rating - 2 * p.Rd;
             int total = p.Wins + p.Losses;
             double wr = total > 0 ? Math.Round(100.0 * p.Wins / total, 1) : 0;
-            rows.Add((tier, dispOrder, pts, wr, total, p.Id, p.DisplayName, p.Wins, p.Losses, cons));
+            rows.Add((tier, dispOrder, pts, wr, rm, p.Id, p.DisplayName, p.Wins, p.Losses, cons)); // Q71: Matches = ranked selesai (seri ikut), sama dgn placement
         }
 
         // Urutan posisi (docs/33, T3): TIER TAMPIL dulu (turun) → tier di papan tak pernah terbalik
