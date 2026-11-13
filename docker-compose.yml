@@ -31,7 +31,7 @@ services:
       Photon__WebhookSecret: ${PHOTON_WEBHOOK_SECRET:?set PHOTON_WEBHOOK_SECRET in .env}
       Photon__AuthSecret: ${PHOTON_AUTH_SECRET:?set PHOTON_AUTH_SECRET in .env}
       # Matchmaking: tolak versi sim berbeda (samakan dgn NexusBackend.SimVersion). Build lama → "Versi game berbeda".
-      Game__RequiredSimVersion: ${GAME_SIM_VERSION:-nx-sim-2026-10-29-1v1b}
+      Game__RequiredSimVersion: ${GAME_SIM_VERSION:-nx-sim-2026-11-13-t2}
       # Debug uji: set true agar dua akun rating jauh selalu bertemu (abaikan rentang rating).
       Game__MatchmakingIgnoreRating: ${GAME_MM_IGNORE_RATING:-false}
     ports:

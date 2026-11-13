@@ -19,8 +19,17 @@
             <ui:Instance template="TopBar" />
 
             <ui:VisualElement class="nxl-row" style="flex-grow: 1; align-items: stretch; padding-top: 16px; padding-bottom: 16px;">
-                <!-- Kiri dikosongkan untuk scene (chat mengambang di kiri-bawah). -->
-                <ui:VisualElement class="nxl-spacer" />
+                <!-- Kiri-atas: Pengumuman/Event (docs/31 §1.7, /api/announcements). Kosong/gagal = pesan jujur, tanpa dummy. -->
+                <ui:VisualElement name="ann-panel" class="nxl-ann">
+                    <ui:Label text="PENGUMUMAN" class="nxl-ann-head" />
+                    <ui:VisualElement name="ann-list" />
+                </ui:VisualElement>
+                <!-- Tengah: hero terakhir dimainkan (atau default TITAN-01). -->
+                <ui:VisualElement class="nxl-spacer nxl-lobby-herowrap" picking-mode="Ignore">
+                    <ui:VisualElement name="lobby-hero" class="nxl-lobby-hero nxl-hero-titan" picking-mode="Ignore" />
+                    <ui:Label text="TITAN-01" name="lobby-hero-name" class="nxl-lobby-heroname" picking-mode="Ignore" />
+                    <ui:Label text="Hero default" name="lobby-hero-sub" class="nxl-dim" picking-mode="Ignore" />
+                </ui:VisualElement>
                 <ui:Instance template="FriendPanel" style="margin-right: 24px;" />
             </ui:VisualElement>
 
@@ -46,13 +55,68 @@
                 <ui:Button text="TUTUP" name="btn-disc-close" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 100px; height: 34px;" />
             </ui:VisualElement>
 
-            <!-- Settings -->
+            <!-- Settings (docs/31 §1.6): 5 tab, simpan lokal (PlayerPrefs) + langsung diterapkan. Opsi tanpa sistem = Segera Hadir. -->
             <ui:VisualElement class="nxl-overlay nxl-hidden" name="settings-overlay">
-                <ui:VisualElement class="nxl-dialog">
-                    <ui:Label text="SETTINGS" class="nxl-h2" />
-                    <ui:Label text="Hubungkan: Facebook / TikTok (segera hadir)" class="nxl-dim" style="margin-top: 10px; white-space: normal; -unity-text-align: middle-center;" />
-                    <ui:Button text="LOGOUT" name="btn-logout" class="nxl-btn nxl-btn--red" style="width: 240px; height: 48px; margin-top: 16px;" />
-                    <ui:Button text="TUTUP" name="btn-settings-close" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 160px; height: 36px; margin-top: 10px;" />
+                <ui:VisualElement class="nxl-dialog nxl-set-dialog">
+                    <ui:VisualElement class="nxl-row nxl-set-head">
+                        <ui:Label text="SETTINGS" class="nxl-h2" />
+                        <ui:VisualElement class="nxl-spacer" />
+                        <ui:Button text="TUTUP" name="btn-settings-close" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 120px; height: 36px;" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="nxl-row nxl-set-tabs">
+                        <ui:Label text="GRAFIS" name="set-tab-0" class="nxl-tab nxl-tab--active" />
+                        <ui:Label text="AUDIO" name="set-tab-1" class="nxl-tab" />
+                        <ui:Label text="KONTROL" name="set-tab-2" class="nxl-tab" />
+                        <ui:Label text="ANTARMUKA" name="set-tab-3" class="nxl-tab" />
+                        <ui:Label text="AKUN" name="set-tab-4" class="nxl-tab" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="set-page-0" class="nxl-set-page">
+                        <ui:DropdownField label="Resolusi" name="set-res" class="nxl-set-field" />
+                        <ui:DropdownField label="Mode layar" name="set-mode" class="nxl-set-field" />
+                        <ui:Toggle label="VSync" name="set-vsync" class="nxl-set-field" />
+                        <ui:DropdownField label="Batas FPS" name="set-fps" class="nxl-set-field" />
+                        <ui:Label text="Batas FPS berlaku saat VSync mati." class="nxl-dim nxl-set-note" />
+                        <ui:DropdownField label="Kualitas" name="set-quality" class="nxl-set-field" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="set-page-1" class="nxl-set-page nxl-hidden">
+                        <ui:SliderInt label="Volume utama" name="set-master" low-value="0" high-value="100" show-input-field="true" class="nxl-set-field" />
+                        <ui:Toggle label="Bisukan semua" name="set-mute" class="nxl-set-field" />
+                        <ui:VisualElement class="nxl-row nxl-set-soon"><ui:Label text="Musik &amp; SFX terpisah" class="nxl-set-lbl" /><ui:Label text="SEGERA HADIR" class="nxl-soon-tag" /></ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="set-page-2" class="nxl-set-page nxl-hidden">
+                        <ui:VisualElement name="set-keys" />
+                        <ui:VisualElement class="nxl-row nxl-set-soon"><ui:Label text="Ubah tombol" class="nxl-set-lbl" /><ui:Label text="SEGERA HADIR" class="nxl-soon-tag" /></ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="set-page-3" class="nxl-set-page nxl-hidden">
+                        <ui:VisualElement class="nxl-row nxl-set-row"><ui:Label text="Bahasa" class="nxl-set-lbl" /><ui:Label text="Bahasa Indonesia" class="nxl-set-val" /></ui:VisualElement>
+                        <ui:Toggle label="Tampilkan FPS (dalam match)" name="set-showfps" class="nxl-set-field" />
+                        <ui:VisualElement class="nxl-row nxl-set-soon"><ui:Label text="Tampilkan ping" class="nxl-set-lbl" /><ui:Label text="SEGERA HADIR" class="nxl-soon-tag" /></ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="set-page-4" class="nxl-set-page nxl-hidden">
+                        <ui:VisualElement class="nxl-row nxl-set-row"><ui:Label text="Nama" class="nxl-set-lbl" /><ui:Label text="-" name="set-acc-name" class="nxl-set-val" /></ui:VisualElement>
+                        <ui:VisualElement class="nxl-row nxl-set-row"><ui:Label text="Akun" class="nxl-set-lbl" /><ui:Label text="-" name="set-acc-user" class="nxl-set-val" /></ui:VisualElement>
+                        <ui:VisualElement class="nxl-row nxl-set-row">
+                            <ui:Label text="ID" class="nxl-set-lbl" /><ui:Label text="-" name="set-acc-id" class="nxl-set-val nxl-set-id" />
+                            <ui:Button text="SALIN" name="set-acc-copy" class="nxl-btn nxl-btn--gray nxl-btn--sm" style="width: 90px; height: 32px;" />
+                        </ui:VisualElement>
+                        <!-- K-10: guest → akun (progres terbawa). Hanya tampil untuk guest. -->
+                        <ui:VisualElement name="set-upgrade" class="nxl-set-upgrade">
+                            <ui:Label text="Daftarkan akun — faksi, rating &amp; riwayat ikut terbawa" class="nxl-set-lbl" style="white-space: normal;" />
+                            <ui:Label text="Username" class="nxl-field-label" />
+                            <ui:TextField name="set-up-user" class="nxl-input" />
+                            <ui:Label text="Password" class="nxl-field-label" />
+                            <ui:TextField name="set-up-pass" class="nxl-input" />
+                            <ui:Label text="" name="set-up-msg" class="nxl-dim" style="white-space: normal; margin-top: 6px;" />
+                            <ui:Button text="DAFTARKAN" name="set-up-btn" class="nxl-btn nxl-btn--orange" style="height: 44px; margin-top: 8px;" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="nxl-row nxl-set-soon"><ui:Label text="Hubungkan Facebook / TikTok" class="nxl-set-lbl" /><ui:Label text="SEGERA HADIR" class="nxl-soon-tag" /></ui:VisualElement>
+                        <ui:Button text="LOGOUT" name="btn-logout" class="nxl-btn nxl-btn--red" style="height: 44px; margin-top: 14px;" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
 

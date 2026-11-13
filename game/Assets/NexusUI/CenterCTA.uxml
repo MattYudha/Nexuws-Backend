@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <!-- Float bawah-tengah: slider 4 mode (Ranked/Battle/Faction War/Nexus Cup) + dots + SATU tombol utama.
+    <!-- Float bawah-tengah: slider ANTREAN (T3-5): Ranked / Battle / 1 teaser (Faction War · Nexus Cup) + dots + SATU tombol utama.
          Rank/mode info kontekstual di atas MAIN. HQ & Plaza = tombol akses terpisah (bukan slider). -->
     <ui:VisualElement class="nxl-cta-float" name="center-cta" picking-mode="Ignore">
         <ui:VisualElement class="nxl-row" style="align-items: center;">
@@ -13,6 +13,11 @@
                 <ui:Button name="btn-plaza" class="nxl-access-btn" tooltip="Plaza" style="margin-top: 8px;">
                     <ui:Label text="PZ" class="nxl-access-ic" />
                     <ui:Label text="PLAZA" class="nxl-access-lbl" />
+                </ui:Button>
+                <!-- T3-5: Street Room = room browser 1v1–3v3 tanpa MMR (tombol sendiri, bukan slider). -->
+                <ui:Button name="btn-street" class="nxl-access-btn" tooltip="Street Room" style="margin-top: 8px;">
+                    <ui:Label text="SR" class="nxl-access-ic" />
+                    <ui:Label text="STREET" class="nxl-access-lbl" />
                 </ui:Button>
             </ui:VisualElement>
 

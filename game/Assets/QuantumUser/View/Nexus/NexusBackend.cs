@@ -121,6 +121,37 @@ namespace Nexus
             return LoggedIn;
         }
 
+        [Serializable] private sealed class UpgradeReq { public string username; public string password; public string displayName; }
+        [Serializable] private sealed class ErrorRes { public string error; }
+
+        /// <summary>
+        /// K-10: guest → akun terdaftar pada Player yang SAMA (faksi/rating/riwayat terbawa). Sukses → token & username baru.
+        /// Return null bila sukses, atau pesan error (username dipakai, input salah, server mati).
+        /// </summary>
+        public async Task<string> UpgradeAccountAsync(string username, string password)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, "/api/auth/upgrade")
+            { Content = new StringContent(JsonUtility.ToJson(new UpgradeReq { username = username, password = password }), Encoding.UTF8, "application/json") };
+            var (code, res) = await SendRawAsync(req, auth: true);
+            if (code >= 200 && code < 300) { await ConsumeAuth(res); return null; }
+            if (code == 0) return "Server tidak terjangkau.";
+            string err = null;
+            try { err = string.IsNullOrEmpty(res) ? null : JsonUtility.FromJson<ErrorRes>(res)?.error; } catch { }
+            return code == 409 ? "Username sudah dipakai." : (err ?? "Gagal mendaftarkan akun.");
+        }
+
+        [Serializable] public sealed class AnnouncementRow { public string id; public string kind; public string title; public string body; public string startsAt; public string endsAt; }
+        [Serializable] private sealed class AnnouncementWrap { public AnnouncementRow[] items; }
+
+        /// <summary>Pengumuman aktif (publik). null = GAGAL memuat (beda dengan array kosong = memang tidak ada) — Q45.</summary>
+        public async Task<AnnouncementRow[]> GetAnnouncementsAsync()
+        {
+            var res = await GetAsync("/api/announcements");
+            if (res == null) return null;
+            try { return JsonUtility.FromJson<AnnouncementWrap>("{\"items\":" + res + "}")?.items ?? Array.Empty<AnnouncementRow>(); }
+            catch { return null; }
+        }
+
         /// <summary>Kunci faksi (1 ORDE / 2 LEGION). true = sukses; false = ditolak (terkunci) / backend mati.</summary>
         public async Task<bool> SetFactionAsync(int faction)
         {
@@ -141,7 +172,7 @@ namespace Nexus
 
         // ---------- Matchmaking ----------
         // Versi simulasi — BUMP tiap kali Nexus.qtn / logika sim berubah (harus sama dgn Game:RequiredSimVersion backend).
-        public const string SimVersion = "nx-sim-2026-10-29-1v1b";
+        public const string SimVersion = "nx-sim-2026-11-13-t2"; // T2: C4 + akhir match + koTimeline
 
         public async Task<Matchmaking> JoinQueueAsync(string region, string buildVersion)
         {

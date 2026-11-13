@@ -247,7 +247,7 @@ namespace Nexus
             GUI.Label(new Rect(10, 10, 900, 24), "SPIKE Nexus 5v5 — WASD gerak · J pukul/tembak · K skill · Space lompat · Shift dash · L guard · H ganti hero.");
             int fps = (int)(1f / Mathf.Max(0.0001f, Time.smoothDeltaTime));
             var score = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold };
-            GUI.Label(new Rect(10, 30, 900, 26), $"TIM BIRU  {frame.Global->ScoreA}  :  {frame.Global->ScoreB}  TIM ORANYE   (menang di {NxCombatSystem.KoTarget} KO)   |   FPS: {fps}", score);
+            GUI.Label(new Rect(10, 30, 900, 26), $"TIM BIRU  {frame.Global->ScoreA}  :  {frame.Global->ScoreB}  TIM ORANYE   (menang di {NxCombatSystem.KoTarget} KO){(NexusSettings.ShowFps ? $"   |   FPS: {fps}" : "")}", score);
 
             float y = 54;
             foreach (var (entity, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())

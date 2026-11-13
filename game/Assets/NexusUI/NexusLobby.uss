@@ -649,3 +649,43 @@
 .nxl-facbadge--orde   { color: rgb(21,21,26); background-color: rgb(245,243,236); border-color: rgb(174,185,201); }  /* ivory + platinum */
 .nxl-facbadge--legion { color: rgb(198,240,0); background-color: rgb(21,21,26); border-color: rgb(198,240,0); }       /* onyx + volt */
 .nxl-facbadge--none { display: none; }
+
+/* ================= Poin d (NX-13): Settings, Segera Hadir, Pengumuman, hero lobby ================= */
+.nxl-set-dialog { width: 640px; max-height: 88%; align-items: stretch; }
+.nxl-set-head { align-items: center; }
+.nxl-set-tabs { margin-top: 14px; margin-bottom: 12px; }
+.nxl-set-page { flex-grow: 1; }
+.nxl-set-field { margin-top: 6px; margin-bottom: 6px; font-size: 16px; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-body); }
+.nxl-set-field > .unity-label { min-width: 200px; font-size: 16px; color: var(--nxl-text-2); }
+.nxl-set-row { align-items: center; min-height: 40px; }
+.nxl-set-lbl { min-width: 200px; font-size: 16px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-body); }
+.nxl-set-val { flex-grow: 1; font-size: 16px; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-head); }
+.nxl-set-id { font-size: 16px; overflow: hidden; text-overflow: ellipsis; }
+.nxl-set-note { font-size: 16px; margin-left: 200px; }
+.nxl-set-soon { align-items: center; min-height: 40px; opacity: 0.6; }
+.nxl-set-key { flex-direction: row; min-height: 34px; align-items: center; }
+.nxl-set-keycap { min-width: 90px; font-size: 16px; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-title); -unity-text-align: middle-center;
+    background-color: rgba(0, 0, 0, 0.35); border-radius: 6px; margin-right: 14px; padding-top: 2px; padding-bottom: 2px; }
+.nxl-set-upgrade { margin-top: 12px; padding-top: 12px; border-top-width: 1px; border-top-color: var(--nxl-border-dim); }
+
+/* Tombol belum berfungsi: nonaktif + tag "SEGERA HADIR" (aturan: tombol tampil = berfungsi, atau nonaktif + Segera Hadir) */
+.nxl-soon { opacity: 0.55; }
+.nxl-soon-tag { font-size: 16px; -unity-font-style: bold; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-head);
+    background-color: var(--nx-badge-bg); border-radius: 6px; padding-left: 6px; padding-right: 6px; -unity-text-align: middle-center; }
+.nxl-soon-tag--float { position: absolute; top: -12px; left: 50%; translate: -50% 0; white-space: nowrap; }
+
+/* Pengumuman (kiri-atas lobby) */
+.nxl-ann { width: 340px; margin-left: 24px; align-self: flex-start; background-color: rgba(15, 30, 60, 0.55); border-radius: 12px;
+    padding-left: 14px; padding-right: 14px; padding-top: 12px; padding-bottom: 12px; }
+.nxl-ann-head { font-size: 16px; -unity-font-definition: var(--nxl-font-head); color: var(--nxl-text-2); letter-spacing: 1px; }
+.nxl-ann-item { margin-top: 10px; }
+.nxl-ann-kind { font-size: 16px; -unity-font-definition: var(--nxl-font-head); color: var(--nxl-cyan); }
+.nxl-ann-title { font-size: 18px; -unity-font-definition: var(--nxl-font-title); color: var(--nxl-text); white-space: normal; }
+.nxl-ann-body { font-size: 16px; color: var(--nxl-text-2); white-space: normal; margin-top: 2px; }
+.nxl-ann-empty { font-size: 16px; color: var(--nxl-text-2); margin-top: 10px; white-space: normal; }
+
+/* Hero terakhir dimainkan (tengah lobby) */
+.nxl-lobby-herowrap { align-items: center; justify-content: center; }
+.nxl-lobby-hero { width: 300px; height: 330px; -unity-background-scale-mode: scale-to-fit; }
+.nxl-lobby-heroname { font-size: 22px; -unity-font-definition: var(--nxl-font-title); color: var(--nxl-text); margin-top: 6px; }
+

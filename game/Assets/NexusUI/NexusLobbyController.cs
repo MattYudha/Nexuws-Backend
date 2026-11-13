@@ -11,7 +11,7 @@ namespace Nexus
     /// nama/level/rank dari NexusBackend, chat echo lokal.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
-    public sealed class NexusLobbyController : MonoBehaviour
+    public sealed partial class NexusLobbyController : MonoBehaviour
     {
         [Tooltip("NexusGame (matchmaking + akun). Auto-cari bila kosong.")]
         public NexusGame game;
@@ -90,8 +90,7 @@ namespace Nexus
             {
                 new ModeDef { Title = "RANKED",      Desc = "Solo 1v1 · Kompetitif",      Primary = "MAIN",         Ranked = true,   Act = () => game.UiRanked() },
                 new ModeDef { Title = "BATTLE",      Desc = "Casual · tanpa peringkat",   Primary = "QUICK JOIN",   Room = true,     Act = () => game.UiQuickMatch() },
-                new ModeDef { Title = "FACTION WAR", Desc = "Perang faksi — Segera Hadir", Primary = "SEGERA HADIR", Disabled = true, Act = () => { } },
-                new ModeDef { Title = "NEXUS CUP",   Desc = "Turnamen — Segera Hadir",    Primary = "SEGERA HADIR", Disabled = true, Act = () => { } },
+                new ModeDef { Title = "FACTION WAR · NEXUS CUP", Desc = "Mode 5v5 — Segera Hadir", Primary = "SEGERA HADIR", Disabled = true, Act = () => { } },
             };
 
             _name = _root.Q<Label>("player-name");
@@ -139,8 +138,7 @@ namespace Nexus
 
             Click("mode-prev", () => CycleMode(-1));
             Click("mode-next", () => CycleMode(1));
-            Click("btn-hq", () => { });     // Squad HQ — Segera Hadir
-            Click("btn-plaza", () => { });  // Plaza — Segera Hadir
+            // HQ / Plaza / Street Room / bottom nav / Mail: nonaktif + "SEGERA HADIR" (BindSoon).
             Click("btn-create-room", () => { if (game != null) game.UiCreateRoom(); });
             Click("party-back", LeaveParty);
             Click("party-start", StartParty);
@@ -154,7 +152,7 @@ namespace Nexus
             ClickEl("ltab-matches", () => ShowLadderTab(0));
             ClickEl("ltab-top", () => ShowLadderTab(1));
             ClickEl("ltab-graph", () => ShowLadderTab(2));
-            Click("settings", () => ShowEl(_settingsOverlay, true));
+            Click("settings", OpenSettings);
             Click("btn-logout", () => { ShowEl(_settingsOverlay, false); if (game != null) game.UiLogout(); });
             Click("btn-settings-close", () => ShowEl(_settingsOverlay, false));
             Click("btn-search-cancel", () => { if (game != null) game.UiCancel(); });
@@ -203,6 +201,7 @@ namespace Nexus
             Click("fac-confirm", () => { if (game != null && _facSelected != 0) game.UiSetFaction(_facSelected); });
 
             ShowEl(_searchOverlay, false); ShowEl(_discBanner, false); ShowEl(_settingsOverlay, false);
+            BindSoon(); BindSettings();
             ApplyMode(); RefreshAccount();
             _bound = true;
         }
@@ -249,6 +248,9 @@ namespace Nexus
             }
             ShowEl(_factionScreen, false);
 
+            if (_settingsOverlay != null && _settingsOverlay.resolvedStyle.display == DisplayStyle.Flex && Input.GetKeyDown(KeyCode.Escape))
+            { ShowEl(_settingsOverlay, false); return; }
+
             // Ruang Tim: aktif saat party terbuka — di menu ATAU sedang mencari lawan.
             bool partyActive = _inParty && (game.IsMenu || game.IsConnecting);
             ShowEl(_partyScreen, partyActive);
@@ -285,6 +287,7 @@ namespace Nexus
             if (err && _discMsg != null) _discMsg.text = game.LastError;
 
             if (game.IsMenu && Time.unscaledTime >= _nextAccountRefresh) { RefreshAccount(); _nextAccountRefresh = Time.unscaledTime + 1f; }
+            if (game.IsMenu && !partyActive && Time.unscaledTime >= _nextLobbyFetch) { FetchLobbyData(); _nextLobbyFetch = Time.unscaledTime + 60f; }
         }
 
         private void ApplyScreen(int st)
@@ -301,6 +304,7 @@ namespace Nexus
             else if (st != 1) ShowEl(_lobbyBody, false);
             if (st != 1) { ShowEl(_factionScreen, false); _facSelected = 0; _facNeeds = -1; } // reset onboarding di luar lobby
             if (st == 0) _wasConnecting = false;
+            if (st == 1) _nextLobbyFetch = 0f; // kembali ke lobby (mis. habis match) → muat ulang pengumuman & hero terakhir
         }
 
         // --- Onboarding faksi (docs/35) ---
@@ -811,13 +815,17 @@ namespace Nexus
             var m = _modes[_mode];
             if (_modeTitle != null) _modeTitle.text = m.Title;
             if (_modeDesc != null) _modeDesc.text = m.Desc;
-            if (_primary != null) { _primary.text = "MAIN"; _primary.SetEnabled(true); } // MAIN buka Ruang Tim (semua mode)
+            if (_primary != null) { _primary.text = m.Disabled ? m.Primary : "MAIN"; _primary.SetEnabled(!m.Disabled); } // teaser: nonaktif + SEGERA HADIR
             ShowEl(_createRoom, false);            // Create Room pindah ke Ruang Tim
             ShowEl(_rankMini, m.Ranked);          // rank kontekstual hanya mode Ranked
             ShowEl(_modeDesc, !m.Ranked);         // selain Ranked: deskripsi mode
             if (_dots != null)
                 for (int i = 0; i < _dots.Length; i++)
-                    if (_dots[i] != null) _dots[i].EnableInClassList("nxl-dot--active", i == _mode);
+                {
+                    if (_dots[i] == null) continue;
+                    ShowEl(_dots[i], i < _modes.Length);
+                    _dots[i].EnableInClassList("nxl-dot--active", i == _mode);
+                }
         }
 
         private void RefreshAccount()
