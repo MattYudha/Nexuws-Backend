@@ -13,7 +13,7 @@ namespace Nexus
     /// </summary>
     public class NexusGame : MonoBehaviour
     {
-        private enum Page { Auth, Menu, Profile, Connecting, InMatch }
+        private enum Page { Auth, Menu, Profile, Connecting, InMatch, Result }
 
         [Tooltip("RuntimeConfig (Map + Nexus SystemsConfig) — di-wire oleh NexusSetup.CreateOnlineScene.")]
         public RuntimeConfig RuntimeConfig = new RuntimeConfig();
@@ -55,9 +55,20 @@ namespace Nexus
         public bool IsProfile => _screen == Page.Profile;
         public void UiProfileBack() { _screen = Page.Menu; }
 
+        // --- Layar hasil UITK (NX-14 / poin e): Detail Match v2 mode Result menggantikan kotak IMGUI. ---
+        public bool IsResult => _screen == Page.Result;
+        /// <summary>gameId match yang baru selesai → ProfileController mencarinya di riwayat lalu membuka Detail Match (Result).</summary>
+        public string ResultGameId { get; private set; } = "";
+        /// <summary>Ringkasan teks (cadangan bila match belum/tidak tercatat: lawan belum lapor, Disputed, server mati).</summary>
+        public string ResultText { get; private set; } = "";
+        public void UiResultContinue() { if (_screen == Page.Result) _screen = Page.Menu; }
+        private bool _finishedMatch; // pernah menyelesaikan match di sesi ini (pemicu layar faksi, NX-15)
+
         // --- Faksi: onboarding UITK sebelum lobby (docs/35). Guest ikut memilih; terkunci satu season. ---
         public int Faction => _backend?.Faction ?? 0;
-        public bool NeedsFaction => IsMenu && _backend != null && _backend.LoggedIn && _backend.Faction == 0;
+        // NX-15 (T3-6): layar faksi muncul SETELAH hasil match pertama — pemain baru langsung ke lobby & main dulu.
+        public bool NeedsFaction => IsMenu && _backend != null && _backend.LoggedIn && _backend.Faction == 0
+                                    && (_backend.MatchesPlayed > 0 || _finishedMatch);
         public bool FactionBusy { get; private set; }
         public string FactionMsg { get; private set; } = "";
         public async void UiSetFaction(int f)
@@ -394,6 +405,16 @@ namespace Nexus
             // Q43: semua retry gagal → katakan terus terang, jangan tampil seolah tercatat.
             string note = status == null ? "\n⚠ Hasil BELUM tercatat — server tidak terjangkau." : "";
             _resultText = $"{head}\nKamu: {kills} Kill / {deaths} Death\nRating: {_backend.Rating} ({_backend.RankTier}){note}";
+            _finishedMatch = true;
+
+            // NX-14: beri waktu banner akhir di arena (~1,5 dtk), lalu keluar room → halaman Result (UITK).
+            if (!UseNewProfile) return; // mode lama: kotak IMGUI di OnGUI
+            await Task.Delay(1500);
+            if (_screen != Page.InMatch) return; // pemain sudah Leave sendiri
+            string gid = _gameId, text = _resultText;
+            await LeaveAsync();
+            ResultGameId = gid; ResultText = text;
+            _screen = Page.Result;
         }
 
         private async Task ConnectSafe(string roomName)
@@ -485,12 +506,13 @@ namespace Nexus
 
             if (_screen == Page.Auth) { if (!UseNewLobby) DrawAuth(w); return; } // UITK auth saat UseNewLobby
             if (_screen == Page.Profile) { if (!UseNewProfile) DrawProfile(w); return; } // UITK profil saat UseNewProfile
+            if (_screen == Page.Result) return;  // digambar ProfileController (Detail Match v2, mode Result)
 
             if (_screen == Page.InMatch)
             {
                 if (GUI.Button(new Rect(w - 100, 10, 90, 34), "Leave")) { _ = LeaveAsync(); _screen = Page.Menu; }
                 if (GUI.Button(new Rect(w - 260, 10, 150, 34), _lag ? "Lag 150ms: ON" : "Lag 150ms: OFF")) ToggleLag();
-                if (_resultText.Length > 0)
+                if (_resultText.Length > 0 && !UseNewProfile) // UITK: halaman Result (NX-14)
                 {
                     GUI.Box(new Rect(w / 2 - 190, 150, 380, 130), "HASIL RANKED");
                     GUI.Label(new Rect(w / 2 - 175, 178, 350, 80), _resultText);

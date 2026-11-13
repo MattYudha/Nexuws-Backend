@@ -96,9 +96,17 @@ namespace Nexus
             if (!_bound) { TryBind(); if (!_bound) return; }
             if (game == null) return;
 
-            bool show = game.IsProfile;
+            bool result = game.IsResult;                       // NX-14: layar hasil pasca-match
+            bool show = game.IsProfile || result;
             if (_profileRoot != null) _profileRoot.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
-            if (!show) { _statsFetched = false; _histFetched = false; return; }
+            if (!show) { _statsFetched = false; _histFetched = false; _resultFlow = false; return; }
+            if (result)
+            {
+                if (!_resultFlow) { _resultFlow = true; ShowResult(); }
+                if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Return)) ContinueFromResult();
+                return;
+            }
+            _resultFlow = false;
 
             if (Input.GetKeyDown(KeyCode.Escape)) { if (_detailOpen) { CloseDetail(); return; } Close(); return; }
             if (Time.unscaledTime >= _nextFill) { Fill(); _nextFill = Time.unscaledTime + 0.5f; }
@@ -116,6 +124,57 @@ namespace Nexus
         }
 
         private void CloseDetail() { if (_histDetail != null) ShowEl(_histDetail, false); _detailOpen = false; }
+
+        // ---- NX-14: layar hasil = Detail Match v2 mode Result ----
+        private bool _resultFlow;
+
+        private void ContinueFromResult()
+        {
+            CloseDetail();
+            if (game != null) game.UiResultContinue(); // → lobby (lalu layar faksi bila match pertama & belum berfaksi, NX-15)
+        }
+
+        // Cari match yang baru selesai di riwayat. Riwayat hanya berisi match Finished → bila lawan belum melapor,
+        // coba lagi tiap 1 dtk (maks ~15 dtk). Tak ketemu → ringkasan teks jujur (belum tercatat / tidak dihitung).
+        private async void ShowResult()
+        {
+            ResultPlaceholder("MEMUAT HASIL...", game.ResultText, false);
+            var b = game.Backend;
+            string gid = game.ResultGameId;
+            for (int i = 0; i < 15 && b != null && !string.IsNullOrEmpty(gid); i++)
+            {
+                var rows = await b.GetMatchHistoryAsync();
+                if (!game.IsResult) return;                                  // pemain sudah lanjut
+                if (rows != null)
+                    foreach (var r in rows)
+                        if (r.gameId == gid) { OpenDetail(r, DetailMode.Result); return; }
+                await System.Threading.Tasks.Task.Delay(1000);
+                if (!game.IsResult) return;
+            }
+            ResultPlaceholder("HASIL MATCH", game.ResultText,
+                true, "Rincian belum tersedia: hasil belum tercatat (lawan belum melapor, tidak dihitung, atau server tak terjangkau). Cek Riwayat nanti.");
+        }
+
+        private void ResultPlaceholder(string title, string body, bool canContinue, string note = null)
+        {
+            if (_histDetail == null) return;
+            _detailMode = DetailMode.Result;
+            _histDetail.Clear();
+            var banner = new VisualElement(); banner.AddToClassList("nxl-dtx-banner");
+            var t = new Label(title); t.AddToClassList("nxl-dtx-res"); banner.Add(t);
+            if (!string.IsNullOrEmpty(body)) { var bd = new Label(body); bd.AddToClassList("nxl-dtx-meta"); bd.style.whiteSpace = WhiteSpace.Normal; banner.Add(bd); }
+            if (!string.IsNullOrEmpty(note)) { var n = new Label(note); n.AddToClassList("nxl-dtx-meta"); n.style.whiteSpace = WhiteSpace.Normal; n.style.marginTop = 16; banner.Add(n); }
+            _histDetail.Add(banner);
+            if (canContinue)
+            {
+                var foot = new VisualElement(); foot.AddToClassList("nxl-dtx-foot");
+                var sp = new VisualElement(); sp.style.flexGrow = 1; foot.Add(sp);
+                var cta = new Button(ContinueFromResult) { text = "LANJUT" };
+                cta.AddToClassList("nxl-btn"); cta.AddToClassList("nxl-btn--orange"); cta.style.width = 180; cta.style.height = 46;
+                foot.Add(cta); _histDetail.Add(foot);
+            }
+            ShowEl(_histDetail, true); _detailOpen = true;
+        }
 
         private void Fill()
         {
@@ -357,7 +416,7 @@ namespace Nexus
             cp.AddToClassList("nxl-btn"); cp.AddToClassList("nxl-btn--gray"); cp.style.marginLeft = 8; cp.style.height = 30; cp.style.width = 80;
             var fsp = new VisualElement(); fsp.style.flexGrow = 1;
             Button cta = (mode == DetailMode.Result)
-                ? new Button(CloseDetail) { text = "LANJUT" }
+                ? new Button(ContinueFromResult) { text = "LANJUT" }   // NX-14: kembali ke lobby
                 : new Button(CloseDetail) { text = "KEMBALI" };
             cta.AddToClassList("nxl-btn"); cta.AddToClassList(mode == DetailMode.Result ? "nxl-btn--orange" : "nxl-btn--gray");
             cta.style.width = 180; cta.style.height = 46;
