@@ -70,8 +70,10 @@ public static class ApiEndpoints
         var password = req.Password ?? "";
         var name = req.DisplayName?.Trim() is { Length: > 0 } dn ? dn : username;
         if (CredentialError(username, password, name) is { } bad) return bad;
+        if (!NameRules.HasLetterOrDigit(name)) return Results.BadRequest(new { error = "nama harus memuat huruf atau angka." }); // Q89
         if (NameRules.IsReserved(name)) return Results.BadRequest(new { error = "nama tidak diizinkan." });
         var norm = NameRules.Normalize(name);
+        if (norm.Length > 24) return Results.BadRequest(new { error = "displayName must be 1-24 characters." }); // NFKC bisa memanjangkan
         if (await db.Players.AnyAsync(p => p.NormalizedName == norm, ct))
             return Results.Conflict(new { error = "nama sudah dipakai." });
 
@@ -98,7 +100,8 @@ public static class ApiEndpoints
         async Task<bool> Free(string n)
         {
             var norm = NameRules.Normalize(n);
-            return !NameRules.IsReserved(n) && !await db.Players.AnyAsync(p => p.NormalizedName == norm && p.Id != self, ct);
+            return norm.Length <= 24 && NameRules.HasLetterOrDigit(n) && !NameRules.IsReserved(n)
+                   && !await db.Players.AnyAsync(p => p.NormalizedName == norm && p.Id != self, ct);
         }
         if (await Free(wanted)) return wanted;
         for (int i = 0; i < 20; i++)
@@ -339,7 +342,8 @@ public static class ApiEndpoints
         {
             // Ganti nama hanya bila bebas & tidak terlarang; selain itu pertahankan nama lama.
             var norm = NameRules.Normalize(name);
-            if (!NameRules.IsReserved(name) && !await db.Players.AnyAsync(p => p.NormalizedName == norm && p.Id != player.Id, ct))
+            if (norm.Length <= 24 && NameRules.HasLetterOrDigit(name) && !NameRules.IsReserved(name)
+                && !await db.Players.AnyAsync(p => p.NormalizedName == norm && p.Id != player.Id, ct))
             { player.DisplayName = name; player.NormalizedName = norm; }
         }
 
@@ -349,9 +353,24 @@ public static class ApiEndpoints
         }
         catch (DbUpdateException)
         {
-            // Two first-time logins for the same device raced; the winner's row is the one to use.
+            // Dua sebab bentrok index unik: (a) login pertama device yang sama berbarengan → pakai baris pemenang;
+            // (b) Q91: dua guest BARU berebut nama yang sama → coba sekali lagi dengan nama Guest yang bebas.
             db.Entry(player).State = EntityState.Detached;
-            player = await db.Players.FirstAsync(p => p.DeviceId == deviceId, ct);
+            var winner = await db.Players.FirstOrDefaultAsync(p => p.DeviceId == deviceId, ct);
+            if (winner is not null) player = winner;
+            else
+            {
+                var retryName = await FreeGuestNameAsync(db, "Guest" + Random.Shared.Next(1000, 1_000_000), null, ct);
+                player = new Player
+                {
+                    DeviceId = deviceId, DisplayName = retryName, NormalizedName = NameRules.Normalize(retryName),
+                    Rating = game.Value.StartRating, Rd = game.Value.StartRd, Volatility = game.Value.StartVolatility,
+                    IsTestAccount = game.Value.AllowTestAccounts && (req.IsTest ?? false),
+                };
+                db.Players.Add(player);
+                try { await db.SaveChangesAsync(ct); }
+                catch (DbUpdateException) { return Results.Json(new { error = "server sibuk, coba lagi." }, statusCode: StatusCodes.Status503ServiceUnavailable); }
+            }
         }
 
         return Results.Ok(new
