@@ -605,4 +605,38 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var res = await factory.CreateClient().GetAsync("/health");
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
     }
+
+    // ---- Poin d / docs/31 §1.7: Pengumuman lobby ----
+    [Fact]
+    public async Task Announcements_AdminCreates_PublicSeesOnlyActive_RemoveHides()
+    {
+        var anon = factory.CreateClient();
+        var noAdmin = await anon.PostAsJsonAsync("/api/admin/announcements", new { kind = "info", title = "x" });
+        Assert.Equal(HttpStatusCode.Unauthorized, noAdmin.StatusCode);
+
+        var adminC = factory.CreateClient();
+        adminC.DefaultRequestHeaders.Add("X-Admin-Secret", ApiFactory.AdminSecret);
+        var now = DateTime.UtcNow;
+        var live = await adminC.PostAsJsonAsync("/api/admin/announcements", new { kind = "event", title = "Ann-Live", body = "Double XP akhir pekan", adminSource = "unit-test" });
+        Assert.Equal(HttpStatusCode.Created, live.StatusCode);
+        var liveId = (await live.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("id").GetGuid();
+        await adminC.PostAsJsonAsync("/api/admin/announcements", new { kind = "info", title = "Ann-Future", startsAt = now.AddDays(1) });
+        await adminC.PostAsJsonAsync("/api/admin/announcements", new { kind = "info", title = "Ann-Expired", startsAt = now.AddDays(-2), endsAt = now.AddDays(-1) });
+
+        // Validasi
+        Assert.Equal(HttpStatusCode.BadRequest, (await adminC.PostAsJsonAsync("/api/admin/announcements", new { kind = "promo", title = "x" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await adminC.PostAsJsonAsync("/api/admin/announcements", new { kind = "info", title = "" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await adminC.PostAsJsonAsync("/api/admin/announcements", new { kind = "info", title = "x", startsAt = now, endsAt = now.AddMinutes(-1) })).StatusCode);
+
+        var list = await anon.GetFromJsonAsync<JsonElement>("/api/announcements");
+        var titles = list.EnumerateArray().Select(x => x.GetProperty("title").GetString()).ToList();
+        Assert.Contains("Ann-Live", titles);
+        Assert.DoesNotContain("Ann-Future", titles);
+        Assert.DoesNotContain("Ann-Expired", titles);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await adminC.DeleteAsync($"/api/admin/announcements/{liveId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await adminC.DeleteAsync($"/api/admin/announcements/{liveId}")).StatusCode);
+        list = await anon.GetFromJsonAsync<JsonElement>("/api/announcements");
+        Assert.DoesNotContain("Ann-Live", list.EnumerateArray().Select(x => x.GetProperty("title").GetString()));
+    }
 }

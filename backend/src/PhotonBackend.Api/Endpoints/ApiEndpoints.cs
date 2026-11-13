@@ -45,6 +45,7 @@ public static class ApiEndpoints
         // Admin/dev (header X-Admin-Secret = Admin:Secret). Belum ada sistem season → reset faksi manual.
         var admin = api.MapGroup("/admin").AddEndpointFilter(RequireAdminSecret);
         admin.MapPost("/faction", AdminSetFaction);
+        api.MapAnnouncements(admin); // GET /announcements (publik) + admin POST/DELETE
 
         secured.MapStats(api); // /me/stats (auth) + /players/{id}/stats (anon)
     }
@@ -161,7 +162,7 @@ public static class ApiEndpoints
     }
 
     // Gerbang admin: header X-Admin-Secret harus cocok Admin:Secret (kosong = selalu tolak → admin nonaktif).
-    private static async ValueTask<object?> RequireAdminSecret(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+    internal static async ValueTask<object?> RequireAdminSecret(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
     {
         var expected = ctx.HttpContext.RequestServices.GetRequiredService<IOptions<AdminOptions>>().Value.Secret;
         var given = ctx.HttpContext.Request.Headers["X-Admin-Secret"].ToString();

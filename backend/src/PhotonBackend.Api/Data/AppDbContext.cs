@@ -9,6 +9,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<MatchPlayer> MatchPlayers => Set<MatchPlayer>();
     public DbSet<MatchPlayerHero> MatchPlayerHeroes => Set<MatchPlayerHero>();
     public DbSet<FactionAdminAudit> FactionAdminAudits => Set<FactionAdminAudit>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -54,6 +55,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasIndex(x => x.PlayerId);
             e.HasIndex(x => x.At);
             e.Property(x => x.AdminSource).HasMaxLength(160);
+        });
+
+        b.Entity<Announcement>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.Removed, x.StartsAt });
+            e.Property(x => x.Kind).HasMaxLength(16);
+            e.Property(x => x.Title).HasMaxLength(80);
+            e.Property(x => x.Body).HasMaxLength(400);
+            e.Property(x => x.CreatedBy).HasMaxLength(160);
         });
     }
 }

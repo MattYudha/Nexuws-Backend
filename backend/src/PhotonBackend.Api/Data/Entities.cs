@@ -134,3 +134,20 @@ public sealed class MatchPlayerHero
     public int Kills { get; set; }
     public int Damage { get; set; }
 }
+
+/// <summary>
+/// Pengumuman/Event lobby (docs/31 §1.7). Dibuat admin (X-Admin-Secret), sumber tercatat. Dihapus = soft delete
+/// (Removed) agar jejak tetap ada. Tanpa baris aktif → lobby menampilkan "Belum ada pengumuman" (tanpa data dummy).
+/// </summary>
+public sealed class Announcement
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Kind { get; set; } = "info";      // "info" | "event"
+    public string Title { get; set; } = "";         // 1..80
+    public string Body { get; set; } = "";          // 0..400
+    public DateTime StartsAt { get; set; } = DateTime.UtcNow;
+    public DateTime? EndsAt { get; set; }           // null = tanpa batas
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string CreatedBy { get; set; } = "";     // sumber admin@ip (maks 160)
+    public bool Removed { get; set; }
+}
