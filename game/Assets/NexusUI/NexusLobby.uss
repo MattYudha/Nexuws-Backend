@@ -689,3 +689,25 @@
 .nxl-lobby-hero { width: 300px; height: 330px; -unity-background-scale-mode: scale-to-fit; }
 .nxl-lobby-heroname { font-size: 22px; -unity-font-definition: var(--nxl-font-title); color: var(--nxl-text); margin-top: 6px; }
 
+/* ================= NX-12 sisa: ikon per-badge + ikon baris statistik (glyph putih, diwarnai via tint) ================= */
+.nxl-badge--chip { flex-direction: row; align-items: center; }
+.nxl-badge-txt { font-size: 10px; color: var(--nx-badge-fg); -unity-font-definition: var(--nxl-font-head); padding: 0; margin: 0; }
+.nxl-badge-ic { width: 14px; height: 14px; margin-right: 4px; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: var(--nx-badge-fg); }
+.nxl-badge--flawless .nxl-badge-ic { background-image: url("Sprites/ic_b_flawless.png"); -unity-background-image-tint-color: var(--nxl-gold); } /* prestise = emas, sama dgn garis chip */
+.nxl-badge--comeback .nxl-badge-ic { background-image: url("Sprites/ic_b_comeback.png"); }
+.nxl-badge--firstblood .nxl-badge-ic { background-image: url("Sprites/ic_b_firstblood.png"); }
+.nxl-badge--party .nxl-badge-ic { background-image: url("Sprites/ic_b_party.png"); }
+
+.nxl-dtx-thead { flex-direction: row; justify-content: center; align-items: center; margin-bottom: 4px; }
+.nxl-dtx-thead > .nxl-dtx-tlabel { margin-bottom: 0; }
+.nxl-stat-ic { width: 18px; height: 18px; margin-right: 6px; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: var(--nxl-text-2); }
+.nxl-stat-ic--ko { background-image: url("Sprites/ic_swords.png"); }
+.nxl-stat-ic--damage { background-image: url("Sprites/ic_s_damage.png"); }
+.nxl-stat-ic--critical { background-image: url("Sprites/ic_s_critical.png"); }
+.nxl-stat-ic--guardcrush { background-image: url("Sprites/ic_s_guardcrush.png"); }
+.nxl-stat-ic--geardrop { background-image: url("Sprites/ic_s_geardrop.png"); }
+.nxl-stat-ic--dodge { background-image: url("Sprites/ic_s_dodge.png"); }
+.nxl-stat-ic--blocked { background-image: url("Sprites/ic_s_blocked.png"); }
+.nxl-stat-ic--accuracy { background-image: url("Sprites/ic_s_accuracy.png"); }
+.nxl-stat-ic--streak { background-image: url("Sprites/ic_s_streak.png"); }
+

@@ -568,6 +568,21 @@ namespace Nexus
             return list;
         }
 
+        // Ikon per baris statistik (kelas USS → sprite Sprites/ic_s_*.png / ic_swords.png).
+        private static string StatIcon(string label) => label switch
+        {
+            "KO" => "nxl-stat-ic--ko",
+            "Damage diberikan" => "nxl-stat-ic--damage",
+            "Critical" => "nxl-stat-ic--critical",
+            "Guard crush" => "nxl-stat-ic--guardcrush",
+            "Gear drop" => "nxl-stat-ic--geardrop",
+            "Dodge berhasil" => "nxl-stat-ic--dodge",
+            "Serangan di-guard" => "nxl-stat-ic--blocked",
+            "Akurasi skill" => "nxl-stat-ic--accuracy",
+            "Kill streak terpanjang" => "nxl-stat-ic--streak",
+            _ => null,
+        };
+
         private static VisualElement TugInt(string label, int you, int opp) => TugRow(label, you.ToString(), opp.ToString(), you, opp, true);
         private static VisualElement TugAcc(string label, int suMe, int shMe, int suOpp, int shOpp)
         {
@@ -582,7 +597,10 @@ namespace Nexus
         private static VisualElement TugRow(string label, string youStr, string oppStr, int youN, int oppN, bool defined)
         {
             var row = new VisualElement(); row.AddToClassList("nxl-dtx-trow");
-            var lab = new Label(label); lab.AddToClassList("nxl-dtx-tlabel"); row.Add(lab);
+            var head = new VisualElement(); head.AddToClassList("nxl-dtx-thead");
+            if (StatIcon(label) is { } icCls) { var ic = new VisualElement(); ic.AddToClassList("nxl-stat-ic"); ic.AddToClassList(icCls); head.Add(ic); }
+            var lab = new Label(label); lab.AddToClassList("nxl-dtx-tlabel"); head.Add(lab);
+            row.Add(head);
 
             var line = new VisualElement(); line.AddToClassList("nxl-dtx-tbarline");
             var yv = new Label(youStr); yv.AddToClassList("nxl-dtx-tval"); yv.AddToClassList("nxl-dtx-tval--you"); if (defined && youN > oppN) yv.AddToClassList("nxl-dtx-tval--big");
@@ -604,7 +622,14 @@ namespace Nexus
         private static string HeroCss(int h) => h == 0 ? "nxl-hero-titan" : h == 1 ? "nxl-hero-pulse" : "nxl-hero-unknown";
         private static string HeroName(int h) => h == 0 ? "TITAN-01" : h == 1 ? "PULSE-X" : "—";
         private static string ModeLabel(NexusBackend.MatchRow m) { var md = ModeOf(m); return md == "ranked" ? "RANKED" : md == "battle" ? "BATTLE" : "LATIHAN"; }
-        private static Label Badge(string text, string cls) { var l = new Label(text); l.AddToClassList("nxl-badge"); l.AddToClassList(cls); return l; }
+        // Chip prestasi = ikon + teks (NX-12 sisa: ikon per-badge). Ikon dipilih lewat kelas modifier di USS.
+        private static VisualElement Badge(string text, string cls)
+        {
+            var chip = new VisualElement(); chip.AddToClassList("nxl-badge"); chip.AddToClassList("nxl-badge--chip"); chip.AddToClassList(cls);
+            var ic = new VisualElement(); ic.AddToClassList("nxl-badge-ic"); chip.Add(ic);
+            var l = new Label(text); l.AddToClassList("nxl-badge-txt"); chip.Add(l);
+            return chip;
+        }
         private static Label FootT(string t) { var l = new Label(t); l.AddToClassList("nxl-hist-foot-t"); return l; }
 
         // ---- Statistik (Tab 1.3) ----
