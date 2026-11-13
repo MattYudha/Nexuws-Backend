@@ -21,6 +21,43 @@ public static class StatsEndpoints
             => Results.Ok(await Compute(db, PlayerId(user), mode, ct)));
         anon.MapGet("/players/{id:guid}/stats", async (Guid id, AppDbContext db, string? mode, CancellationToken ct)
             => Results.Ok(await Compute(db, id, mode, ct)));
+        secured.MapGet("/me/heroes", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct)
+            => Results.Ok(await HeroesAsync(db, PlayerId(user), ct)));
+    }
+
+    // NX-22 (docs/31 §1.4): Hero Favorit — per hero DOMINAN tiap match: jumlah match, menang/kalah/seri, win rate,
+    // K/D & KDA (hanya ranked1v1, sama dgn aturan K/D docs/32), menit main (MatchPlayerHeroes, semua hero yg dipakai).
+    // Basis = format ranked1v1 + battle (D13); format lama tak dihitung. Urut: match terbanyak, lalu menit main.
+    private static async Task<object> HeroesAsync(AppDbContext db, Guid playerId, CancellationToken ct)
+    {
+        var rows = await db.MatchPlayers.AsNoTracking()
+            .Where(mp => mp.PlayerId == playerId && mp.Match.Status == MatchStatus.Finished
+                         && (mp.Match.Format == "ranked1v1" || mp.Match.Format == "battle"))
+            .Select(mp => new { mp.HeroId, mp.IsWinner, mp.Match.IsDraw, R1 = mp.Match.Format == "ranked1v1", mp.ReportedKills, mp.ReportedDeaths })
+            .ToListAsync(ct);
+        var ticks = await db.MatchPlayerHeroes.AsNoTracking()
+            .Where(h => h.PlayerId == playerId)
+            .GroupBy(h => h.HeroId)
+            .Select(g => new { HeroId = g.Key, Ticks = g.Sum(h => h.PlayTicks) })
+            .ToDictionaryAsync(x => x.HeroId, x => x.Ticks, ct);
+
+        return rows.GroupBy(r => r.HeroId).Select(g =>
+        {
+            int wins = g.Count(r => r.IsWinner && !r.IsDraw), draws = g.Count(r => r.IsDraw), losses = g.Count() - wins - draws;
+            var kd = g.Where(r => r.R1).ToList();
+            int kills = kd.Sum(r => r.ReportedKills), deaths = kd.Sum(r => r.ReportedDeaths);
+            return new
+            {
+                heroId = g.Key,
+                matches = g.Count(), wins, losses, draws,
+                winRate = wins + losses > 0 ? Math.Round(100.0 * wins / (wins + losses), 1) : 0,
+                kdMatches = kd.Count, kills, deaths,
+                kda = kd.Count > 0 ? Math.Round((double)kills / Math.Max(1, deaths), 2) : (double?)null,
+                playMinutes = Math.Round((ticks.TryGetValue(g.Key, out var t) ? t : 0) / 3600.0, 1), // 60 tick/dtk
+            };
+        })
+        .OrderByDescending(h => h.matches).ThenByDescending(h => h.playMinutes)
+        .ToList();
     }
 
     private sealed record Row(

@@ -822,4 +822,32 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("mismatch", m.GetProperty("disputeReason").GetString());
         Assert.Equal(0, m.GetProperty("ratingDelta").GetInt32());
     }
+
+    // NX-22: Hero Favorit per hero dominan; K/D hanya ranked1v1; urut match terbanyak.
+    [Fact]
+    public async Task MyHeroes_AggregatesPerDominantHero()
+    {
+        var (a, _) = await factory.LoginAsync("device-nx22-a", "Nx22A");
+        var (b, _) = await factory.LoginAsync("device-nx22-b", "Nx22B");
+        object Row(int slot, int kills, int deaths, int hero) => new { slot, kills, botKills = 0, deaths, heroId = hero, damageDealt = 10, damageTaken = 10, skillsUsed = 0, skillsHit = 0, hitsBlocked = 0, dodges = 0, guardCrushes = 0, criticals = 0, gearDrops = 0, firstBlood = false, maxKillStreak = 0, maxDeficit = 0, heroSwitches = 0,
+            heroes = new[] { new { heroId = hero, playTicks = 3600, kills, damage = 10 } } };
+        for (int i = 0; i < 2; i++)   // A: TITAN menang 5-2 dua kali
+        {
+            var p = new[] { Row(0, 5, 2, 0), Row(1, 2, 5, 1) };
+            object Body(int slot) => new { gameId = $"room-nx22-{i}", slot, scoreLeft = 5, scoreRight = 2, kills = slot == 0 ? 5 : 2, deaths = slot == 0 ? 2 : 5, durationSec = 90, mode = "ranked", players = p, endReason = "ko" };
+            Assert.Equal("Finished", await ReportBoth(a, b, $"room-nx22-{i}", Body(0), Body(1)));
+        }
+        var p2 = new[] { Row(0, 2, 5, 1), Row(1, 5, 2, 0) }; // A: PULSE kalah 2-5 sekali
+        object B2(int slot) => new { gameId = "room-nx22-x", slot, scoreLeft = 2, scoreRight = 5, kills = slot == 0 ? 2 : 5, deaths = slot == 0 ? 5 : 2, durationSec = 90, mode = "ranked", players = p2, endReason = "ko" };
+        Assert.Equal("Finished", await ReportBoth(a, b, "room-nx22-x", B2(0), B2(1)));
+
+        var heroes = (await a.GetFromJsonAsync<JsonElement>("/api/me/heroes")).EnumerateArray().ToList();
+        Assert.Equal(2, heroes.Count);
+        Assert.Equal(0, heroes[0].GetProperty("heroId").GetInt32());          // TITAN paling sering
+        Assert.Equal(2, heroes[0].GetProperty("matches").GetInt32());
+        Assert.Equal(100, heroes[0].GetProperty("winRate").GetDouble());
+        Assert.Equal(2.5, heroes[0].GetProperty("kda").GetDouble());          // ranked1v1: 10 kill / 4 death
+        Assert.Equal(1, heroes[1].GetProperty("losses").GetInt32());
+        Assert.Equal(2.0, heroes[0].GetProperty("playMinutes").GetDouble(), 1); // 2 × 3600 tick @60 = 2 menit
+    }
 }

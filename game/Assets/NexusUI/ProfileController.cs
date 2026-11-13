@@ -119,6 +119,7 @@ namespace Nexus
             ShowEl(_tabMain, i == 0); ShowEl(_tabStats, i == 1); ShowEl(_tabHeroes, i == 2); ShowEl(_tabHistory, i == 3);
             Active(_navMain, i == 0); Active(_navStats, i == 1); Active(_navHeroes, i == 2); Active(_navHistory, i == 3);
             if (i == 1) EnsureStats();
+            if (i == 2 || i == 0) FetchHeroes(); // NX-22 (tab Hero Favorit + hero teratas di tab Profil)
             if (i == 3) EnsureHistory();
             if (i != 3) CloseDetail(); // tutup detail saat pindah tab
         }
@@ -213,6 +214,54 @@ namespace Nexus
         }
 
         private void EnsureHistory() { RefreshHistory(); if (!_histFetched) FetchHistory(); }
+
+        // ---- NX-22: Hero Favorit ----
+        private bool _heroesBusy;
+        private async void FetchHeroes()
+        {
+            var b = game != null ? game.Backend : null;
+            if (b == null || _heroesBusy) return;
+            _heroesBusy = true;
+            var rows = await b.GetMyHeroesAsync();
+            _heroesBusy = false;
+
+            var grid = _root.Q<VisualElement>("heroes-grid");
+            var empty = _root.Q<VisualElement>("heroes-empty");
+            var msg = _root.Q<Label>("heroes-msg");
+            bool has = rows != null && rows.Length > 0;
+            ShowEl(grid, has); ShowEl(empty, rows != null && !has);
+            if (msg != null) msg.text = rows == null ? "Gagal memuat hero favorit. Coba buka tab ini lagi." : "";
+            if (grid != null && has)
+            {
+                grid.Clear();
+                foreach (var h in rows) grid.Add(HeroCard(h));
+            }
+            var fav = _root.Q<Label>("fav-hero-text");
+            if (fav != null)
+                fav.text = has ? $"{HeroName(rows[0].heroId)} — {rows[0].matches} match · Win rate {rows[0].winRate:0.#}%"
+                               : rows == null ? "Gagal memuat." : "Hero favorit akan muncul setelah kamu bermain.";
+        }
+
+        private VisualElement HeroCard(NexusBackend.HeroAggRow h)
+        {
+            var card = new VisualElement(); card.AddToClassList("nxl-herocard");
+            var art = new VisualElement(); art.AddToClassList("nxl-herocard-art"); art.AddToClassList(HeroCss(h.heroId)); card.Add(art);
+            var name = new Label(HeroName(h.heroId)); name.AddToClassList("nxl-herocard-name"); card.Add(name);
+            card.Add(HeroStat("Match", h.matches.ToString()));
+            card.Add(HeroStat("Menang / Kalah", h.draws > 0 ? $"{h.wins} / {h.losses} · {h.draws} seri" : $"{h.wins} / {h.losses}"));
+            card.Add(HeroStat("Win rate", h.wins + h.losses > 0 ? h.winRate.ToString("0.#") + "%" : "–"));
+            card.Add(HeroStat("K / D", h.kdMatches > 0 ? $"{h.kills} / {h.deaths}  (KDA {h.kda:0.00})" : "–"));   // K/D hanya ranked 1v1
+            card.Add(HeroStat("Waktu main", h.playMinutes > 0 ? h.playMinutes.ToString("0.#") + " mnt" : "–"));
+            return card;
+        }
+
+        private static VisualElement HeroStat(string k, string v)
+        {
+            var row = new VisualElement(); row.AddToClassList("nxl-herocard-row");
+            var a = new Label(k); a.AddToClassList("nxl-herocard-k"); row.Add(a);
+            var b = new Label(v); b.AddToClassList("nxl-herocard-v"); row.Add(b);
+            return row;
+        }
 
         private async void FetchHistory()
         {

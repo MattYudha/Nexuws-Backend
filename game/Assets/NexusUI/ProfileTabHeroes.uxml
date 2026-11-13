@@ -1,7 +1,10 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="tab-heroes" class="nxl-prof-tab nxl-hidden">
         <ui:Label text="HERO FAVORIT" class="nxl-prof-title" />
-        <ui:VisualElement class="nxl-card nxl-center" style="margin-top: 14px; min-height: 240px;">
+        <!-- NX-22: grid kartu per hero (urut paling sering dimainkan). Kosong → kartu ajakan main. -->
+        <ui:VisualElement name="heroes-grid" class="nxl-heroes-grid nxl-hidden" />
+        <ui:Label text="" name="heroes-msg" class="nxl-dim" style="margin-top: 10px; white-space: normal;" />
+        <ui:VisualElement name="heroes-empty" class="nxl-card nxl-center" style="margin-top: 14px; min-height: 240px;">
             <ui:Label text="Hero favorit akan muncul setelah kamu bermain." class="nxl-dim" style="white-space: normal; -unity-text-align: middle-center;" />
             <ui:Button text="MAIN SEKARANG" name="heroes-play" class="nxl-btn nxl-btn--orange" style="width: 240px; height: 48px; margin-top: 18px;" />
         </ui:VisualElement>

@@ -716,3 +716,13 @@
 .nxl-hist-head--disputed { background-color: rgba(255, 255, 255, 0.05); }
 .nxl-hist-res--disputed { color: var(--nxl-text-2); font-size: 18px; }
 .nxl-dtx-res--disputed { color: var(--nxl-text-2); font-size: 44px; }
+
+/* NX-22: Hero Favorit — grid kartu per hero (netral; tanpa warna menang/kalah) */
+.nxl-heroes-grid { flex-direction: row; flex-wrap: wrap; margin-top: 14px; }
+.nxl-herocard { width: 260px; margin-right: 16px; margin-bottom: 16px; background-color: rgba(15, 30, 60, 0.55); border-radius: 12px; overflow: hidden;
+    border-width: 1px; border-color: var(--nxl-border-dim); padding-bottom: 10px; }
+.nxl-herocard-art { height: 200px; background-color: var(--nx-hero-neutral); -unity-background-scale-mode: scale-and-crop; }
+.nxl-herocard-name { font-size: 22px; -unity-font-definition: var(--nxl-font-title); color: var(--nxl-text); margin: 8px 12px 4px 12px; }
+.nxl-herocard-row { flex-direction: row; justify-content: space-between; padding-left: 12px; padding-right: 12px; min-height: 26px; align-items: center; }
+.nxl-herocard-k { font-size: 16px; color: var(--nxl-text-2); -unity-font-definition: var(--nxl-font-body); }
+.nxl-herocard-v { font-size: 16px; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-head); }

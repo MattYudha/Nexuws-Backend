@@ -236,6 +236,18 @@ namespace Nexus
         }
 
         /// <summary>Riwayat match terakhir (hanya yang selesai).</summary>
+        [Serializable] public sealed class HeroAggRow { public int heroId; public int matches; public int wins; public int losses; public int draws; public float winRate; public int kdMatches; public int kills; public int deaths; public float kda; public float playMinutes; }
+        [Serializable] private sealed class HeroAggWrap { public HeroAggRow[] items; }
+
+        /// <summary>NX-22: Hero Favorit (per hero dominan, ranked1v1+battle). null = gagal memuat; kosong = belum ada.</summary>
+        public async Task<HeroAggRow[]> GetMyHeroesAsync()
+        {
+            var res = await GetAsync("/api/me/heroes");
+            if (res == null) return null;
+            try { return JsonUtility.FromJson<HeroAggWrap>("{\"items\":" + res + "}")?.items ?? Array.Empty<HeroAggRow>(); }
+            catch { return null; }
+        }
+
         /// <param name="includeDisputed">NX-21: true = ikut match Disputed (kartu "TIDAK DIHITUNG"); hanya untuk tab Riwayat & layar hasil.</param>
         public async Task<MatchRow[]> GetMatchHistoryAsync(bool includeDisputed = false)
         {

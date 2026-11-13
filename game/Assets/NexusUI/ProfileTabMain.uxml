@@ -58,7 +58,7 @@
         <!-- Empty states -->
         <ui:VisualElement class="nxl-card" style="margin-top: 12px;">
             <ui:Label text="HERO FAVORIT" class="nxl-h2" style="font-size: 16px;" />
-            <ui:Label text="Hero favorit akan muncul setelah kamu bermain." class="nxl-dim" style="margin-top: 10px; white-space: normal;" />
+            <ui:Label text="Hero favorit akan muncul setelah kamu bermain." name="fav-hero-text" class="nxl-dim" style="margin-top: 10px; white-space: normal;" />
         </ui:VisualElement>
         <ui:VisualElement class="nxl-card" style="margin-top: 12px; margin-bottom: 12px;">
             <ui:Label text="PENCAPAIAN" class="nxl-h2" style="font-size: 16px;" />
