@@ -26,6 +26,16 @@ public sealed record ReportPlayer(
     bool FirstBlood, int MaxKillStreak, int MaxDeficit, int HeroSwitches,
     List<ReportHero>? Heroes);
 
+// Satu KO di "Jalannya Match": tick relatif dari awal match + slot pencetak (0/1). Maks 9 (first-to-5).
+public sealed record KoEvent(int Tick, int KillerSlot);
+
+public static class EndReasons
+{
+    public const string Ko = "ko";            // satu tim mencapai WinScore
+    public const string Time = "time";        // waktu habis → skor, lalu tie-break gear rontok → darah → seri
+    public const string Forfeit = "forfeit";  // AFK/disconnect melewati ambang
+}
+
 /// <summary>
 /// Records Pong results. Clients run a deterministic simulation, so both honest players
 /// report identical scores. A result is only rated once both players agree.
@@ -73,9 +83,12 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
         string gameId, Guid playerId, int slot, int scoreLeft, int scoreRight,
         int kills, int deaths, int assists,
         int heroId, string mode, int durationSec, int partySize,
-        IReadOnlyList<ReportPlayer>? players, CancellationToken ct)
+        IReadOnlyList<ReportPlayer>? players, CancellationToken ct,
+        string? endReason = null, int? winnerSlot = null, IReadOnlyList<KoEvent>? koTimeline = null)
     {
-        if (!IsLegalResult(slot, scoreLeft, scoreRight))
+        endReason = string.IsNullOrWhiteSpace(endReason) ? EndReasons.Ko : endReason.Trim().ToLowerInvariant();
+        if (!IsLegalResult(slot, scoreLeft, scoreRight, endReason, winnerSlot, out int winner) ||
+            !IsLegalTimeline(koTimeline, scoreLeft, scoreRight))
             return new ReportOutcome(ReportStatus.Invalid, "Not a legal result.");
 
         var gate = GateFor(gameId);
@@ -103,6 +116,9 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
             mine.ReportedKills = Math.Max(0, kills);
             mine.ReportedDeaths = Math.Max(0, deaths);
             mine.ReportedAssists = Math.Max(0, assists);
+            mine.ReportedEndReason = endReason;
+            mine.ReportedWinnerSlot = winner;
+            mine.ReportedKoTimeline = koTimeline is null ? null : JsonSerializer.Serialize(koTimeline);
             mine.HeroId = heroId;
             mine.PartySize = Math.Max(1, partySize);
             if (players is { Count: > 0 }) mine.ResultPayload = Canonical(players);
@@ -116,10 +132,13 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
                 return new ReportOutcome(ReportStatus.Accepted);
             }
 
-            // (1) Skor harus setuju.
+            // (1) Skor + sebab akhir + pemenang (hasil tie-break deterministik) + koTimeline harus setuju.
             var scoreAgree = reported.All(p =>
                 p.ReportedScoreLeft == reported[0].ReportedScoreLeft &&
-                p.ReportedScoreRight == reported[0].ReportedScoreRight);
+                p.ReportedScoreRight == reported[0].ReportedScoreRight &&
+                p.ReportedEndReason == reported[0].ReportedEndReason &&
+                p.ReportedWinnerSlot == reported[0].ReportedWinnerSlot &&
+                p.ReportedKoTimeline == reported[0].ReportedKoTimeline);
 
             // (2) Payload hasil LENGKAP harus setuju bila KEDUA klien mengirimnya (deterministik → identik).
             var payloads = reported.Select(p => p.ResultPayload).ToList();
@@ -172,7 +191,12 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
             }
             else format = "battle";
 
-            await FinalizeAsync(match, scoreLeft, scoreRight, agreedPayload, format, ct);
+            match.EndReason = endReason;
+            match.KoTimeline = mine.ReportedKoTimeline;
+            if (winner < 0)
+                await FinalizeDrawAsync(match, scoreLeft, scoreRight, agreedPayload, format, ct);
+            else
+                await FinalizeAsync(match, scoreLeft, scoreRight, winner, agreedPayload, format, ct);
             return new ReportOutcome(ReportStatus.Finished);
         }
         finally
@@ -181,11 +205,48 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
         }
     }
 
-    private bool IsLegalResult(int slot, int left, int right) =>
-        slot is 0 or 1 &&
-        left >= 0 && right >= 0 &&
-        Math.Max(left, right) == _game.WinScore &&
-        Math.Min(left, right) < _game.WinScore;
+    /// <summary>
+    /// Hasil legal per sebab akhir (keputusan NX-11, docs/90 2026-11-13). <paramref name="winner"/> = 0/1, atau -1 = seri.
+    /// ko: pemenang tepat WinScore. time: tak ada yang mencapai WinScore; skor beda → yang lebih tinggi menang,
+    /// skor sama → pemenang dari tie-break sim (gear rontok → darah) atau seri. forfeit: tak ada yang mencapai WinScore.
+    /// </summary>
+    private bool IsLegalResult(int slot, int left, int right, string endReason, int? winnerSlot, out int winner)
+    {
+        winner = left > right ? 0 : 1;
+        if (slot is not (0 or 1) || left < 0 || right < 0) return false;
+        int hi = Math.Max(left, right), lo = Math.Min(left, right);
+        switch (endReason)
+        {
+            case EndReasons.Ko:
+                return hi == _game.WinScore && lo < _game.WinScore && (winnerSlot is null || winnerSlot == winner);
+            case EndReasons.Time:
+                if (hi >= _game.WinScore || winnerSlot is not (-1 or 0 or 1)) return false;
+                if (left != right && winnerSlot != winner) return false; // tie-break hanya saat skor sama
+                winner = winnerSlot.Value;
+                return true;
+            case EndReasons.Forfeit:
+                if (hi >= _game.WinScore || winnerSlot is not (-1 or 0 or 1)) return false;
+                winner = winnerSlot.Value;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // koTimeline opsional (klien lama tak mengirim). Bila ada: satu entri per KO, maks 2·WinScore−1, slot 0/1,
+    // tick tak menurun, dan jumlah KO per slot = skor slot itu.
+    private bool IsLegalTimeline(IReadOnlyList<KoEvent>? t, int left, int right)
+    {
+        if (t is null) return true;
+        if (t.Count != left + right || t.Count > 2 * _game.WinScore - 1) return false;
+        int prev = 0;
+        foreach (var e in t)
+        {
+            if (e.KillerSlot is not (0 or 1) || e.Tick < prev) return false;
+            prev = e.Tick;
+        }
+        return t.Count(e => e.KillerSlot == 0) == left && t.Count(e => e.KillerSlot == 1) == right;
+    }
 
     // Serialisasi kanonik payload (urut slot & hero) → dua klien yang setuju menghasilkan string identik.
     private static string Canonical(IReadOnlyList<ReportPlayer> players)
@@ -211,9 +272,34 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
         return true;
     }
 
-    private async Task FinalizeAsync(Match match, int left, int right, string? payloadJson, string format, CancellationToken ct)
+    // Seri (keputusan NX-11): rating, Wins/Losses & floor tier TIDAK berubah; K/D + statistik tetap dicatat, XP partisipasi.
+    private async Task FinalizeDrawAsync(Match match, int left, int right, string? payloadJson, string format, CancellationToken ct)
     {
-        var winnerSlot = left > right ? 0 : 1;
+        var ids = match.Players.Select(p => p.PlayerId).ToList();
+        var players = await db.Players.Where(p => ids.Contains(p.Id)).ToDictionaryAsync(p => p.Id, ct);
+        foreach (var mp in match.Players)
+        {
+            var p = players[mp.PlayerId];
+            mp.IsWinner = false;
+            mp.RatingDelta = 0;
+            mp.RatingBefore = p.Rating;
+            p.Kills += mp.ReportedKills; p.Deaths += mp.ReportedDeaths; p.Assists += mp.ReportedAssists;
+            p.AccountXp += 60;
+        }
+
+        ApplyDetailedStats(match, payloadJson);
+
+        match.ScoreLeft = left;
+        match.ScoreRight = right;
+        match.IsDraw = true;
+        match.Format = format;
+        match.Status = MatchStatus.Finished;
+        match.EndedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+    }
+
+    private async Task FinalizeAsync(Match match, int left, int right, int winnerSlot, string? payloadJson, string format, CancellationToken ct)
+    {
         var winner = match.Players.Single(p => p.Slot == winnerSlot);
         var loser = match.Players.Single(p => p.Slot != winnerSlot);
 

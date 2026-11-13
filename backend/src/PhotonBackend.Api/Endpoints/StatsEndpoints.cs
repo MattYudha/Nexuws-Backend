@@ -26,7 +26,7 @@ public static class StatsEndpoints
     private sealed record Row(
         DateTime? EndedAt, int ScoreLeft, int ScoreRight, int DurationSec, int Slot, bool Won,
         int Kills, int Deaths, bool Detailed, bool KdValid,
-        int DamageDealt, int DamageTaken, int HitsBlocked, int Dodges, int GuardCrushes, int Criticals, int MaxDeficit, bool FirstBlood);
+        int DamageDealt, int DamageTaken, int HitsBlocked, int Dodges, int GuardCrushes, int Criticals, int MaxDeficit, bool FirstBlood, bool IsDraw);
 
     private static async Task<object> Compute(AppDbContext db, Guid playerId, string? mode, CancellationToken ct)
     {
@@ -45,6 +45,7 @@ public static class StatsEndpoints
             matches = a.Matches,
             wins = a.Wins,
             losses = a.Losses,
+            draws = a.Draws,
             winRate = a.WinRate,
             kdValid = a.KdMatches > 0,   // false → UI tampilkan "–" untuk K/D (match lama 5v5 tak dihitung)
             kdMatches = a.KdMatches,
@@ -81,12 +82,13 @@ public static class StatsEndpoints
             .Select(mp => new Row(
                 mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
                 mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, mp.HasDetailedStats, mp.Match.Format == "ranked1v1",
-                mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood))
+                mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
+                mp.Match.IsDraw))
             .ToListAsync(ct);
 
     private sealed class Agg
     {
-        public int Matches, Wins, Losses, Kills, Deaths, MaxKill, WinStreakBest, AvgDurationSec;
+        public int Matches, Wins, Losses, Draws, Kills, Deaths, MaxKill, WinStreakBest, AvgDurationSec;
         public int KdMatches; // match dgn K/D valid (format ranked1v1) → kalau 0, K/D tampil "–"
         public double WinRate, Kda;
         public int Detailed, DamageDealt, DamageTaken, HitsBlocked, Dodges, GuardCrushes, Criticals;
@@ -100,7 +102,8 @@ public static class StatsEndpoints
         int durSum = 0, cur = 0;
         foreach (var r in rows)
         {
-            if (r.Won) { a.Wins++; cur++; if (cur > a.WinStreakBest) a.WinStreakBest = cur; } else { a.Losses++; cur = 0; }
+            if (r.IsDraw) { a.Draws++; cur = 0; } // seri: bukan menang, bukan kalah; streak putus
+            else if (r.Won) { a.Wins++; cur++; if (cur > a.WinStreakBest) a.WinStreakBest = cur; } else { a.Losses++; cur = 0; }
             if (r.KdValid) // K/D hanya dari format valid (ranked1v1); match lama 5v5 TIDAK dihitung
             {
                 a.KdMatches++; a.Kills += r.Kills; a.Deaths += r.Deaths;
@@ -110,7 +113,7 @@ public static class StatsEndpoints
 
             int diff = Math.Abs(r.ScoreLeft - r.ScoreRight);
             int loserScore = Math.Min(r.ScoreLeft, r.ScoreRight);
-            if (diff <= 2) { a.CloseMatches++; if (r.Won) a.CloseWins++; }
+            if (diff <= 2 && !r.IsDraw) { a.CloseMatches++; if (r.Won) a.CloseWins++; }
             if (r.Won && loserScore == 0) a.Flawless++;
 
             if (r.Detailed)
@@ -125,7 +128,7 @@ public static class StatsEndpoints
                 if (r.Won && r.MaxDeficit >= 3) a.Comebacks++;
             }
         }
-        a.WinRate = a.Matches > 0 ? Math.Round(100.0 * a.Wins / a.Matches, 1) : 0;
+        a.WinRate = a.Wins + a.Losses > 0 ? Math.Round(100.0 * a.Wins / (a.Wins + a.Losses), 1) : 0; // seri tak dihitung (sama dgn leaderboard)
         a.Kda = Math.Round((a.Kills + 0.0) / Math.Max(1, a.Deaths), 2);
         a.AvgDurationSec = a.Matches > 0 ? durSum / a.Matches : 0;
         return a;
@@ -165,7 +168,8 @@ public static class StatsEndpoints
                 mp.PlayerId,
                 Row = new Row(mp.Match.EndedAt, mp.Match.ScoreLeft ?? 0, mp.Match.ScoreRight ?? 0, mp.Match.DurationSec,
                     mp.Slot, mp.IsWinner, mp.ReportedKills, mp.ReportedDeaths, true, mp.Match.Format == "ranked1v1",
-                    mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood),
+                    mp.DamageDealt, mp.DamageTaken, mp.HitsBlocked, mp.Dodges, mp.GuardCrushes, mp.Criticals, mp.MaxDeficit, mp.FirstBlood,
+                    mp.Match.IsDraw),
             })
             .ToListAsync(ct);
 

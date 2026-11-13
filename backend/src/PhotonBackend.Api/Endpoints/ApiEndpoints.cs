@@ -14,7 +14,8 @@ public sealed record RegisterRequest(string? Username, string? Password, string?
 public sealed record LoginRequest(string? Username, string? Password);
 public sealed record FactionRequest(int Faction);
 public sealed record AdminFactionRequest(Guid PlayerId, int Faction, string? AdminSource = null);
-public sealed record ReportResultRequest(string? GameId, int Slot, int ScoreLeft, int ScoreRight, int Kills = 0, int Deaths = 0, int Assists = 0, int HeroId = 0, string? Mode = null, int DurationSec = 0, int PartySize = 1, List<ReportPlayer>? Players = null);
+public sealed record ReportResultRequest(string? GameId, int Slot, int ScoreLeft, int ScoreRight, int Kills = 0, int Deaths = 0, int Assists = 0, int HeroId = 0, string? Mode = null, int DurationSec = 0, int PartySize = 1, List<ReportPlayer>? Players = null,
+    string? EndReason = null, int? WinnerSlot = null, List<KoEvent>? KoTimeline = null); // T2: sebab akhir, pemenang (-1 seri), jalannya match
 public sealed record JoinQueueRequest(string? Region, string? BuildVersion = null, string? SimVersion = null);
 
 /// <summary>REST API used by the Unity client.</summary>
@@ -335,6 +336,9 @@ public static class ApiEndpoints
                 durationSec = m.DurationSec,
                 scoreLeft = m.ScoreLeft,
                 scoreRight = m.ScoreRight,
+                endReason = m.EndReason,
+                isDraw = m.IsDraw,
+                koTimeline = m.KoTimeline,   // JSON mentah [{Tick,KillerSlot}] atau null (match lama)
                 slot = m.Players.First(mp => mp.PlayerId == id).Slot,
                 won = m.Players.First(mp => mp.PlayerId == id).IsWinner,
                 ratingDelta = m.Players.First(mp => mp.PlayerId == id).RatingDelta,
@@ -411,7 +415,8 @@ public static class ApiEndpoints
 
         var outcome = await matches.ReportAsync(gameId, PlayerId(user), req.Slot, req.ScoreLeft, req.ScoreRight,
                                                 req.Kills, req.Deaths, req.Assists,
-                                                req.HeroId, req.Mode ?? "", req.DurationSec, req.PartySize, req.Players, ct);
+                                                req.HeroId, req.Mode ?? "", req.DurationSec, req.PartySize, req.Players, ct,
+                                                req.EndReason, req.WinnerSlot, req.KoTimeline);
         var body = new { status = outcome.Status.ToString(), message = outcome.Message };
         return outcome.Status switch
         {

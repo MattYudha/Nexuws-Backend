@@ -208,6 +208,129 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(1500, me.GetProperty("rating").GetInt32());
     }
 
+    // ---- T2 / NX-11: waktu habis, tie-break, seri, forfeit, koTimeline (docs/90 2026-11-13) ----
+
+    private static object[] Timeline(params int[] killerSlots) =>
+        killerSlots.Select((s, i) => (object)new { tick = 300 * (i + 1), killerSlot = s }).ToArray();
+
+    private static async Task<string> ReportBoth(HttpClient a, HttpClient b, string gameId, object body0, object body1)
+    {
+        await a.PostAsJsonAsync("/api/matches/result", body0);
+        var r = await b.PostAsJsonAsync("/api/matches/result", body1);
+        return (await r.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString()!;
+    }
+
+    [Fact]
+    public async Task TimeUp_HigherScoreWins_RatedWithTimeline()
+    {
+        var (alice, _) = await factory.LoginAsync("device-time-win-a", "TimeWinA");
+        var (bob, _) = await factory.LoginAsync("device-time-win-b", "TimeWinB");
+        var players = new[] { RankedRow(0, 2, 1), RankedRow(1, 1, 2) };
+        var tl = Timeline(0, 1, 0);
+        object Body(int slot) => new { gameId = "room-time-win", slot, scoreLeft = 2, scoreRight = 1, durationSec = 100, mode = "ranked", players, endReason = "time", winnerSlot = 0, koTimeline = tl };
+
+        Assert.Equal("Finished", await ReportBoth(alice, bob, "room-time-win", Body(0), Body(1)));
+        var h = (await alice.GetFromJsonAsync<JsonElement>("/api/matches"))[0];
+        Assert.True(h.GetProperty("won").GetBoolean());
+        Assert.False(h.GetProperty("isDraw").GetBoolean());
+        Assert.Equal("time", h.GetProperty("endReason").GetString());
+        Assert.Equal(3, JsonDocument.Parse(h.GetProperty("koTimeline").GetString()!).RootElement.GetArrayLength());
+        Assert.True((await alice.GetFromJsonAsync<JsonElement>("/api/me")).GetProperty("rating").GetInt32() > 1500);
+    }
+
+    [Fact]
+    public async Task TimeUp_TiedScore_TieBreakWinnerAccepted()
+    {
+        var (alice, _) = await factory.LoginAsync("device-time-tb-a", "TimeTbA");
+        var (bob, _) = await factory.LoginAsync("device-time-tb-b", "TimeTbB");
+        var players = new[] { RankedRow(0, 1, 1), RankedRow(1, 1, 1) };
+        // Skor 1-1 → sim memutus lewat gear rontok/darah: slot 1 menang.
+        object Body(int slot) => new { gameId = "room-time-tb", slot, scoreLeft = 1, scoreRight = 1, durationSec = 100, mode = "ranked", players, endReason = "time", winnerSlot = 1, koTimeline = Timeline(0, 1) };
+
+        Assert.Equal("Finished", await ReportBoth(alice, bob, "room-time-tb", Body(0), Body(1)));
+        Assert.True((await bob.GetFromJsonAsync<JsonElement>("/api/me")).GetProperty("rating").GetInt32() > 1500);
+        Assert.True((await alice.GetFromJsonAsync<JsonElement>("/api/me")).GetProperty("rating").GetInt32() < 1500);
+    }
+
+    [Fact]
+    public async Task TimeUp_Draw_NoRatingNoWinLoss()
+    {
+        var (alice, _) = await factory.LoginAsync("device-time-draw-a", "TimeDrawA");
+        var (bob, _) = await factory.LoginAsync("device-time-draw-b", "TimeDrawB");
+        var players = new[] { RankedRow(0, 0, 0), RankedRow(1, 0, 0) };
+        object Body(int slot) => new { gameId = "room-time-draw", slot, scoreLeft = 0, scoreRight = 0, durationSec = 100, mode = "ranked", players, endReason = "time", winnerSlot = -1, koTimeline = Timeline() };
+
+        Assert.Equal("Finished", await ReportBoth(alice, bob, "room-time-draw", Body(0), Body(1)));
+        foreach (var c in new[] { alice, bob })
+        {
+            var me = await c.GetFromJsonAsync<JsonElement>("/api/me");
+            Assert.Equal(1500, me.GetProperty("rating").GetInt32());
+            Assert.Equal(0, me.GetProperty("wins").GetInt32());
+            Assert.Equal(0, me.GetProperty("losses").GetInt32());
+        }
+        var h = (await alice.GetFromJsonAsync<JsonElement>("/api/matches"))[0];
+        Assert.True(h.GetProperty("isDraw").GetBoolean());
+        Assert.False(h.GetProperty("won").GetBoolean());
+        Assert.Equal(0, h.GetProperty("ratingDelta").GetInt32());
+
+        var stats = await alice.GetFromJsonAsync<JsonElement>("/api/me/stats");
+        Assert.Equal(1, stats.GetProperty("draws").GetInt32());
+        Assert.Equal(0, stats.GetProperty("losses").GetInt32()); // seri BUKAN kalah
+    }
+
+    [Fact]
+    public async Task Forfeit_AfkLoses_WinnerRated()
+    {
+        var (alice, _) = await factory.LoginAsync("device-forfeit-a", "ForfeitA");
+        var (bob, _) = await factory.LoginAsync("device-forfeit-b", "ForfeitB");
+        var players = new[] { RankedRow(0, 1, 0), RankedRow(1, 0, 1) };
+        // Slot 0 AFK 20 dtk → forfeit, slot 1 menang walau skor 1-0 untuk slot 0.
+        object Body(int slot) => new { gameId = "room-forfeit", slot, scoreLeft = 1, scoreRight = 0, durationSec = 40, mode = "ranked", players, endReason = "forfeit", winnerSlot = 1, koTimeline = Timeline(0) };
+
+        Assert.Equal("Finished", await ReportBoth(alice, bob, "room-forfeit", Body(0), Body(1)));
+        var h = (await bob.GetFromJsonAsync<JsonElement>("/api/matches"))[0];
+        Assert.True(h.GetProperty("won").GetBoolean());
+        Assert.Equal("forfeit", h.GetProperty("endReason").GetString());
+    }
+
+    [Fact]
+    public async Task KoTimeline_Mismatch_IsDisputed()
+    {
+        var (alice, _) = await factory.LoginAsync("device-tl-mis-a", "TlMisA");
+        var (bob, _) = await factory.LoginAsync("device-tl-mis-b", "TlMisB");
+        var players = new[] { RankedRow(0, 5, 2), RankedRow(1, 2, 5) };
+        var tlA = Timeline(0, 0, 1, 0, 1, 0, 0);
+        var tlB = Timeline(0, 1, 0, 0, 1, 0, 0); // urutan KO berbeda → simulasi tidak sama
+        await alice.PostAsJsonAsync("/api/matches/result", new { gameId = "room-tl-mis", slot = 0, scoreLeft = 5, scoreRight = 2, durationSec = 90, mode = "ranked", players, endReason = "ko", koTimeline = tlA });
+        var r = await bob.PostAsJsonAsync("/api/matches/result", new { gameId = "room-tl-mis", slot = 1, scoreLeft = 5, scoreRight = 2, durationSec = 90, mode = "ranked", players, endReason = "ko", koTimeline = tlB });
+        Assert.Equal("Disputed", (await r.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString());
+    }
+
+    public static IEnumerable<object[]> IllegalT2 => new[]
+    {
+        new object[] { "time", 5, 2, 0, null! },               // waktu habis tapi sudah capai WinScore
+        new object[] { "time", 2, 1, 1, null! },               // skor beda, pemenang bukan skor tertinggi
+        new object[] { "time", 1, 1, null!, null! },           // waktu habis tanpa winnerSlot
+        new object[] { "forfeit", 1, 0, 2, null! },            // slot pemenang tak valid
+        new object[] { "draw-please", 1, 0, 0, null! },        // sebab akhir tak dikenal
+        new object[] { "ko", 5, 2, 0, new[] { 0, 0, 0, 0, 1, 1 } }, // timeline kurang 1 KO
+        new object[] { "ko", 5, 2, 0, new[] { 0, 0, 0, 0, 0, 0, 1 } }, // KO per slot ≠ skor
+    };
+
+    [Theory]
+    [MemberData(nameof(IllegalT2))]
+    public async Task MatchResult_RejectsIllegalT2Results(string endReason, int left, int right, int? winnerSlot, int[]? killers)
+    {
+        var (alice, _) = await factory.LoginAsync($"device-illegal-t2-{endReason}-{left}{right}{winnerSlot}{killers?.Length}", "IllT2");
+        var res = await alice.PostAsJsonAsync("/api/matches/result", new
+        {
+            gameId = $"room-illegal-t2-{endReason}-{left}{right}{winnerSlot}{killers?.Length}{killers?.Sum()}", slot = 0,
+            scoreLeft = left, scoreRight = right, endReason, winnerSlot,
+            koTimeline = killers is null ? null : Timeline(killers),
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
     // Durasi mustahil pendek → sanity-check menolak (Disputed).
     [Fact]
     public async Task MatchResult_FailsSanityCheck_IsDisputed()

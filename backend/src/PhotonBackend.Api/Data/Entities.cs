@@ -63,6 +63,9 @@ public sealed class Match
     public string Mode { get; set; } = "";       // "ranked" | "battle" | ...
     public string Format { get; set; } = "";      // "ranked1v1" | "battle" | "legacy5v5" (lama, K/D tak valid)
     public int DurationSec { get; set; }           // durasi match (detik)
+    public string EndReason { get; set; } = "";    // "ko" | "time" | "forfeit" ("" = match lama)
+    public bool IsDraw { get; set; }               // seri (waktu habis/forfeit tanpa pemenang) → rating tak berubah
+    public string? KoTimeline { get; set; }        // JSON [{Tick,KillerSlot}] ≤9, disepakati kedua klien (tab "Jalannya Match")
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? EndedAt { get; set; }
 
@@ -86,6 +89,9 @@ public sealed class MatchPlayer
     public int ReportedKills { get; set; }
     public int ReportedDeaths { get; set; }
     public int ReportedAssists { get; set; }
+    public string? ReportedEndReason { get; set; }   // laporan klien ini; harus sama antar-klien
+    public int? ReportedWinnerSlot { get; set; }     // 0/1, -1 = seri
+    public string? ReportedKoTimeline { get; set; }  // JSON kanonik; harus sama antar-klien
     public bool IsWinner { get; set; }
     public int RatingDelta { get; set; }
     public int RatingBefore { get; set; }          // rating sebelum match (ranked) → After = Before + Delta

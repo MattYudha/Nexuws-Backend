@@ -66,6 +66,10 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<int>("DurationSec")
                         .HasColumnType("integer");
 
+                    b.Property<string>("EndReason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("EndedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -77,6 +81,12 @@ namespace PhotonBackend.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<bool>("IsDraw")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("KoTimeline")
+                        .HasColumnType("text");
 
                     b.Property<string>("Mode")
                         .IsRequired()
@@ -180,13 +190,22 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<int>("ReportedDeaths")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ReportedEndReason")
+                        .HasColumnType("text");
+
                     b.Property<int>("ReportedKills")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ReportedKoTimeline")
+                        .HasColumnType("text");
 
                     b.Property<int?>("ReportedScoreLeft")
                         .HasColumnType("integer");
 
                     b.Property<int?>("ReportedScoreRight")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ReportedWinnerSlot")
                         .HasColumnType("integer");
 
                     b.Property<string>("ResultPayload")
