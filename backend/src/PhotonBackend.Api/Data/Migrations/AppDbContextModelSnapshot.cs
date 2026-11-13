@@ -108,6 +108,10 @@ namespace PhotonBackend.Api.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DisputeReason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<int>("DurationSec")
                         .HasColumnType("integer");
 

@@ -82,7 +82,7 @@ namespace Nexus
             public int skillsUsed; public int skillsHit; public bool firstBlood; public int maxKillStreak; public int maxDeficit; public int heroSwitches;
             public MatchHeroRow[] heroes;
         }
-        [Serializable] public sealed class MatchRow { public string gameId; public string endedAt; public string mode; public string format; public int durationSec; public int slot; public int scoreLeft; public int scoreRight; public bool won; public bool isDraw; public string endReason; public string koTimeline; public int ratingDelta; public int ratingBefore; public int heroId; public int partySize; public MatchPlayerRow[] players; }
+        [Serializable] public sealed class MatchRow { public string gameId; public string endedAt; public string mode; public string format; public int durationSec; public int slot; public int scoreLeft; public int scoreRight; public bool won; public bool isDraw; public string endReason; public string koTimeline; public string status; public string disputeReason; public int ratingDelta; public int ratingBefore; public int heroId; public int partySize; public MatchPlayerRow[] players; }
         [Serializable] private sealed class MatchWrap { public MatchRow[] items; }
 
         // ---------- Auth ----------
@@ -236,9 +236,10 @@ namespace Nexus
         }
 
         /// <summary>Riwayat match terakhir (hanya yang selesai).</summary>
-        public async Task<MatchRow[]> GetMatchHistoryAsync()
+        /// <param name="includeDisputed">NX-21: true = ikut match Disputed (kartu "TIDAK DIHITUNG"); hanya untuk tab Riwayat & layar hasil.</param>
+        public async Task<MatchRow[]> GetMatchHistoryAsync(bool includeDisputed = false)
         {
-            var res = await GetAsync("/api/matches");
+            var res = await GetAsync(includeDisputed ? "/api/matches?includeDisputed=true" : "/api/matches");
             if (res == null) return System.Array.Empty<MatchRow>();
             var wrap = JsonUtility.FromJson<MatchWrap>("{\"items\":" + res + "}");
             return wrap != null && wrap.items != null ? wrap.items : System.Array.Empty<MatchRow>();

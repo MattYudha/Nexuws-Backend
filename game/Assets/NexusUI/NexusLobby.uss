@@ -711,3 +711,8 @@
 .nxl-stat-ic--accuracy { background-image: url("Sprites/ic_s_accuracy.png"); }
 .nxl-stat-ic--streak { background-image: url("Sprites/ic_s_streak.png"); }
 
+/* NX-21: kartu Disputed "TIDAK DIHITUNG" — abu redup, bukan warna menang/kalah/seri (satu warna = satu arti) */
+.nxl-hist-card--disputed { border-color: var(--nxl-border-dim); opacity: 0.8; }
+.nxl-hist-head--disputed { background-color: rgba(255, 255, 255, 0.05); }
+.nxl-hist-res--disputed { color: var(--nxl-text-2); font-size: 18px; }
+.nxl-dtx-res--disputed { color: var(--nxl-text-2); font-size: 44px; }

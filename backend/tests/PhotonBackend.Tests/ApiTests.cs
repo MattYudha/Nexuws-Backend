@@ -804,4 +804,22 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.NotEqual("admin", g2.DisplayName.ToLowerInvariant());
         Assert.StartsWith("Guest", g2.DisplayName);
     }
+
+    // NX-21: match Disputed tampil di Riwayat (includeDisputed=true) sebagai "TIDAK DIHITUNG" + alasan; default tetap disembunyikan.
+    [Fact]
+    public async Task History_IncludeDisputed_ShowsReason_DefaultHides()
+    {
+        var (a, _) = await factory.LoginAsync("device-nx21-a", "Nx21A");
+        var (b, _) = await factory.LoginAsync("device-nx21-b", "Nx21B");
+        await a.PostAsJsonAsync("/api/matches/result", new { gameId = "room-nx21", slot = 0, scoreLeft = 5, scoreRight = 0 });
+        var r = await b.PostAsJsonAsync("/api/matches/result", new { gameId = "room-nx21", slot = 1, scoreLeft = 0, scoreRight = 5 });
+        Assert.Equal("Disputed", (await r.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("status").GetString());
+
+        Assert.Equal(0, (await a.GetFromJsonAsync<JsonElement>("/api/matches")).GetArrayLength());
+        var all = await a.GetFromJsonAsync<JsonElement>("/api/matches?includeDisputed=true");
+        var m = Assert.Single(all.EnumerateArray());
+        Assert.Equal("Disputed", m.GetProperty("status").GetString());
+        Assert.Equal("mismatch", m.GetProperty("disputeReason").GetString());
+        Assert.Equal(0, m.GetProperty("ratingDelta").GetInt32());
+    }
 }

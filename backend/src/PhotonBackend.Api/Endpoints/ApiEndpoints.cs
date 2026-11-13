@@ -398,11 +398,14 @@ public static class ApiEndpoints
         });
     }
 
-    private static async Task<IResult> MyMatches(ClaimsPrincipal user, AppDbContext db, CancellationToken ct)
+    // includeDisputed=true (tab Riwayat & layar hasil, NX-21): ikut tampilkan match Disputed sebagai kartu "TIDAK DIHITUNG".
+    // Default false → statistik, grafik, papan tetap hanya dari match Finished.
+    private static async Task<IResult> MyMatches(ClaimsPrincipal user, AppDbContext db, bool? includeDisputed, CancellationToken ct)
     {
         var id = PlayerId(user);
+        bool disp = includeDisputed == true;
         var rows = await db.Matches.AsNoTracking()
-            .Where(m => m.Status == MatchStatus.Finished && m.Players.Any(mp => mp.PlayerId == id))
+            .Where(m => (m.Status == MatchStatus.Finished || (disp && m.Status == MatchStatus.Disputed)) && m.Players.Any(mp => mp.PlayerId == id))
             .OrderByDescending(m => m.EndedAt)
             .Take(20)
             .Select(m => new
@@ -416,6 +419,8 @@ public static class ApiEndpoints
                 scoreRight = m.ScoreRight,
                 endReason = m.EndReason,
                 isDraw = m.IsDraw,
+                status = m.Status,                 // "Finished" | "Disputed"
+                disputeReason = m.DisputeReason,
                 koTimeline = m.KoTimeline,   // JSON mentah [{Tick,KillerSlot}] atau null (match lama)
                 slot = m.Players.First(mp => mp.PlayerId == id).Slot,
                 won = m.Players.First(mp => mp.PlayerId == id).IsWinner,

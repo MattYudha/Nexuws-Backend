@@ -67,6 +67,7 @@ public sealed class Match
     public int DurationSec { get; set; }           // durasi match (detik)
     public string EndReason { get; set; } = "";    // "ko" | "time" | "forfeit" ("" = match lama)
     public bool IsDraw { get; set; }               // seri (waktu habis/forfeit tanpa pemenang) → rating tak berubah
+    public string DisputeReason { get; set; } = "";  // NX-21: "mismatch" (laporan beda) | "sanity" (durasi/laju KO) | "invariant" (aturan 1v1)
     public string? KoTimeline { get; set; }        // JSON [{Tick,KillerSlot}] ≤9, disepakati kedua klien (tab "Jalannya Match")
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? EndedAt { get; set; }

@@ -148,6 +148,7 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
             if (!scoreAgree || !payloadAgree)
             {
                 match.Status = MatchStatus.Disputed;
+                match.DisputeReason = "mismatch"; // NX-21: alasan kartu "TIDAK DIHITUNG"
                 match.EndedAt = DateTime.UtcNow;
                 logger.LogWarning("Match {GameId} DISPUTED (scoreAgree={Score}, payloadAgree={Payload}).", gameId, scoreAgree, payloadAgree);
                 await db.SaveChangesAsync(ct);
@@ -160,6 +161,7 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
                 (match.DurationSec < _game.MinMatchSeconds || (double)totalKo / match.DurationSec > _game.MaxKoPerSecond))
             {
                 match.Status = MatchStatus.Disputed;
+                match.DisputeReason = "sanity"; // NX-21: alasan kartu "TIDAK DIHITUNG"
                 match.EndedAt = DateTime.UtcNow;
                 logger.LogWarning("Match {GameId} REJECTED sanity (dur={Dur}s, ko={Ko}).", gameId, match.DurationSec, totalKo);
                 await db.SaveChangesAsync(ct);
@@ -181,6 +183,7 @@ public sealed class MatchService(AppDbContext db, IOptions<GameOptions> options,
                     if (!ValidateRanked1v1(rows, scoreLeft, scoreRight, out var why))
                     {
                         match.Status = MatchStatus.Disputed;
+                        match.DisputeReason = "invariant"; // NX-21: alasan kartu "TIDAK DIHITUNG"
                         match.EndedAt = DateTime.UtcNow;
                         logger.LogWarning("Match {GameId} ranked INVALID 1v1: {Why}", gameId, why);
                         await db.SaveChangesAsync(ct);

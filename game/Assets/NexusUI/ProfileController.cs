@@ -143,7 +143,7 @@ namespace Nexus
             string gid = game.ResultGameId;
             for (int i = 0; i < 15 && b != null && !string.IsNullOrEmpty(gid); i++)
             {
-                var rows = await b.GetMatchHistoryAsync();
+                var rows = await b.GetMatchHistoryAsync(includeDisputed: true); // layar hasil: Disputed → "TIDAK DIHITUNG"
                 if (!game.IsResult) return;                                  // pemain sudah lanjut
                 if (rows != null)
                     foreach (var r in rows)
@@ -217,7 +217,7 @@ namespace Nexus
         private async void FetchHistory()
         {
             var b = game != null ? game.Backend : null; if (b == null) return;
-            _histMatches = await b.GetMatchHistoryAsync();
+            _histMatches = await b.GetMatchHistoryAsync(includeDisputed: true); // NX-21: kartu Disputed ikut tampil
             _histFetched = true;
             RefreshHistory();
         }
@@ -239,15 +239,16 @@ namespace Nexus
             _histList.Clear();
             if (empty) return;
 
-            int w = 0, l = 0, dr = 0, ptsSum = 0;
+            int w = 0, l = 0, dr = 0, dsp = 0, ptsSum = 0;
             foreach (var m in f)
             {
-                if (m.isDraw) dr++; else if (m.won) w++; else l++;   // seri bukan kalah (T2)
+                if (IsDisputed(m)) dsp++;                              // NX-21: tidak dihitung menang/kalah
+                else if (m.isDraw) dr++; else if (m.won) w++; else l++;   // seri bukan kalah (T2)
                 if (m.format == "ranked1v1") ptsSum += NexusRankConfig.LadderPointsGlobal(m.ratingBefore + m.ratingDelta) - NexusRankConfig.LadderPointsGlobal(m.ratingBefore);
                 _histList.Add(BuildHistoryCard(m));
             }
-            int tot = w + l + dr; int wr = w + l > 0 ? Mathf.RoundToInt(100f * w / (w + l)) : 0;
-            string drTxt = dr > 0 ? $" · {dr} Seri" : "";
+            int tot = w + l + dr + dsp; int wr = w + l > 0 ? Mathf.RoundToInt(100f * w / (w + l)) : 0;
+            string drTxt = (dr > 0 ? $" · {dr} Seri" : "") + (dsp > 0 ? $" · {dsp} Tidak dihitung" : "");
             if (sumLbl != null) sumLbl.text = $"{tot} match terakhir:   {w} Menang · {l} Kalah{drTxt} · Win rate {wr}% · Poin Ladder {(ptsSum >= 0 ? "+" : "")}{ptsSum}";
             UpdateArrows();
         }
@@ -282,7 +283,7 @@ namespace Nexus
 
         private VisualElement BuildHistoryCard(NexusBackend.MatchRow m)
         {
-            bool ranked = ModeOf(m) == "ranked";
+            bool ranked = ModeOf(m) == "ranked" && !IsDisputed(m); // Disputed: tanpa Poin Ladder (rating tak berubah)
             bool legacy = m.format == "legacy5v5";
             bool kdValid = m.format == "ranked1v1";
             var mine = Mine(m);
@@ -436,7 +437,7 @@ namespace Nexus
             bool thisWon = meSide ? m.won : (p != null && p.isWinner);
 
             var art = new VisualElement(); art.AddToClassList("nxl-dtx-portrait"); art.AddToClassList(HeroCss(heroId));
-            if (!thisWon && !m.isDraw) { var ds = new VisualElement(); ds.AddToClassList("nxl-dtx-portrait-desat"); art.Add(ds); } // pihak kalah = desaturate (seri: tidak)
+            if (!thisWon && !m.isDraw && !IsDisputed(m)) { var ds = new VisualElement(); ds.AddToClassList("nxl-dtx-portrait-desat"); art.Add(ds); } // pihak kalah = desaturate (seri/tidak dihitung: tidak)
             col.Add(art);
 
             var nm = new Label(p != null && !string.IsNullOrEmpty(p.displayName) ? p.displayName : (meSide ? "Kamu" : "Lawan"));
@@ -522,7 +523,11 @@ namespace Nexus
                 content.Add(TugAcc("Akurasi skill", me.skillsUsed, me.skillsHit, opp.skillsUsed, opp.skillsHit));
                 content.Add(TugInt("Kill streak terpanjang", me.maxKillStreak, opp.maxKillStreak));
             }
-            else { var na = new Label("Statistik detail tidak tersedia (format lama)."); na.AddToClassList("nxl-dim"); na.style.marginTop = 16; content.Add(na); }
+            else
+            {
+                var na = new Label(IsDisputed(m) ? "Statistik tidak dicatat — hasil match ini tidak dihitung." : "Statistik detail tidak tersedia (format lama).");
+                na.AddToClassList("nxl-dim"); na.style.marginTop = 16; na.style.whiteSpace = WhiteSpace.Normal; content.Add(na);
+            }
             panel.Add(content);
             if (timeline != null) panel.Add(timeline);
             return panel;
@@ -530,10 +535,16 @@ namespace Nexus
 
         // ---- T2: hasil (menang/kalah/seri), sebab akhir, jalannya match ----
         private static bool KoFinish(NexusBackend.MatchRow m) => string.IsNullOrEmpty(m.endReason) || m.endReason == "ko"; // match lama = KO
-        private static string ResultKey(NexusBackend.MatchRow m) => m.isDraw ? "draw" : m.won ? "win" : "loss";
-        private static string ResultText(NexusBackend.MatchRow m) => m.isDraw ? "SERI" : m.won ? "MENANG" : "KALAH";
+        private static bool IsDisputed(NexusBackend.MatchRow m) => m.status == "Disputed";
+        private static string ResultKey(NexusBackend.MatchRow m) => IsDisputed(m) ? "disputed" : m.isDraw ? "draw" : m.won ? "win" : "loss";
+        private static string ResultText(NexusBackend.MatchRow m) => IsDisputed(m) ? "TIDAK DIHITUNG" : m.isDraw ? "SERI" : m.won ? "MENANG" : "KALAH";
+        // NX-21: alasan Disputed dalam bahasa pemain; rating & statistik tidak berubah.
         private static string EndText(NexusBackend.MatchRow m) =>
-            m.endReason == "time" ? "Waktu habis"
+            IsDisputed(m) ? (m.disputeReason == "mismatch" ? "Laporan kedua pemain tidak cocok"
+                           : m.disputeReason == "sanity" ? "Gagal pemeriksaan kewajaran hasil"
+                           : m.disputeReason == "invariant" ? "Statistik melanggar aturan 1v1"
+                           : "Hasil tidak dapat diverifikasi")
+            : m.endReason == "time" ? "Waktu habis"
             : m.endReason == "forfeit" ? (m.isDraw ? "WO (dua pihak AFK)" : m.won ? "Menang WO" : "Kalah WO")
             : null;
 
