@@ -40,6 +40,7 @@ namespace Nexus
         public void UiRanked() => RankedMatch();
         public void UiQuickMatch() => QuickMatch();
         public void UiCreateRoom() => CreateRoom();
+        public void UiPractice() => Practice();   // NX: latihan solo vs bot (offline, tanpa rating)
         public void UiOpenProfile() => OpenProfile();
         public void UiLogout() => Logout();
         public void UiCancel() { _screen = Page.Menu; OpponentFound = false; } // ranked loop lihat screen != Connecting → LeaveQueue + batal
@@ -328,6 +329,7 @@ namespace Nexus
             if (_reported || _mySlot < 0) return;
             var frame = runner.Game.Frames.Predicted;
             if (frame == null || frame.Global->State != 2) return; // 2 = match selesai
+            if (_matchMode == "practice") { _reported = true; _ = LeaveAsync(); _resultText = ""; _screen = Page.Menu; return; } // NX: latihan tak dilaporkan
 
             _reported = true;
             var locals2 = runner.Game.GetLocalPlayers();
@@ -441,6 +443,47 @@ namespace Nexus
             await LeaveAsync();
             ResultGameId = gid; ResultText = text;
             _screen = Page.Result;
+        }
+
+        // NX (user 2026-11-16): PRACTICE — sesi Quantum LOKAL (offline), 1 pemain + bot mengisi lawan.
+        // Tanpa Photon, tanpa backend, tanpa laporan hasil → rating tidak berubah. Untuk tes T2/combat.
+        private async void Practice()
+        {
+            if (_screen != Page.Menu) return;                 // klik ganda / sedang sibuk → abaikan
+            _screen = Page.Connecting; _matchMode = "practice"; LastError = ""; OpponentFound = false;
+            _status = "Menyiapkan latihan...";
+            try { await StartPracticeAsync(); }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                await LeaveAsync();
+                _status = "Gagal: " + e.Message;
+                LastError = "Latihan gagal: " + e.Message;
+                _screen = Page.Menu;
+            }
+        }
+
+        private async Task StartPracticeAsync()
+        {
+            NexusInput.PendingPick = 0;                        // layar Pilih Hero fresh
+            var args = new SessionRunner.Arguments
+            {
+                RunnerFactory = QuantumRunnerUnityFactory.DefaultFactory,
+                GameParameters = QuantumRunnerUnityFactory.CreateGameParameters,
+                ClientId = "practice-" + UnityEngine.Random.Range(1000, 9999),
+                RuntimeConfig = RuntimeConfig ?? new RuntimeConfig(),
+                SessionConfig = QuantumDeterministicSessionConfigAsset.DefaultConfig,
+                GameMode = DeterministicGameMode.Local,        // OFFLINE: tanpa jaringan
+                PlayerCount = 2,                               // 1 manusia + 1 bot (StartMatch isi tim lawan)
+                RunnerId = "PRACTICE",
+                StartGameTimeoutInSeconds = 10,
+                Communicator = null,                           // tidak ada koneksi Photon
+            };
+            var runner = (QuantumRunner)await SessionRunner.StartAsync(args);
+            if (_screen != Page.Connecting) { await LeaveAsync(); return; } // dibatalkan saat start
+            runner.Game.AddPlayer(new RuntimePlayer { PlayerNickname = "You" });
+            _gameId = "";                                      // tak ada match backend
+            _status = ""; _matchStart = Time.realtimeSinceStartup; _screen = Page.InMatch;
         }
 
         private async Task ConnectSafe(string roomName)

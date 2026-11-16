@@ -90,6 +90,7 @@ namespace Nexus
             {
                 new ModeDef { Title = "RANKED",      Desc = "Solo 1v1 · Kompetitif",      Primary = "MAIN",         Ranked = true,   Act = () => game.UiRanked() },
                 new ModeDef { Title = "BATTLE",      Desc = "Casual · tanpa peringkat",   Primary = "QUICK JOIN",   Room = true,     Act = () => game.UiQuickMatch() },
+                new ModeDef { Title = "PRACTICE",    Desc = "Latihan solo vs bot (tanpa rating)", Primary = "MULAI",       Act = () => game.UiPractice() },
                 new ModeDef { Title = "FACTION WAR · NEXUS CUP", Desc = "Mode 5v5 — Segera Hadir", Primary = "SEGERA HADIR", Disabled = true, Act = () => { } },
             };
 

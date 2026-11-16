@@ -15,9 +15,9 @@ namespace Quantum
         public const int MatchTicks = MatchSeconds * TickRate;
         // Waktu habis: skor KO → gear rontok terbanyak KALAH → darah tersisa paling sedikit KALAH → seri.
 
-        // --- AFK / forfeit (NX-11: 20 dtk tanpa input berturut-turut → kalah WO) ---
-        public const int AfkWarnTicks = 10 * TickRate;      // 10 dtk: HUD memperingatkan
-        public const int AfkForfeitTicks = 20 * TickRate;   // 20 dtk: kalah WO (skor TIDAK dipalsukan)
+        // --- AFK / forfeit (keputusan user 2026-11-16: baru kalah bila idle LEBIH dari 1 menit) ---
+        public const int AfkWarnTicks = 60 * TickRate;      // 60 dtk: HUD memperingatkan
+        public const int AfkForfeitTicks = 75 * TickRate;   // 75 dtk (>1 mnt): kalah WO (skor TIDAK dipalsukan). Harus < MatchTicks 100 dtk.
         // Input yang MERESET timer AFK: gerak, lompat, guard, dash, serang, skill.
         // Tukar hero (32) & pilih hero TIDAK dihitung. Mouse tidak dihitung.
         public const byte ActionButtons = 1 | 2 | 4 | 8 | 16;
