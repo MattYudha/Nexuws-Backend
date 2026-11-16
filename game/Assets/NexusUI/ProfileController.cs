@@ -139,6 +139,7 @@ namespace Nexus
         // coba lagi tiap 1 dtk (maks ~15 dtk). Tak ketemu → ringkasan teks jujur (belum tercatat / tidak dihitung).
         private async void ShowResult()
         {
+            if (game.ResultIsPractice) { ResultPlaceholder("LATIHAN SELESAI", game.ResultText, true); return; } // NX: latihan, tanpa backend
             ResultPlaceholder("MEMUAT HASIL...", game.ResultText, false);
             var b = game.Backend;
             string gid = game.ResultGameId;

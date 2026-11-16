@@ -71,12 +71,16 @@ namespace Quantum
             foreach (var (e, o) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
                 if (o->Player != PlayerRef.None) { if (o->Team == 0) h0++; else h1++; }
 
-            int target = f.PlayerCount;                 // total petarung yang diinginkan sesi ini
-            int perTeam = target <= 2 ? 1 : (target + 1) / 2;
+            int target = f.PlayerCount;                 // sesi: RANKED=2, PRACTICE=3, BATTLE=10
+            int perTeam = target >= 6 ? 5 : 1;          // battle=5v5; ranked/practice=1v1
             if (perTeam > TeamSize) perTeam = TeamSize;
+            bool ranked = target == 2;                  // RANKED = murni manusia, TANPA bot (user 2026-11-16)
 
-            for (int i = h0; i < perTeam; i++) SpawnBot(f, 0, i);
-            for (int i = h1; i < perTeam; i++) SpawnBot(f, 1, i);
+            if (!ranked)
+            {
+                for (int i = h0; i < perTeam; i++) SpawnBot(f, 0, i);
+                for (int i = h1; i < perTeam; i++) SpawnBot(f, 1, i);
+            }
 
             f.Global->State = 1;
             NxMatch.Begin(f); // T2: timer 100 dtk + koTimeline kosong

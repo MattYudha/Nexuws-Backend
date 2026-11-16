@@ -62,6 +62,7 @@ namespace Nexus
         public string ResultGameId { get; private set; } = "";
         /// <summary>Ringkasan teks (cadangan bila match belum/tidak tercatat: lawan belum lapor, Disputed, server mati).</summary>
         public string ResultText { get; private set; } = "";
+        public bool ResultIsPractice { get; private set; }   // NX: hasil latihan (tak dari backend)
         public void UiResultContinue() { if (_screen == Page.Result) _screen = Page.Menu; }
         private bool _finishedMatch; // pernah menyelesaikan match di sesi ini (pemicu layar faksi, NX-15)
 
@@ -329,7 +330,21 @@ namespace Nexus
             if (_reported || _mySlot < 0) return;
             var frame = runner.Game.Frames.Predicted;
             if (frame == null || frame.Global->State != 2) return; // 2 = match selesai
-            if (_matchMode == "practice") { _reported = true; _ = LeaveAsync(); _resultText = ""; _screen = Page.Menu; return; } // NX: latihan tak dilaporkan
+            if (_matchMode == "practice") // NX: latihan → tampil statistik, TANPA lapor DB
+            {
+                _reported = true;
+                var lp = runner.Game.GetLocalPlayers();
+                PlayerRef meP = lp.Count > 0 ? lp[0] : default;
+                int k = 0, d = 0;
+                foreach (var (e, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())
+                    if (c->Player == meP) { k = c->Kills; d = c->Kos; break; }
+                string txt = $"LATIHAN SELESAI
+Skor {frame.Global->ScoreA}-{frame.Global->ScoreB}
+Kamu: {k} Kill / {d} Death
+(Latihan tidak memengaruhi rating)";
+                _ = EndPracticeToResult(txt);
+                return;
+            }
 
             _reported = true;
             var locals2 = runner.Game.GetLocalPlayers();
@@ -441,7 +456,7 @@ namespace Nexus
             if (_screen != Page.InMatch) return; // pemain sudah Leave sendiri
             string gid = _gameId, text = _resultText;
             await LeaveAsync();
-            ResultGameId = gid; ResultText = text;
+            ResultGameId = gid; ResultText = text; ResultIsPractice = false;
             _screen = Page.Result;
         }
 
@@ -474,7 +489,7 @@ namespace Nexus
                 RuntimeConfig = RuntimeConfig ?? new RuntimeConfig(),
                 SessionConfig = QuantumDeterministicSessionConfigAsset.DefaultConfig,
                 GameMode = DeterministicGameMode.Local,        // OFFLINE: tanpa jaringan
-                PlayerCount = 2,                               // 1 manusia + 1 bot (StartMatch isi tim lawan)
+                PlayerCount = 3,                               // PRACTICE: !=2 (bukan ranked) → StartMatch isi 1 bot lawan
                 RunnerId = "PRACTICE",
                 StartGameTimeoutInSeconds = 10,
                 Communicator = null,                           // tidak ada koneksi Photon
@@ -484,6 +499,16 @@ namespace Nexus
             runner.Game.AddPlayer(new RuntimePlayer { PlayerNickname = "You" });
             _gameId = "";                                      // tak ada match backend
             _status = ""; _matchStart = Time.realtimeSinceStartup; _screen = Page.InMatch;
+        }
+
+        private async Task EndPracticeToResult(string text)
+        {
+            await Task.Delay(1200);                         // biar banner KO sempat terlihat
+            if (_screen != Page.InMatch) return;
+            await LeaveAsync();
+            if (!UseNewProfile) { _resultText = text; _screen = Page.Menu; return; }
+            ResultGameId = ""; ResultText = text; ResultIsPractice = true;
+            _screen = Page.Result;
         }
 
         private async Task ConnectSafe(string roomName)
