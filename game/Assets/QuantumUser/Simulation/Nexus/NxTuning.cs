@@ -44,7 +44,7 @@ namespace Quantum
         public const int BotCrowdRadius = 3;       // unit
 
         // --- Aim assist PULSE (user 2026-11-16): peluru dibantu ke musuh terdekat DI DEPAN (bukan homing) ---
-        public static readonly Photon.Deterministic.FP AimAssistRange = 14;                 // unit jangkauan bantuan
-        public static readonly Photon.Deterministic.FP AimAssistMinDot = Photon.Deterministic.FP._0_25; // ~75 derajat setengah-cone (hanya musuh di depan)
+        public static readonly Photon.Deterministic.FP AimAssistRange = 22;                 // unit jangkauan bantuan (arena kecil → cakup semua)
+        public static readonly Photon.Deterministic.FP AimAssistMinDot = -1;                // -1 = 360 derajat: kunci musuh terdekat, arah hadap apa pun
     }
 }
