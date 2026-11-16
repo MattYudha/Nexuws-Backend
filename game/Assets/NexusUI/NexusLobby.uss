@@ -673,6 +673,9 @@
 .nxl-soon-tag { font-size: 16px; -unity-font-style: bold; color: var(--nxl-text); -unity-font-definition: var(--nxl-font-head);
     background-color: var(--nx-badge-bg); border-radius: 6px; padding-left: 6px; padding-right: 6px; -unity-text-align: middle-center; }
 .nxl-soon-tag--float { position: absolute; top: -12px; left: 50%; translate: -50% 0; white-space: nowrap; }
+.nxl-soon-tag--badge { position: absolute; top: 4px; right: 4px; left: auto; translate: 0 0;
+    font-size: 9px; -unity-font-style: bold; white-space: nowrap; color: #11151f;
+    background-color: rgba(255, 162, 66, 0.95); padding: 1px 5px; border-radius: 8px; }
 
 /* Pengumuman (kiri-atas lobby) */
 .nxl-ann { width: 340px; margin-left: 24px; align-self: flex-start; background-color: rgba(15, 30, 60, 0.55); border-radius: 12px;

@@ -24,12 +24,8 @@
                     <ui:Label text="PENGUMUMAN" class="nxl-ann-head" />
                     <ui:VisualElement name="ann-list" />
                 </ui:VisualElement>
-                <!-- Tengah: hero terakhir dimainkan (atau default TITAN-01). -->
-                <ui:VisualElement class="nxl-spacer nxl-lobby-herowrap" picking-mode="Ignore">
-                    <ui:VisualElement name="lobby-hero" class="nxl-lobby-hero nxl-hero-titan" picking-mode="Ignore" />
-                    <ui:Label text="TITAN-01" name="lobby-hero-name" class="nxl-lobby-heroname" picking-mode="Ignore" />
-                    <ui:Label text="Hero default" name="lobby-hero-sub" class="nxl-dim" picking-mode="Ignore" />
-                </ui:VisualElement>
+                <!-- Tengah KOSONG: hero DIPINDAH ke Hero Select (NX-IN-LOBBY). Spacer agar layout tetap. -->
+                <ui:VisualElement class="nxl-spacer" picking-mode="Ignore" />
                 <ui:Instance template="FriendPanel" style="margin-right: 24px;" />
             </ui:VisualElement>
 

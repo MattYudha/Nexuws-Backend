@@ -36,8 +36,8 @@ namespace Nexus
                 if (b == null) continue;
                 b.SetEnabled(false);
                 b.AddToClassList("nxl-soon");
-                var tag = new Label("SEGERA HADIR") { pickingMode = PickingMode.Ignore };
-                tag.AddToClassList("nxl-soon-tag"); tag.AddToClassList("nxl-soon-tag--float");
+                var tag = new Label("Segera") { pickingMode = PickingMode.Ignore };
+                tag.AddToClassList("nxl-soon-tag"); tag.AddToClassList("nxl-soon-tag--badge"); // poin 3: badge pojok, bukan teks menimpa ikon
                 b.Add(tag);
             }
             foreach (var n in HiddenButtons) ShowEl(_root.Q(n), false);
