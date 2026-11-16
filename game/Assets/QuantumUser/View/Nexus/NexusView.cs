@@ -14,6 +14,27 @@ namespace Nexus
         private readonly Dictionary<EntityRef, GameObject> _caps = new();
         private readonly Dictionary<EntityRef, GameObject> _projs = new();
         private Camera _camera;
+        private static Texture2D _portTitan, _portPulse; private static bool _portTried; // NX: potret hero
+        private static Texture2D Portrait(int pick)
+        {
+            if (!_portTried) { _portTried = true; _portTitan = Resources.Load<Texture2D>("hero_titan"); _portPulse = Resources.Load<Texture2D>("hero_pulse"); }
+            return pick == 1 ? _portTitan : _portPulse;
+        }
+        private static void HeroCard(float x, float y, int pick, string name, string role, string[] skills)
+        {
+            GUI.Box(new Rect(x, y, 230, 300), "");
+            var tex = Portrait(pick);
+            var pr = new Rect(x + 40, y + 8, 150, 150);
+            if (tex != null) GUI.DrawTexture(pr, tex, ScaleMode.ScaleToFit);
+            else { var pb = GUI.backgroundColor; GUI.backgroundColor = new Color(0.25f,0.45f,0.6f); GUI.Box(pr, name); GUI.backgroundColor = pb; }
+            var nm = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            var rl = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter };
+            var sk = new GUIStyle(GUI.skin.label) { fontSize = 11, alignment = TextAnchor.MiddleLeft, wordWrap = false };
+            GUI.Label(new Rect(x + 10, y + 158, 210, 22), name, nm);
+            GUI.Label(new Rect(x + 10, y + 180, 210, 18), role, rl);
+            for (int i = 0; i < skills.Length; i++) GUI.Label(new Rect(x + 14, y + 202 + i * 17, 206, 16), skills[i], sk);
+            if (GUI.Button(new Rect(x + 40, y + 268, 150, 26), "PILIH")) NexusInput.PendingPick = (byte)pick;
+        }
         private readonly HashSet<EntityRef> _seen = new();
         private readonly HashSet<EntityRef> _seenProj = new();
 
@@ -148,19 +169,16 @@ namespace Nexus
 
                 byte myPick = NexusInput.PendingPick;
 
-                GUI.Box(new Rect(sw / 2 - 230, sh / 2 - 125, 460, 255), "");
-                GUI.Label(new Rect(sw / 2 - 230, sh / 2 - 117, 460, 40), "PILIH HERO", title);
+                GUI.Box(new Rect(sw / 2 - 265, sh / 2 - 125, 530, 370), "");
+                GUI.Label(new Rect(sw / 2 - 265, sh / 2 - 117, 530, 40), "PILIH HERO", title);
 
                 if (myPick == 0)
                 {
-                    var big = new GUIStyle(GUI.skin.button) { fontSize = 14, alignment = TextAnchor.MiddleCenter };
-                    if (GUI.Button(new Rect(sw / 2 - 210, sh / 2 - 60, 200, 150),
-                        "TITAN-01\n\nGrappler / Melee\nJ: pukul\nK: lunge (nyerbu)", big))
-                        NexusInput.PendingPick = 1;
-                    if (GUI.Button(new Rect(sw / 2 + 10, sh / 2 - 60, 200, 150),
-                        "PULSE-X\n\nZoner / Ranged\nJ: tembak\nK: charged shot", big))
-                        NexusInput.PendingPick = 2;
-                    GUI.Label(new Rect(sw / 2 - 230, sh / 2 + 100, 460, 24), "Klik salah satu hero.", center);
+                    HeroCard(sw / 2 - 250, sh / 2 - 92, 1, "TITAN-01", "Grappler / Melee",
+                        new[] { "J  Hantam", "K  Serbu (kebal peluru)", "Shift  Dash (kebal)", "L  Guard 180" });
+                    HeroCard(sw / 2 + 20, sh / 2 - 92, 2, "PULSE-X", "Zoner / Ranged",
+                        new[] { "J  Tembak", "K  Charged (tembus)", "Shift  Dash (kebal)", "L  Guard 180" });
+                    GUI.Label(new Rect(sw / 2 - 250, sh / 2 + 212, 500, 22), "Klik PILIH di bawah hero.", center);
                 }
                 else
                 {
