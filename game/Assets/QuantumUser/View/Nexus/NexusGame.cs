@@ -474,6 +474,7 @@ namespace Nexus
         private async Task StartPracticeAsync()
         {
             NexusInput.PendingPick = 0;                        // layar Pilih Hero fresh
+            if (QuantumRunnerUnityFactory.DefaultFactory == null) QuantumRunnerUnityFactory.Init(); // local: factory belum di-set (online di-set saat connect)
             var args = new SessionRunner.Arguments
             {
                 RunnerFactory = QuantumRunnerUnityFactory.DefaultFactory,
