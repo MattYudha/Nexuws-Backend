@@ -436,7 +436,6 @@ namespace Nexus
             NexusBackend.MatchPlayerRow opp = null;
             if (m.players != null) foreach (var p in m.players) if (p.slot != m.slot) { opp = p; break; }
             bool r1 = m.format == "ranked1v1";
-            bool practice = m.mode == "practice";
             bool flawless = Mathf.Min(m.scoreLeft, m.scoreRight) == 0 && KoFinish(m) && m.format != "legacy5v5"; // Q53 + D13
             int myScore = m.slot == 0 ? m.scoreLeft : m.scoreRight;      // skor KAMU di kiri, apa pun slot-nya
             int oppScore = m.slot == 0 ? m.scoreRight : m.scoreLeft;
@@ -566,7 +565,7 @@ namespace Nexus
                 t1.RegisterCallback<ClickEvent>(_ => { t1.AddToClassList("nxl-dtx-tab--active"); t2.RemoveFromClassList("nxl-dtx-tab--active"); ShowEl(content, true); ShowEl(tl, false); });
                 t2.RegisterCallback<ClickEvent>(_ => { t2.AddToClassList("nxl-dtx-tab--active"); t1.RemoveFromClassList("nxl-dtx-tab--active"); ShowEl(content, false); ShowEl(tl, true); });
             }
-            if ((r1 || practice) && me != null && opp != null)
+            if ((r1 || m.mode == "practice") && me != null && opp != null)
             {
                 content.Add(TugRow("KO", me.kills.ToString(), opp.kills.ToString(), me.kills, opp.kills, true));
                 content.Add(TugInt("Damage diberikan", me.damageDealt, opp.damageDealt));
