@@ -338,10 +338,7 @@ namespace Nexus
                 int k = 0, d = 0;
                 foreach (var (e, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())
                     if (c->Player == meP) { k = c->Kills; d = c->Kos; break; }
-                string txt = $"LATIHAN SELESAI
-Skor {frame.Global->ScoreA}-{frame.Global->ScoreB}
-Kamu: {k} Kill / {d} Death
-(Latihan tidak memengaruhi rating)";
+                string txt = $"LATIHAN SELESAI\nSkor {frame.Global->ScoreA}-{frame.Global->ScoreB}\nKamu: {k} Kill / {d} Death\n(Latihan tidak memengaruhi rating)";
                 _ = EndPracticeToResult(txt);
                 return;
             }
