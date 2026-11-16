@@ -63,6 +63,7 @@ namespace Nexus
         /// <summary>Ringkasan teks (cadangan bila match belum/tidak tercatat: lawan belum lapor, Disputed, server mati).</summary>
         public string ResultText { get; private set; } = "";
         public bool ResultIsPractice { get; private set; }   // NX: hasil latihan (tak dari backend)
+        public NexusBackend.MatchRow ResultLocalRow { get; private set; }   // NX: data Result latihan (lokal)
         public void UiResultContinue() { if (_screen == Page.Result) _screen = Page.Menu; }
         private bool _finishedMatch; // pernah menyelesaikan match di sesi ini (pemicu layar faksi, NX-15)
 
@@ -330,16 +331,11 @@ namespace Nexus
             if (_reported || _mySlot < 0) return;
             var frame = runner.Game.Frames.Predicted;
             if (frame == null || frame.Global->State != 2) return; // 2 = match selesai
-            if (_matchMode == "practice") // NX: latihan → tampil statistik, TANPA lapor DB
+            if (_matchMode == "practice") // NX: latihan -> Result lokal (template ranked), TANPA DB
             {
                 _reported = true;
-                var lp = runner.Game.GetLocalPlayers();
-                PlayerRef meP = lp.Count > 0 ? lp[0] : default;
-                int k = 0, d = 0;
-                foreach (var (e, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())
-                    if (c->Player == meP) { k = c->Kills; d = c->Kos; break; }
-                string txt = $"LATIHAN SELESAI\nSkor {frame.Global->ScoreA}-{frame.Global->ScoreB}\nKamu: {k} Kill / {d} Death\n(Latihan tidak memengaruhi rating)";
-                _ = EndPracticeToResult(txt);
+                var row = BuildLocalPracticeRow(frame);
+                _ = EndPracticeToResult(row);
                 return;
             }
 
@@ -498,14 +494,66 @@ namespace Nexus
             _status = ""; _matchStart = Time.realtimeSinceStartup; _screen = Page.InMatch;
         }
 
-        private async Task EndPracticeToResult(string text)
+        private async Task EndPracticeToResult(NexusBackend.MatchRow row)
         {
             await Task.Delay(1200);                         // biar banner KO sempat terlihat
             if (_screen != Page.InMatch) return;
             await LeaveAsync();
-            if (!UseNewProfile) { _resultText = text; _screen = Page.Menu; return; }
-            ResultGameId = ""; ResultText = text; ResultIsPractice = true;
+            ResultGameId = ""; ResultIsPractice = true; ResultLocalRow = row;
+            if (!UseNewProfile) { _screen = Page.Menu; return; }
             _screen = Page.Result;
+        }
+
+        private unsafe NexusBackend.MatchRow BuildLocalPracticeRow(Frame frame)
+        {
+            var lp = QuantumRunner.Default.Game.GetLocalPlayers();
+            PlayerRef meP = lp.Count > 0 ? lp[0] : default;
+            var rows = new System.Collections.Generic.List<NexusBackend.MatchPlayerRow>();
+            int myTeam = 0;
+            foreach (var (e, c) in frame.Unsafe.GetComponentBlockIterator<NxCombat>())
+            {
+                bool isMe = c->Player == meP;
+                if (isMe) myTeam = c->Team;
+                rows.Add(new NexusBackend.MatchPlayerRow
+                {
+                    slot = c->Team,
+                    displayName = isMe ? (_backend != null ? _backend.DisplayName : "Kamu") : "BOT",
+                    heroId = c->HeroId,
+                    kills = c->Kills + c->BotKills,
+                    botKills = c->BotKills,
+                    deaths = c->Kos,
+                    assists = 0,
+                    damageDealt = FPMath.RoundToInt(c->DamageDealt),
+                    damageTaken = FPMath.RoundToInt(c->DamageTaken),
+                    hitsBlocked = c->HitsBlocked,
+                    dodges = c->Dodges,
+                    guardCrushes = c->GuardCrushes,
+                    criticals = c->Criticals,
+                    gearDrops = c->GearDrops,
+                    skillsUsed = c->SkillsUsed,
+                    skillsHit = c->SkillsHit,
+                    firstBlood = c->FirstBlood != 0,
+                    maxKillStreak = c->MaxStreak,
+                    maxDeficit = c->MaxDeficit,
+                    heroSwitches = c->HeroSwitches,
+                    ratingBefore = 0, ratingDelta = 0, isWinner = false, hasDetailedStats = true,
+                });
+            }
+            int sA = frame.Global->ScoreA, sB = frame.Global->ScoreB;
+            foreach (var pr in rows) { int ps = pr.slot == 0 ? sA : sB; int os = pr.slot == 0 ? sB : sA; pr.isWinner = ps > os; }
+            int myScore = myTeam == 0 ? sA : sB, oppScore = myTeam == 0 ? sB : sA;
+            string endReason = frame.Global->EndReason == NxMatch.ReasonTime ? "time" : "ko";
+            return new NexusBackend.MatchRow
+            {
+                gameId = "", endedAt = System.DateTime.UtcNow.ToString("o"),
+                mode = "practice", format = "practice",
+                durationSec = (frame.Number - frame.Global->StartTick) / frame.UpdateRate,
+                slot = myTeam, scoreLeft = sA, scoreRight = sB,
+                won = myScore > oppScore, isDraw = myScore == oppScore,
+                endReason = endReason, koTimeline = null, status = "Finished",
+                disputeReason = null, ratingDelta = 0, ratingBefore = 0, heroId = 0, partySize = 1,
+                players = rows.ToArray(),
+            };
         }
 
         private async Task ConnectSafe(string roomName)

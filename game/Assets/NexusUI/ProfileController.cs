@@ -139,7 +139,7 @@ namespace Nexus
         // coba lagi tiap 1 dtk (maks ~15 dtk). Tak ketemu → ringkasan teks jujur (belum tercatat / tidak dihitung).
         private async void ShowResult()
         {
-            if (game.ResultIsPractice) { ResultPlaceholder("LATIHAN SELESAI", game.ResultText, true); return; } // NX: latihan, tanpa backend
+            if (game.ResultIsPractice && game.ResultLocalRow != null) { OpenDetail(game.ResultLocalRow, DetailMode.Result); return; } // NX: latihan -> template Result lokal
             ResultPlaceholder("MEMUAT HASIL...", game.ResultText, false);
             var b = game.Backend;
             string gid = game.ResultGameId;
@@ -436,6 +436,7 @@ namespace Nexus
             NexusBackend.MatchPlayerRow opp = null;
             if (m.players != null) foreach (var p in m.players) if (p.slot != m.slot) { opp = p; break; }
             bool r1 = m.format == "ranked1v1";
+            bool practice = m.mode == "practice";
             bool flawless = Mathf.Min(m.scoreLeft, m.scoreRight) == 0 && KoFinish(m) && m.format != "legacy5v5"; // Q53 + D13
             int myScore = m.slot == 0 ? m.scoreLeft : m.scoreRight;      // skor KAMU di kiri, apa pun slot-nya
             int oppScore = m.slot == 0 ? m.scoreRight : m.scoreLeft;
@@ -471,7 +472,7 @@ namespace Nexus
                 : new Button(CloseDetail) { text = "KEMBALI" };
             cta.AddToClassList("nxl-btn"); cta.AddToClassList(mode == DetailMode.Result ? "nxl-btn--orange" : "nxl-btn--gray");
             cta.style.width = 180; cta.style.height = 46;
-            foot.Add(idl); foot.Add(cp); foot.Add(fsp); foot.Add(cta);
+            if (m.mode != "practice") { foot.Add(idl); foot.Add(cp); } foot.Add(fsp); foot.Add(cta);
             _histDetail.Add(foot);
 
             ShowEl(_histDetail, true); _detailOpen = true;
@@ -493,10 +494,13 @@ namespace Nexus
             var nm = new Label(p != null && !string.IsNullOrEmpty(p.displayName) ? p.displayName : (meSide ? "Kamu" : "Lawan"));
             nm.AddToClassList("nxl-dtx-name"); nm.AddToClassList(meSide ? "nxl-dt-accent-you" : "nxl-dt-accent-opp"); col.Add(nm);
 
-            int rating = p != null ? p.ratingBefore + p.ratingDelta : 0;
-            string tier = NexusRankConfig.TierForRating(rating);
-            var trow = new VisualElement(); trow.AddToClassList("nxl-dtx-tier");
-            trow.Add(Emblem(tier, 24)); var tn = new Label(tier); tn.AddToClassList("nxl-dtx-tiername"); trow.Add(tn); col.Add(trow);
+            if (m.mode != "practice")
+            {
+                int rating = p != null ? p.ratingBefore + p.ratingDelta : 0;
+                string tier = NexusRankConfig.TierForRating(rating);
+                var trow = new VisualElement(); trow.AddToClassList("nxl-dtx-tier");
+                trow.Add(Emblem(tier, 24)); var tn = new Label(tier); tn.AddToClassList("nxl-dtx-tiername"); trow.Add(tn); col.Add(trow);
+            }
 
             if (p != null) { var hl = new Label(HeroName(heroId)); hl.AddToClassList("nxl-dtx-heroline"); col.Add(hl); }
 
@@ -505,6 +509,7 @@ namespace Nexus
             if (thisWon && p != null && p.maxDeficit >= 3 && m.format != "legacy5v5") badges.Add(Badge("COMEBACK", "nxl-badge--comeback")); // D13
             if (p != null && p.firstBlood) badges.Add(Badge("FIRST BLOOD", "nxl-badge--firstblood"));
             col.Add(badges);
+            if (m.mode == "practice") { var pn = new Label(meSide ? "Latihan tidak memengaruhi rating" : "Latihan"); pn.AddToClassList("nxl-dim"); col.Add(pn); }
 
             if (ranked && p != null)
             {
@@ -561,7 +566,7 @@ namespace Nexus
                 t1.RegisterCallback<ClickEvent>(_ => { t1.AddToClassList("nxl-dtx-tab--active"); t2.RemoveFromClassList("nxl-dtx-tab--active"); ShowEl(content, true); ShowEl(tl, false); });
                 t2.RegisterCallback<ClickEvent>(_ => { t2.AddToClassList("nxl-dtx-tab--active"); t1.RemoveFromClassList("nxl-dtx-tab--active"); ShowEl(content, false); ShowEl(tl, true); });
             }
-            if (r1 && me != null && opp != null)
+            if ((r1 || practice) && me != null && opp != null)
             {
                 content.Add(TugRow("KO", me.kills.ToString(), opp.kills.ToString(), me.kills, opp.kills, true));
                 content.Add(TugInt("Damage diberikan", me.damageDealt, opp.damageDealt));
