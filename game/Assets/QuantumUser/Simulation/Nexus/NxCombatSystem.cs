@@ -277,6 +277,19 @@ namespace Quantum
         private static void FireProjectile(Frame f, NxCombat* c, FP speed, FP damage, int life, byte isSkill)
         {
             FPVector3 fwd = new FPVector3(FPMath.Sin(c->Yaw), 0, FPMath.Cos(c->Yaw));
+            // Aim assist (PULSE): arahkan peluru ke musuh terdekat DI DEPAN (jarak+cone). Karakter TIDAK berputar; peluru tetap lurus.
+            FP bestD = NxTuning.AimAssistRange * NxTuning.AimAssistRange; FPVector3 aim = fwd; bool found = false;
+            foreach (var (ve, vo) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
+            {
+                if (vo->Team == c->Team) continue;
+                FPVector3 to = vo->Pos - c->Pos; to.Y = 0;
+                FP d2 = to.SqrMagnitude;
+                if (d2 <= FP._0_10 || d2 > bestD) continue;
+                FPVector3 dir = to.Normalized;
+                if (FPVector3.Dot(fwd, dir) < NxTuning.AimAssistMinDot) continue; // hanya musuh di depan
+                bestD = d2; aim = dir; found = true;
+            }
+            if (found) fwd = aim;
             var e = f.Create();
             f.Set(e, new NxProjectile
             {

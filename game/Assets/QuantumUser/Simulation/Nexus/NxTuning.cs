@@ -42,5 +42,9 @@ namespace Quantum
         public const int BotOverloadBonus = 80;
         public const int BotCrowdPenalty = 30;     // per penyerang lain di sekitar target
         public const int BotCrowdRadius = 3;       // unit
+
+        // --- Aim assist PULSE (user 2026-11-16): peluru dibantu ke musuh terdekat DI DEPAN (bukan homing) ---
+        public static readonly Photon.Deterministic.FP AimAssistRange = 14;                 // unit jangkauan bantuan
+        public static readonly Photon.Deterministic.FP AimAssistMinDot = Photon.Deterministic.FP._0_25; // ~75 derajat setengah-cone (hanya musuh di depan)
     }
 }
