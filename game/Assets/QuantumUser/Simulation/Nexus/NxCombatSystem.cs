@@ -71,7 +71,7 @@ namespace Quantum
             foreach (var (e, o) in f.Unsafe.GetComponentBlockIterator<NxCombat>())
                 if (o->Player != PlayerRef.None) { if (o->Team == 0) h0++; else h1++; }
 
-            int target = f.PlayerCount;                 // sesi: RANKED=2, PRACTICE=3, BATTLE=10
+            int target = f.MaxPlayerCount;              // sesi: RANKED=2, PRACTICE=3, BATTLE=10 (MaxPlayerCount: PlayerCount usang)
             int perTeam = target >= 6 ? 5 : 1;          // battle=5v5; ranked/practice=1v1
             if (perTeam > TeamSize) perTeam = TeamSize;
             bool ranked = target == 2;                  // RANKED = murni manusia, TANPA bot (user 2026-11-16)
